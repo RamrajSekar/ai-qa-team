@@ -1,4 +1,4 @@
-🧩 Overview
+🧩 Project Overview
 
 AI QA Team is an intelligent test-automation platform that helps QA leads and engineers generate, organize, and execute test cases using AI. It supports open-source frameworks such as Playwright, Selenium, Robot Framework, and n8n, with optional Git repository integration for versioned scripts.
 
