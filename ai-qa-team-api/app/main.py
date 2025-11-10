@@ -1,11 +1,13 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
+from starlette.middleware.sessions import SessionMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from app.db.connection import db
 from app.utils.redis_client import check_redis_connection
-from app.routes import story_routes
+from app.routes import story_routes,auth_routes
 from app.utils.logger import logger
-
-
+from app.middleware.error_handler import jwt_exception_handler
+from app.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -31,8 +33,34 @@ async def lifespan(app: FastAPI):
 # === Initialize App ===
 app = FastAPI(title="AI QA Team API", lifespan=lifespan)
 
+# ✅ Register global middleware
+app.middleware("http")(jwt_exception_handler)
+
+# ✅ CORS Setup
+origins = [
+    "http://127.0.0.1:8000",  # Swagger docs
+    "http://localhost:8000",
+    "http://127.0.0.1:3000",  # React frontend (if applicable)
+    "http://localhost:3000"
+]
+
+# ✅ Add session middleware (REQUIRED for OAuth)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,       # Or use ["*"] during development
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ✅ Session Middleware (for OAuth)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.jwt_secret_key
+)
 
 # === Routers ===
+app.include_router(auth_routes.router)
 app.include_router(story_routes.router)
 
 

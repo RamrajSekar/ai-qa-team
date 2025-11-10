@@ -8,3 +8,7 @@ class Story(BaseModel):
     description: str
     status: str = "pending"
     scenarios: List[str] = []
+
+    class Config:
+        populate_by_name = True
+        from_attributes = True
