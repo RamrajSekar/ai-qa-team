@@ -1,5 +1,6 @@
 from fastapi import Request
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from fastapi import status
 import jwt, logging
 
@@ -27,3 +28,12 @@ async def jwt_exception_handler(request: Request, call_next):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"error": str(e)}
         )
+
+# @app.exception_handler(RequestValidationError)
+# async def validation_exception_handler(request, exc):
+#     errors = []
+#     for err in exc.errors():
+#         field = ".".join(str(loc) for loc in err["loc"])
+#         message = err["msg"]
+#         errors.append({"field": field, "error": message})
+#     return JSONResponse(status_code=400, content={"validation_errors": errors})
