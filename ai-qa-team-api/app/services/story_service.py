@@ -7,19 +7,20 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-async def get_stories_by_Id(user_identifier: str):
-    logger.info(f"Checking Story for user: {user_identifier}")
-    user = await db["users"].find_one(
-        {"$or": [{"_id": user_identifier}, {"id": user_identifier}, {"email": user_identifier}]},
+async def get_next_sequence(key: str, prefix: str, digits: int = 3) -> str:
+    """
+    Returns the next auto-increment ID for a resource.
+    Example:
+        key="story_id", prefix="S" → S001
+        key="scenario_id", prefix="SC" → SC001
+        key="testcase_id", prefix="TC" → TC001
+    """
+    result = await db["counters"].find_one_and_update(
+        {"_id": key},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=True
     )
-    if not user:
-        logger.warning(f"User not found for {user_identifier}")
-        return None
 
-    stories = user.get("StoryResponse")
-    if not stories:
-        logger.warning(f"No stories created for {user_identifier}")
-        return None
-
-    logger.info(f"Stories fetched for {user_identifier}: {sub.get('plan', 'unknown')}")
-    return stories
+    seq = result["seq"]
+    return f"{prefix}{seq:0{digits}d}"

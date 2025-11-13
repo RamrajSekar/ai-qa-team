@@ -2,7 +2,6 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 class StoryCreate(BaseModel):
-    id: Optional[str]
     project_id: str
     title: str
     description: str
@@ -15,7 +14,7 @@ class StoryCreate(BaseModel):
         from_attributes = True
 
 class StoryResponse(BaseModel):
-    id: str
+    story_id: str
     title: str
     description: Optional[str]
     tags: Optional[List[str]] = []
@@ -27,3 +26,13 @@ class StoryResponse(BaseModel):
     class Config:
         populate_by_name = True
         from_attributes = True
+
+class StoryUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    tags: Optional[List[str]] = None
+    scenarios: Optional[List[str]] = None
+
+    class Config:
+        populate_by_name = True
