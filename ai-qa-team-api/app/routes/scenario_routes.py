@@ -6,6 +6,7 @@ from app.utils.subscription_dependency import subscription_required
 from bson.objectid import ObjectId
 from app.services.story_service import get_next_sequence
 from datetime import datetime, timezone
+from app.services.ai.scenario_generator import generate_scenarios_from_story
 
 router = APIRouter(prefix="/scenarios", tags=["Scenarios"])
 
@@ -125,3 +126,22 @@ async def delete_scenario(
         raise HTTPException(status_code=404, detail="Scenario not found")
 
     return {"message": "Scenario deleted successfully"}
+
+@router.post("/generate-from-story/{story_id}")
+async def generate_scenarios(
+    story_id: str,
+    current_user=Depends(get_current_user),
+    _: None = Depends(subscription_required("scenarios"))
+):
+    # Fetch story
+    story = await db["stories"].find_one({"_id": ObjectId(story_id)})
+    if not story:
+        raise HTTPException(status_code=404, detail="Story not found.")
+
+    # Call AI Generator WITH agent identity
+    scenarios = await generate_scenarios_from_story(story, project_id=story["project_id"])
+
+    return {
+        "story_id": story_id,
+        "generated_scenarios": scenarios
+    }

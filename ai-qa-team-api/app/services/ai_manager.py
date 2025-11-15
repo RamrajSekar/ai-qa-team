@@ -5,3 +5,4 @@ class AIManager:
     async def generate_scenarios(self, story_text: str):
         # Placeholder for OpenAI integration
         return [f"Generated test scenario for: {story_text}"]
+# To be deleted
