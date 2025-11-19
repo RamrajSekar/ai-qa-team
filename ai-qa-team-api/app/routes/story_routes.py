@@ -13,27 +13,54 @@ router = APIRouter(prefix="/stories", tags=["Stories"])
 
 @router.post("/", response_model=StoryResponse)
 async def create_story(
-     story: StoryCreate,
-     current_user=Depends(get_current_user),
+    story: StoryCreate,
+    current_user=Depends(get_current_user),
     _: None = Depends(subscription_required("stories"))
-    ):
-    # story creation logic here
+):
     try:
-        # Generate unique sequential ID
-        new_story_id = await get_next_sequence('story_id','S')
-        story_data = story.model_dump()
-        story_data["story_id"] = new_story_id
-        story_data["created_by"] = current_user.get("email")
-        story_data["created_at"] = datetime.now(timezone.utc).isoformat()
-        
+        # 0️⃣ Validate the incoming project_id (business ID, not ObjectId)
+        project = await db["projects"].find_one({
+            "project_id": story.project_id,
+            "created_by": current_user["email"]
+        })
 
+        if not project:
+            raise HTTPException(
+                status_code=404,
+                detail="Project not found or access denied."
+            )
+
+        # 1️⃣ Generate sequential ID for story (S001, S002)
+        new_story_id = await get_next_sequence("story_id", "S")
+
+        # 2️⃣ Build payload
+        story_data = {
+            "story_id": new_story_id,
+            "project_id": story.project_id,                    # PR001 (Business ID)
+            "project_ref": str(project["_id"]),               # Actual ObjectId (string)
+            "title": story.title,
+            "description": story.description,
+            "status": story.status,
+            "tags": story.tags or [],
+            "scenarios": [],
+            "created_by": current_user["email"],
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+
+        # 3️⃣ Insert into Mongo
         result = await db["stories"].insert_one(story_data)
         story_data["id"] = str(result.inserted_id)
-        story_data.setdefault("tags", []) 
+
         return StoryResponse(**story_data)
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to create story: {str(e)}")
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Failed to create story: {str(e)}"
+        )
+
 
 # @router.get("/",response_model=List[StoryResponse])
 # async def get_stories(skip: int = 0, limit: int = 20,current_user=Depends(get_current_user)):

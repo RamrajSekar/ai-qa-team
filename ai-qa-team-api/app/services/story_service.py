@@ -11,6 +11,7 @@ async def get_next_sequence(key: str, prefix: str, digits: int = 3) -> str:
     """
     Returns the next auto-increment ID for a resource.
     Example:
+        key="project_id", prefix="PRJ" → PRJ001
         key="story_id", prefix="S" → S001
         key="scenario_id", prefix="SC" → SC001
         key="testcase_id", prefix="TC" → TC001

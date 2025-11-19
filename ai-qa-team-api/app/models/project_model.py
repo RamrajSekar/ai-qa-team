@@ -7,9 +7,16 @@ class AgentIdentities(BaseModel):
     test_generator: str = "Test Generator"
     executor: str = "Executor Agent"
 
-class Project(BaseModel):
-    id: Optional[str]
+class ProjectCreate(BaseModel):
     name: str
     description: Optional[str] = None
     created_by: str
     agent_identities: AgentIdentities = Field(default_factory=AgentIdentities)
+
+class ProjectResponse(BaseModel):
+    id: Optional[str]
+    project_id: str
+    name: str
+    agent_identities: Dict
+    created_by: str
+    created_at: str

@@ -4,16 +4,20 @@ from typing import Optional, Literal
 from app.app_config.plan_limits import PLAN_LIMITS
 
 class UsageModel(BaseModel):
+    projects_used: int = 0
     stories_used: int = 0
     scenarios_used: int = 0
     executions_used: int = 0
     team_members_used: int = 0
+    ai_gen_used: int = 0
 
 class LimitModel(BaseModel):
+    projects_limit: int = 0
     stories_limit: int = 0
     scenarios_limit: int = 0
     executions_limit: int = 0
     team_members_limit: int = 0
+    ai_gen_limit: Optional[int] = 0
 
 class Subscription(BaseModel):
     plan: Literal["free", "pro", "enterprise"] = "free"
@@ -39,6 +43,7 @@ class Subscription(BaseModel):
             "scenarios_limit": plan_data["scenarios_limit"],
             "executions_limit": plan_data["executions_limit"],
             "team_members_limit": plan_data["team_members_limit"],
+            "ai_gen_limit": plan_data["ai_gen_limit"],
         })
 
     def upgrade_to(self, plan: str) -> "Subscription":
@@ -46,22 +51,15 @@ class Subscription(BaseModel):
         now = datetime.now(timezone.utc)
         if plan not in PLAN_LIMITS:
             raise ValueError(f"Invalid plan name: {plan}")
-        # plan_limits = {
-        #     "free": {"stories_limit": 5, "scenarios_limit": 10, "executions_limit": 20},
-        #     "pro": {"stories_limit": 100, "scenarios_limit": 500, "executions_limit": None},
-        #     "enterprise": {"stories_limit": None, "scenarios_limit": None, "executions_limit": None},
-        # }
+        
+        limits = PLAN_LIMITS[plan]
+        
         return Subscription(
             plan=plan,
             start_date=now,
             expiry_date=now + timedelta(days=30),
             status="active",
-            limits=PLAN_LIMITS[plan],
+            limits=LimitModel(**limits),
             provider=self.provider or "manual",
-            usage={
-                "stories_used": 0, 
-                "scenarios_used": 0, 
-                "executions_used": 0,
-                "team_members_used":0
-            }
+            usage=UsageModel() 
         )

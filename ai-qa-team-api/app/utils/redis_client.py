@@ -15,6 +15,8 @@ def check_redis_connection():
     try:
         redis_client.ping()
         print("✅ Redis connected successfully!")
+        print("🔍 Checking queue length...")
+        redis_client.llen("test_execution_queue")
     except Exception as e:
         print(f"⚙️ Using in-memory cache fallback: {e}")
         class LocalCache(dict):
@@ -30,3 +32,5 @@ def get_refresh_token(email: str):
 
 def delete_refresh_token(email: str):
     redis_client.delete(f"refresh:{email}")
+
+# print(check_redis_connection())

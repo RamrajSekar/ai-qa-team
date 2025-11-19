@@ -59,7 +59,7 @@ temp/
 __temp__/
 data/
 dump/
-
+*.png
 ############################################################
 # 🧩 NODE / NEXT.JS FRONTEND
 ############################################################
@@ -115,3 +115,7 @@ config/*.yaml
 docker-compose.override.yml
 *.pid
 *.sock
+ai-qa-team-api/app/__pycache__/main.cpython-314.pyc
+ai-qa-team-api/app/models/__pycache__/story_model.cpython-314.pyc
+ai-qa-team-api/app/routes/__pycache__/story_routes.cpython-314.pyc
+ai-qa-team-api/app/utils/__pycache__/redis_client.cpython-314.pyc

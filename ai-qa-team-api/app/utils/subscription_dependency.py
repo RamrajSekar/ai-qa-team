@@ -26,10 +26,12 @@ def subscription_required(resource_type: str):
         limits = sub.get("limits", {})
 
         field_map = {
+            "projects": ("projects_used", "projects_limit"),
             "stories": ("stories_used", "stories_limit"),
             "scenarios": ("scenarios_used", "scenarios_limit"),
             "executions": ("executions_used", "executions_limit"),
             "team_members": ("team_members_used", "team_members_limit"),
+            "ai_generation": ("ai_gen_used", "ai_gen_limit")
         }
         used_field, limit_field = field_map[resource_type]
         used = usage.get(used_field, 0)
@@ -45,7 +47,7 @@ def subscription_required(resource_type: str):
             )
 
         # ✅ Passed → increment usage
-        await increment_usage(user_id, used_field)
+        # await increment_usage(user_id, used_field)
         logger.info(f"✅ Allowed {resource_type} operation for {user_id}")
         return current_user
     return _dependency

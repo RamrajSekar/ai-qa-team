@@ -41,6 +41,6 @@ async def check_plan(current_user=Depends(get_current_user)):
         subscription = sub
     return {"subscription": subscription}
 
-    @router.get("/plans")
-    async def list_plans():
-        return [{"name": k, **v} for k, v in PLAN_LIMITS.items()]
+@router.get("/plans")
+async def list_plans():
+    return [{"name": k, **v} for k, v in PLAN_LIMITS.items()]
