@@ -4,25 +4,40 @@ from bson.objectid import ObjectId
 from fastapi import HTTPException
 import json
 import re
+from typing import List, Any
 
-
-async def generate_scenarios_from_story(prompt: str):
+async def generate_scenarios_from_prompt(prompt: str) -> List[dict]:
+    """
+    Call the configured AI provider with the given prompt and parse the
+    returned JSON list of scenarios.
+    """
     provider = get_ai_provider()
     raw = await provider.generate(prompt)
 
-    print("🔥 RAW AI OUTPUT 🔥", raw)
+    print('🔥 RAW AI OUTPUT 🔥', raw)
 
-    # Extract JSON array
-    match = re.search(r"\[.*\]", raw, re.DOTALL)
+    # Extract JSON array from the response using a naive regex
+    match = re.search(r'\[.*\]', raw, re.DOTALL)
     if not match:
-        raise HTTPException(500, "AI did not return a JSON list")
+        raise HTTPException(
+            status_code=500,
+            detail='AI did not return a JSON list'
+        )
+
+    json_payload = match.group(0)
 
     try:
-        scenarios = json.loads(match.group(0))
-    except Exception:
-        raise HTTPException(500, "Invalid JSON in AI response")
+        scenarios: Any = json.loads(json_payload)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f'JSON parse error: {str(e)}'
+        )
 
     if not isinstance(scenarios, list):
-        raise HTTPException(500, "AI output is not a list")
+        raise HTTPException(
+            status_code=500,
+            detail='AI output is not a list'
+        )
 
     return scenarios

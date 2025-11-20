@@ -14,7 +14,7 @@ class ScenarioCreate(BaseModel):
     description: Optional[str] = None
     steps: List[StepModel] = []
     generated_by_agent: Optional[str] = None
-
+    complexity: Optional[str] = None
 class ScenarioUpdate(BaseModel):
     scenario_id: str
     story_id: str
@@ -22,6 +22,7 @@ class ScenarioUpdate(BaseModel):
     description: Optional[str] = None
     steps: Optional[List[dict]] = None
     status: Optional[str] = None
+    complexity: Optional[str] = None
 
 
 class ScenarioResponse(BaseModel):
@@ -35,6 +36,7 @@ class ScenarioResponse(BaseModel):
     created_by: Optional[str] = None
     created_at: Optional[str] = None
     generated_by_agent: Optional[str] = None
+    complexity: Optional[str] = None
 
 
 
@@ -47,6 +49,7 @@ class ScenarioDB(BaseModel):
     created_by: str
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     generated_by_agent: Optional[str] = None
+    complexity: Optional[str] = None
 
 
 class ScenarioGenerationSummary(BaseModel):

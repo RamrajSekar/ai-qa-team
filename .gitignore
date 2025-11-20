@@ -26,11 +26,16 @@ ENV/
 .ai-qa-team-api-*/
 
 # Bytecode & Cache
+# Python bytecode
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
-*$py.class
+$PYTHONDOCS
+*.egg-info/
+dist/
+build/
+*.egg
 
 # Poetry / Build Artifacts
 poetry.lock

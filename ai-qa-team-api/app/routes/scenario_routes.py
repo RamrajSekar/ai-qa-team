@@ -1,29 +1,43 @@
 from fastapi import APIRouter, HTTPException, Depends, Query, status
+from typing import List, Optional
+from datetime import datetime, timezone
+
 from app.db.connection import db
-from app.models.scenario_model import ScenarioCreate, ScenarioUpdate, ScenarioResponse, StepModel, ScenarioGenerationResponse, ScenarioGenerationSummary
+from app.models.scenario_model import (
+    ScenarioCreate,
+    ScenarioUpdate,
+    ScenarioResponse,
+    ScenarioGenerationResponse,
+    ScenarioGenerationSummary,
+)
 from app.routes.auth_routes import get_current_user
 from app.utils.subscription_dependency import subscription_required
-from bson.objectid import ObjectId
 from app.services.story_service import get_next_sequence
-from app.services.subscription_services import get_subscription
-from datetime import datetime, timezone
-from app.services.ai.scenario_generator import generate_scenarios_from_story
-from app.services.subscription_services import increment_usage
-from typing import List
-from app.ai.scenario_prompts import build_scenario_prompt
+from app.services.subscription_services import get_subscription, increment_usage
+from app.routes.recorder_routes import get_recording_for_story
 
+from app.ai.scenario_prompts import (
+    build_scenario_prompt_from_story,
+    build_scenario_prompt_from_recording,
+)
+
+from app.services.ai.scenario_generator import generate_scenarios_from_prompt
+
+
+# ------------------------------------------------------
+# Router Setup
+# ------------------------------------------------------
 router = APIRouter(prefix="/scenarios", tags=["Scenarios"])
 
 
-# -------------------------------------------------------------------
-# Helper: normalize a Mongo scenario document into ScenarioResponse
-# -------------------------------------------------------------------
+# ------------------------------------------------------
+# STEP NORMALIZATION
+# ------------------------------------------------------
 def normalize_step(raw, idx):
     """
-    Normalize ANY AI or DB step into a valid StepModel-compatible dict.
+    Normalize ANY raw step shape (string, dict, list) into a consistent StepModel-compatible dict.
     """
 
-    # Case 1 — already a correct dict
     if isinstance(raw, dict):
         return {
             "step_id": raw.get("step_id", f"STEP{idx:03d}"),
@@ -32,7 +46,6 @@ def normalize_step(raw, idx):
             "expected": raw.get("expected", "No expected result")
         }
 
-    # Case 2 — raw string
     if isinstance(raw, str):
         return {
             "step_id": f"STEP{idx:03d}",
@@ -41,7 +54,6 @@ def normalize_step(raw, idx):
             "expected": "Expected result not provided"
         }
 
-    # Case 3 — list of strings
     if isinstance(raw, list):
         return {
             "step_id": f"STEP{idx:03d}",
@@ -50,7 +62,6 @@ def normalize_step(raw, idx):
             "expected": "Expected result not provided"
         }
 
-    # Fallback
     return {
         "step_id": f"STEP{idx:03d}",
         "category": "General",
@@ -60,11 +71,11 @@ def normalize_step(raw, idx):
 
 
 def _build_scenario_response(doc):
-    raw_steps = doc.get("steps", [])
+    steps = doc.get("steps", [])
 
-    normalized_steps = [
-        normalize_step(step_raw, idx)
-        for idx, step_raw in enumerate(raw_steps, start=1)
+    normalized_steps  = [
+        normalize_step(step_raw , idx)
+        for idx, step_raw in enumerate(steps, start=1)
     ]
 
     return ScenarioResponse(
@@ -73,11 +84,12 @@ def _build_scenario_response(doc):
         project_id=doc["project_id"],
         title=doc["title"],
         description=doc.get("description", ""),
-        steps=normalized_steps,
+        steps=normalized_steps ,
         status=doc.get("status", "pending"),
+        complexity=doc.get("complexity", ""),
         created_by=doc.get("created_by", ""),
         created_at=doc.get("created_at", ""),
-        generated_by_agent=str(doc.get("generated_by_agent")) if doc.get("generated_by_agent") else None
+        generated_by_agent=str(doc.get("generated_by_agent")) if doc.get("generated_by_agent") else None,
     )
 
 
@@ -91,90 +103,69 @@ async def create_scenario(
     _: None = Depends(subscription_required("scenarios")),
 ):
     """
-    Manually create a scenario for a story.
-
-    Assumptions:
-    - scenario.story_id is the BUSINESS story_id (e.g. ST001), not the Mongo _id.
-    - The story must exist and belong to the current user (or their project).
+    Manual scenario creation.
     """
     try:
-        user_email = current_user.get("email")
+        user_email = current_user["email"]
 
-        # Verify story exists and is accessible
         story = await db["stories"].find_one(
             {"story_id": scenario.story_id, "created_by": user_email}
         )
         if not story:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Story not found or access denied.",
-            )
+            raise HTTPException(404, "Story not found or access denied.")
 
-        # Generate sequential scenario ID like SC001
-        new_scenario_id = await get_next_sequence("scenario_id", "SC")
-        agent_name = story.get("agent_identities", {}).get(
-            "scenario_builder", "Scenario Builder"
+        scenario_id = await get_next_sequence("scenario_id", "SC")
+        agent_name = (
+            story.get("agent_identities", {})
+            .get("scenario_builder", "Scenario Builder")
         )
-        scenario_doc = {
-            "scenario_id": new_scenario_id,
-            "story_id": scenario.story_id,              # business story id (e.g. ST001)
-            "project_id": story.get("project_id"),      # optional but useful for queries
+
+        doc = {
+            "scenario_id": scenario_id,
+            "story_id": scenario.story_id,
+            "project_id": story["project_id"],
             "title": scenario.title,
             "description": scenario.description,
             "steps": scenario.steps or [],
             "status": "pending",
+            "complexity": scenario.complexity,
             "generated_by_agent": agent_name,
             "created_by": user_email,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        result = await db["scenarios"].insert_one(scenario_doc)
-        scenario_doc["_id"] = result.inserted_id
+        result = await db["scenarios"].insert_one(doc)
+        doc["_id"] = result.inserted_id
+        return _build_scenario_response(doc)
 
-        return _build_scenario_response(scenario_doc)
-
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to create scenario: {str(e)}",
-        )
+        raise HTTPException(400, f"Failed to create scenario: {e}")
+
 
 # -------------------------------------------------------------------
 # 2. LIST SCENARIOS for a story
 # -------------------------------------------------------------------
 @router.get("/", response_model=List[ScenarioResponse])
 async def list_scenarios(
-    story_id: str = Query(..., description="Business story_id, e.g. ST001"),
+    story_id: str = Query(...),
     current_user=Depends(get_current_user),
     _: None = Depends(subscription_required("scenarios")),
 ):
-    """
-    List scenarios linked to a given story_id (business ID, ST001, ST002, ...).
-    """
-    user_email = current_user.get("email")
+    user_email = current_user["email"]
 
-    # Optional: enforce that the story belongs to this user
-    story = await db["stories"].find_one(
-        {"story_id": story_id, "created_by": user_email}
-    )
+    story = await db["stories"].find_one({"story_id": story_id, "created_by": user_email})
     if not story:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Story not found or access denied.",
-        )
+        raise HTTPException(404, "Story not found or access denied.")
 
     cursor = db["scenarios"].find({"story_id": story_id})
-    scenarios: List[ScenarioResponse] = []
-
+    results = []
     async for doc in cursor:
-        scenarios.append(_build_scenario_response(doc))
+        results.append(_build_scenario_response(doc))
+    return results
 
-    return scenarios
 
 # -------------------------------------------------------------------
-# 3. GET SINGLE SCENARIO by scenario_id (e.g. SC001)
+# 3. GET SINGLE SCENARIO
 # -------------------------------------------------------------------
 @router.get("/{scenario_id}", response_model=ScenarioResponse)
 async def get_scenario(
@@ -182,24 +173,16 @@ async def get_scenario(
     current_user=Depends(get_current_user),
     _: None = Depends(subscription_required("scenarios")),
 ):
-    """
-    Fetch a single scenario by its business id (scenario_id like SC001).
-    """
-    user_email = current_user.get("email")
-
     doc = await db["scenarios"].find_one(
-        {"scenario_id": scenario_id, "created_by": user_email}
+        {"scenario_id": scenario_id, "created_by": current_user["email"]}
     )
     if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Scenario not found or access denied.",
-        )
-
+        raise HTTPException(404, "Scenario not found.")
     return _build_scenario_response(doc)
 
+
 # -------------------------------------------------------------------
-# 4. UPDATE SCENARIO by scenario_id
+# 4. UPDATE SCENARIO
 # -------------------------------------------------------------------
 @router.put("/{scenario_id}", response_model=ScenarioResponse)
 async def update_scenario(
@@ -208,41 +191,23 @@ async def update_scenario(
     current_user=Depends(get_current_user),
     _: None = Depends(subscription_required("scenarios")),
 ):
-    """
-    Update a scenario using its business id (scenario_id, e.g. SC001).
-    """
-    user_email = current_user.get("email")
-
-    update_data = {
-        k: v for k, v in update.model_dump().items() if v is not None
-    }
+    email = current_user["email"]
+    update_data = {k: v for k, v in update.model_dump().items() if v is not None}
 
     result = await db["scenarios"].update_one(
-        {"scenario_id": scenario_id, "created_by": user_email},
+        {"scenario_id": scenario_id, "created_by": email},
         {"$set": update_data},
     )
 
     if result.matched_count == 0:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Scenario not found or access denied.",
-        )
+        raise HTTPException(404, "Scenario not found or access denied.")
 
-    updated = await db["scenarios"].find_one(
-        {"scenario_id": scenario_id, "created_by": user_email}
-    )
-    if not updated:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch updated scenario.",
-        )
-
+    updated = await db["scenarios"].find_one({"scenario_id": scenario_id, "created_by": email})
     return _build_scenario_response(updated)
 
 
-
 # -------------------------------------------------------------------
-# 5. DELETE SCENARIO by scenario_id
+# 5. DELETE SCENARIO
 # -------------------------------------------------------------------
 @router.delete("/{scenario_id}")
 async def delete_scenario(
@@ -250,91 +215,67 @@ async def delete_scenario(
     current_user=Depends(get_current_user),
     _: None = Depends(subscription_required("scenarios")),
 ):
-    """
-    Delete a scenario using its business id (scenario_id, e.g. SC001).
-    """
-    user_email = current_user.get("email")
+    email = current_user["email"]
+    res = await db["scenarios"].delete_one({"scenario_id": scenario_id, "created_by": email})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Scenario not found.")
+    return {"message": "Scenario deleted"}
 
-    result = await db["scenarios"].delete_one(
-        {"scenario_id": scenario_id, "created_by": user_email}
-    )
-
-    if result.deleted_count == 0:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Scenario not found or access denied.",
-        )
-    return {"message": "Scenario deleted successfully"}
 
 # -------------------------------------------------------------------
-# 6. AI SCENARIO GENERATION from Story
+# 6. AI SCENARIO GENERATION (Story + Recording Integration)
 # -------------------------------------------------------------------
 @router.post("/generate-from-story", response_model=ScenarioGenerationResponse)
-async def generate_scenarios_for_story(
-    story_id: str = Query(..., description="Business story_id, e.g. S001"),
+async def generate_scenarios_from_story(
+    story_id: str = Query(...),
     count: int = Query(3, ge=1, le=20),
+    complexity: str = Query(
+        'basic',
+        description='Scenario complexity: basic | medium | advanced',
+    ),
     current_user=Depends(get_current_user),
     _: None = Depends(subscription_required("ai_generation")),
 ):
     """
-    Option A+ model:
-    - Never errors on limits
-    - If user requests more than allowed, auto-adjust downward
-    - If user has 0 remaining, return empty scenario list with friendly upgrade message
+    Next-generation scenario generator:
+    - Uses Option A+ subscription model (safe, never errors)
+    - Accepts both:
+        a) Story-only generation
+        b) Recording-only generation
+        c) Story + Recording combined prompt
     """
-
     try:
-        user_id = current_user.get("_id") or current_user.get("id") or current_user.get("email")
-        user_email = current_user.get("email")
+        user_id = current_user.get("_id") or current_user.get("email")
+        email = current_user["email"]
 
         # ------------------------------------------------------
-        # 1️⃣ LOAD STORY
+        # 1️⃣ Load story
         # ------------------------------------------------------
-        story = await db["stories"].find_one({"story_id": story_id, "created_by": user_email})
+        story = await db["stories"].find_one({"story_id": story_id, "created_by": email})
         if not story:
-            raise HTTPException(404, "Story not found or access denied.")
+            raise HTTPException(404, "Story not found.")
 
         # ------------------------------------------------------
-        # 2️⃣ SUBSCRIPTION LIMITS
+        # 2️⃣ Subscription limits
         # ------------------------------------------------------
         sub = await get_subscription(user_id)
 
-        # Global scenario limits
-        total_existing = await db["scenarios"].count_documents({"created_by": user_email})
-        max_scenarios = sub["limits"].get("scenarios_limit", None)
-        remaining_scenarios = (
-            max_scenarios - total_existing if max_scenarios is not None else None
-        )
+        existing = await db["scenarios"].count_documents({"created_by": email})
 
-        # AI generation limits
-        used_ai = sub["usage"].get("ai_gen_used", 0)
-        ai_limit = sub["limits"].get("ai_gen_limit", None)
-        remaining_ai = (
-            ai_limit - used_ai if ai_limit is not None else None
-        )
+        max_scenarios = sub["limits"]["scenarios_limit"]
+        used_ai = sub["usage"]["ai_gen_used"]
+        ai_limit = sub["limits"]["ai_gen_limit"]
 
-        # ------------------------------------------------------
-        # 3️⃣ DETERMINE ALLOWABLE GENERATION COUNT (A+ logic)
-        # ------------------------------------------------------
-        # Default = user requested count
-        allowed_count = count
+        remaining_scenarios = max_scenarios - existing
+        remaining_ai = ai_limit - used_ai
 
-        # Apply AI generation limit
-        if remaining_ai is not None:
-            allowed_count = min(allowed_count, remaining_ai)
+        allowed = min(count, remaining_ai, remaining_scenarios)
 
-        # Apply scenario limit
-        if remaining_scenarios is not None:
-            allowed_count = min(allowed_count, remaining_scenarios)
-
-        # ----------------------------------------
-        # If ZERO allowed → return upgrade message
-        # ----------------------------------------
-        if allowed_count <= 0:
+        if allowed <= 0:
             return ScenarioGenerationResponse(
                 scenarios=[],
                 summary=ScenarioGenerationSummary(
-                    message="No AI generations left for your plan.",
+                    message="No AI scenario generations left in your plan.",
                     remaining_ai_generations=remaining_ai,
                     remaining_scenario_slots=remaining_scenarios,
                     plan=sub["plan"],
@@ -342,92 +283,263 @@ async def generate_scenarios_for_story(
             )
 
         # ------------------------------------------------------
-        # 4️⃣ FETCH PROJECT → AGENT IDENTITY
+        # 3️⃣ Fetch Agent name
         # ------------------------------------------------------
         project = await db["projects"].find_one({"project_id": story["project_id"]})
-        if not project:
-            raise HTTPException(404, "Project not found. Please create a project first.")
-
         agent_name = project.get("agent_identities", {}).get("scenario_builder", "Scenario Builder")
 
         # ------------------------------------------------------
-        # 5️⃣ BUILD PROMPT USING TEMPLATE
+        # 5️⃣ Build the correct AI prompt
         # ------------------------------------------------------
-        prompt = build_scenario_prompt(agent_name, story, allowed_count)
+        prompt = build_scenario_prompt_from_story(agent_name, story, allowed, complexity)
 
         # ------------------------------------------------------
-        # 6️⃣ CALL AI GENERATOR
+        # 6️⃣ Run AI
         # ------------------------------------------------------
-        ai_result = await generate_scenarios_from_story(prompt)
-
-        if not isinstance(ai_result, list):
-            raise HTTPException(500, "AI generator returned invalid data.")
-
+        ai_list = await generate_scenarios_from_prompt(prompt)
+        
+        if not isinstance(ai_list, list):
+            raise HTTPException(500, 'AI generator returned invalid data.')
+        ai_list = ai_list[:allowed]
         created_docs = []
 
         # ------------------------------------------------------
-        # 7️⃣ SAVE EACH SCENARIO (ONLY allowed_count)
+        # 7️⃣ Store scenarios
         # ------------------------------------------------------
-        ai_result = ai_result[:allowed_count]  # trim extra just in case
-
-        for i, scenario in enumerate(ai_result, start=1):
-
+        for item in ai_list:
             scenario_id = await get_next_sequence("scenario_id", "SC")
 
-            raw_steps = scenario.get("steps", [])
-            normalized_steps = []
-
-            for idx, step in enumerate(raw_steps, start=1):
-                normalized_steps.append({
-                    "step_id": f"STEP{idx:03d}",
-                    "category": step.get("category", "General"),
-                    "action": step.get("action", ""),
-                    "expected": step.get("expected", ""),
-                })
+            steps = [
+                {
+                    "step_id": f"STEP{i:03d}",
+                    "category": s.get("category", "General"),
+                    "action": s.get("action", ""),
+                    "expected": s.get("expected", ""),
+                }
+                for i, s in enumerate(item.get("steps", []), start=1)
+            ]
 
             doc = {
                 "scenario_id": scenario_id,
                 "story_id": story_id,
                 "project_id": story["project_id"],
-                "title": scenario["title"],
-                "description": scenario.get("description", ""),
-                "steps": normalized_steps,
+                "title": item["title"],
+                "description": item.get("description", ""),
+                "steps": steps,
                 "status": "pending",
-                "created_by": user_email,
+                "complexity": complexity,
+                "created_by": email,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "generated_by_agent": agent_name,
             }
 
-            result = await db["scenarios"].insert_one(doc)
-            doc["_id"] = result.inserted_id
+            res = await db["scenarios"].insert_one(doc)
+            doc["_id"] = res.inserted_id
+
             created_docs.append(_build_scenario_response(doc))
 
             await increment_usage(user_id, "ai_gen_used")
             await increment_usage(user_id, "scenarios_used")
 
         # ------------------------------------------------------
-        # 8️⃣ SUCCESS SUMMARY
+        # 8️⃣ Build summary response
         # ------------------------------------------------------
-        new_remaining_ai = (
-            remaining_ai - allowed_count if remaining_ai is not None else "unlimited"
-        )
-
-        new_remaining_slots = (
-            remaining_scenarios - allowed_count if remaining_scenarios is not None else "unlimited"
-        )
-
         return ScenarioGenerationResponse(
             scenarios=created_docs,
             summary=ScenarioGenerationSummary(
-                message=f"{allowed_count} scenarios generated successfully by agent '{agent_name}'.",
-                remaining_ai_generations=new_remaining_ai,
-                remaining_scenario_slots=new_remaining_slots,
+                message=f"{allowed} scenarios generated by agent '{agent_name}'.",
+                remaining_ai_generations=max(remaining_ai - allowed, 0),
+                remaining_scenario_slots=max(remaining_scenarios - allowed, 0),
                 plan=sub["plan"]
             )
         )
 
     except Exception as e:
         import traceback
-        print("\n\n🔥 DEBUG ERROR 🔥")
+        traceback.print_exc()
+        raise HTTPException(500, str(e))
+
+
+# -------------------------------------------------------------------
+# 7. AI SCENARIO GENERATION from Recording (with complexity)
+# -------------------------------------------------------------------
+@router.post(
+    '/generate-from-recording',
+    response_model=ScenarioGenerationResponse,
+)
+async def generate_scenarios_from_recording_endpoint(
+    story_id: str = Query(..., description='Business story_id, e.g. S001'),
+    recording_id: str = Query(..., description='Recording ID, e.g. REC001'),
+    count: int = Query(3, ge=1, le=20),
+    complexity: str = Query(
+        'medium',
+        description='Scenario complexity: basic | medium | advanced',
+    ),
+    current_user=Depends(get_current_user),
+    _: None = Depends(subscription_required('ai_generation')),
+):
+    """
+    Generate scenarios using STORY + RECORDING as input.
+
+    Uses the same subscription soft-limit logic as generate-from-story.
+    """
+
+    try:
+        user_id = (
+            current_user.get('_id')
+            or current_user.get('id')
+            or current_user.get('email')
+        )
+        user_email = current_user.get('email')
+
+        # 1️⃣ LOAD STORY
+        story = await db['stories'].find_one(
+            {'story_id': story_id, 'created_by': user_email}
+        )
+        if not story:
+            raise HTTPException(404, 'Story not found or access denied.')
+
+        # 2️⃣ LOAD RECORDING (single doc)
+        recording = await db['recordings'].find_one(
+            {'recording_id': recording_id, 'created_by': user_email}
+        )
+        if not recording:
+            raise HTTPException(
+                404, 'Recording not found or access denied for this user.'
+            )
+
+        # 3️⃣ SUBSCRIPTION LIMITS
+        sub = await get_subscription(user_id)
+
+        total_existing = await db['scenarios'].count_documents(
+            {'created_by': user_email}
+        )
+        max_scenarios = sub['limits'].get('scenarios_limit', None)
+        remaining_scenarios = (
+            max_scenarios - total_existing if max_scenarios is not None else None
+        )
+
+        used_ai = sub['usage'].get('ai_gen_used', 0)
+        ai_limit = sub['limits'].get('ai_gen_limit', None)
+        remaining_ai = (
+            ai_limit - used_ai if ai_limit is not None else None
+        )
+
+        allowed_count = count
+
+        if remaining_ai is not None:
+            allowed_count = min(allowed_count, remaining_ai)
+
+        if remaining_scenarios is not None:
+            allowed_count = min(allowed_count, remaining_scenarios)
+
+        if allowed_count <= 0:
+            return ScenarioGenerationResponse(
+                scenarios=[],
+                summary=ScenarioGenerationSummary(
+                    message='No AI generations left for your plan.',
+                    remaining_ai_generations=remaining_ai,
+                    remaining_scenario_slots=remaining_scenarios,
+                    plan=sub['plan'],
+                ),
+            )
+
+        # 4️⃣ FETCH PROJECT → AGENT IDENTITY
+        project = await db['projects'].find_one(
+            {'project_id': story['project_id']}
+        )
+        if not project:
+            raise HTTPException(
+                404, 'Project not found. Please create a project first.'
+            )
+
+        agent_name = project.get('agent_identities', {}).get(
+            'scenario_builder', 'Scenario Builder'
+        )
+
+        # 5️⃣ BUILD PROMPT (story + recording)
+        prompt = build_scenario_prompt_from_recording(
+            agent_name=agent_name,
+            story=story,
+            recording=recording,
+            count=allowed_count,
+            complexity=complexity,
+        )
+
+        # 6️⃣ CALL AI
+        ai_result = await generate_scenarios_from_prompt(prompt)
+
+        if not isinstance(ai_result, list):
+            raise HTTPException(500, 'AI generator returned invalid data.')
+
+        created_docs: List[ScenarioResponse] = []
+        ai_result = ai_result[:allowed_count]
+
+        # 7️⃣ SAVE SCENARIOS
+        for scenario in ai_result:
+            scenario_id = await get_next_sequence('scenario_id', 'SC')
+
+            raw_steps = scenario.get('steps', [])
+            normalized_steps = []
+            for idx, step in enumerate(raw_steps, start=1):
+                normalized_steps.append(
+                    {
+                        'step_id': f'STEP{idx:03d}',
+                        'category': step.get('category', 'General'),
+                        'action': step.get('action', ''),
+                        'expected': step.get('expected', ''),
+                    }
+                )
+
+            doc = {
+                'scenario_id': scenario_id,
+                'story_id': story_id,
+                'project_id': story['project_id'],
+                'title': scenario['title'],
+                'description': scenario.get('description', ''),
+                'steps': normalized_steps,
+                'status': 'pending',
+                "complexity": complexity,
+                'created_by': user_email,
+                'created_at': datetime.now(timezone.utc).isoformat(),
+                'generated_by_agent': agent_name,
+            }
+
+            result = await db['scenarios'].insert_one(doc)
+            doc['_id'] = result.inserted_id
+            created_docs.append(_build_scenario_response(doc))
+
+            await increment_usage(user_id, 'ai_gen_used')
+            await increment_usage(user_id, 'scenarios_used')
+
+        # 8️⃣ SUMMARY
+        new_remaining_ai = (
+            remaining_ai - allowed_count
+            if remaining_ai is not None
+            else 'unlimited'
+        )
+        new_remaining_slots = (
+            remaining_scenarios - allowed_count
+            if remaining_scenarios is not None
+            else 'unlimited'
+        )
+
+        return ScenarioGenerationResponse(
+            scenarios=created_docs,
+            summary=ScenarioGenerationSummary(
+                message=(
+                    f'{allowed_count} scenarios generated successfully '
+                    f"from recording '{recording_id}' by agent '{agent_name}'."
+                ),
+                remaining_ai_generations=new_remaining_ai,
+                remaining_scenario_slots=new_remaining_slots,
+                plan=sub['plan'],
+            ),
+        )
+
+    except Exception as e:
+        import traceback
+
+        print('\n\n🔥 DEBUG ERROR (generate-from-recording) 🔥')
         traceback.print_exc()
         raise HTTPException(500, str(e))
