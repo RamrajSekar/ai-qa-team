@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional, List, Literal, Dict, Any
 
 
@@ -11,19 +11,42 @@ class StepResult(BaseModel):
     screenshot_path: Optional[str] = None
     error_stack: Optional[str] = None
 
+
+# ============================================================
+#   CLEAN — FINAL EXECUTION MODEL
+# ============================================================
 class TestExecution(BaseModel):
     execution_id: str
     project_id: str
+
     story_id: Optional[str] = None
     scenario_id: Optional[str] = None
     testcase_id: str
 
     status: Literal["queued", "running", "passed", "failed", "error"] = "queued"
 
-    environment: Optional[str] = None
+    # --------------------------------------------------------
+    # NEW ENVIRONMENT STRUCTURE
+    # --------------------------------------------------------
+    env_type: str                                 # "qa", "dev", "staging", ...
+    env_id: Optional[str] = None                  # ENV001
+    role: Optional[str] = None                    # selected role
+
+    environment_doc: Dict[str, Any] = Field(default_factory=dict)  
+    credentials: Optional[Dict[str, Any]] = None
+
+    base_url: Optional[str] = None
+    api_base_url: Optional[str] = None
+    env_variables: Dict[str, Any] = Field(default_factory=dict)
+
+    auth_type: Optional[str] = None
+    auth_token: Optional[str] = None
+
+    # --------------------------------------------------------
+    # Browser + Execution
+    # --------------------------------------------------------
     browser: Optional[str] = None
     headed: bool = False
-
     dataset: Optional[dict | str] = None
 
     started_at: Optional[datetime] = None
@@ -44,20 +67,41 @@ class TestExecution(BaseModel):
         }
 
 
+# ============================================================
+# RESPONSE MODEL
+# ============================================================
 class TestExecutionResponse(BaseModel):
     id: str
     execution_id: str
     project_id: str
+
     story_id: Optional[str] = None
     scenario_id: Optional[str] = None
     testcase_id: str
 
     status: str
-    environment: Optional[str] = None
+
+    # Environment info
+    env_type: Optional[str] = None
+    env_id: Optional[str] = None
+    role: Optional[str] = None
+
+    environment_doc: Dict[str, Any] = Field(default_factory=dict)
+    credentials: Optional[Dict[str, Any]] = None
+
+    base_url: Optional[str] = None
+    api_base_url: Optional[str] = None
+    env_variables: Dict[str, Any] = Field(default_factory=dict)
+
+    auth_type: Optional[str] = None
+    auth_token: Optional[str] = None
+
+    # Browser + dataset
     browser: Optional[str] = None
     headed: bool
     dataset: Optional[dict | str] = None
 
+    # Time
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     duration_ms: Optional[int] = None
@@ -73,10 +117,12 @@ class TestExecutionResponse(BaseModel):
         from_attributes = True
 
 
+# ============================================================
+# BATCH EXECUTION REQUEST
+# ============================================================
 class BatchExecuteRequest(BaseModel):
     testcase_ids: List[str]
-    environment: Optional[str] = None
     browser: Optional[str] = None
-    dataset: Optional[dict | str] = None  
+    dataset: Optional[dict | str] = None
     headed: bool = False
-    parallel: bool = False  # reserved for future
+    parallel: bool = False

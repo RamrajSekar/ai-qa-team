@@ -2,6 +2,7 @@ import asyncio
 import json
 from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorClient
+from bson import ObjectId
 
 # MONGO_URI = "YOUR_MONGO_URI_HERE"
 # DB_NAME = "YOUR_DB_NAME_HERE"
@@ -149,6 +150,7 @@ async def fix_projects():
         doc_id = doc["_id"]
 
         agents = doc.get("agent_identities", {})
+        
 
         fixed_agents = {
             "recorder": agents.get("recorder", "Recorder Agent"),

@@ -105,7 +105,8 @@ async def increment_usage(user_identifier: str, field: str):
 
     result = await db["users"].update_one(
         query,
-        {"$inc": {f"subscription.usage.{field}": 1}}
+        {"$inc": {f"subscription.usage.{field}": 1}},
+        
     )
 
     if result.modified_count:
