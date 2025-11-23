@@ -15,6 +15,8 @@ class ScenarioCreate(BaseModel):
     steps: List[StepModel] = []
     generated_by_agent: Optional[str] = None
     complexity: Optional[str] = None
+    approved: bool = False
+    
 class ScenarioUpdate(BaseModel):
     scenario_id: str
     story_id: str
@@ -23,6 +25,7 @@ class ScenarioUpdate(BaseModel):
     steps: Optional[List[dict]] = None
     status: Optional[str] = None
     complexity: Optional[str] = None
+    approved: bool = False
 
 
 class ScenarioResponse(BaseModel):
@@ -37,6 +40,7 @@ class ScenarioResponse(BaseModel):
     created_at: Optional[str] = None
     generated_by_agent: Optional[str] = None
     complexity: Optional[str] = None
+    approved: bool = False
 
 
 

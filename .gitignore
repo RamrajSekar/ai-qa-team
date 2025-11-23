@@ -65,47 +65,77 @@ __temp__/
 data/
 dump/
 *.png
-############################################################
-# 🧩 NODE / NEXT.JS FRONTEND
-############################################################
-# Node Dependencies
+# ------------------------------------------------------
+# Node / NPM
+# ------------------------------------------------------
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 package-lock.json
-yarn.lock
-pnpm-lock.yaml
 
-# Build Output
+# ------------------------------------------------------
+# Next.js Build Output
+# ------------------------------------------------------
 .next/
+.next/cache/
+.next/static/
 out/
 dist/
-build/
-.vercel/
-.vite/
-.cache/
-coverage/
 
-# Temporary or Uploaded Files
-public/uploads/
-public/temp/
-public/logs/
+# Turbopack build artifacts
+.turbo/
+.turbopack/
 
-############################################################
-# 🧩 ENVIRONMENT VARIABLES / SECRETS
-############################################################
+# ------------------------------------------------------
+# Environment Files
+# ------------------------------------------------------
 .env
-.env.*
-*.pem
-*.key
-*.crt
-*.json
-firebase.json
-supabase.json
-secrets/
-config/*.yaml
+.env.local
+.env.development.local
+.env.production.local
+.env.test.local
+
+# ------------------------------------------------------
+# OS & Editor Files
+# ------------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# ------------------------------------------------------
+# Logs
+# ------------------------------------------------------
+logs/
+*.log
+*.log.*
+log.txt
+error.txt
+
+# ------------------------------------------------------
+# Misc
+# ------------------------------------------------------
+*.tmp
+*.temp
+*.bak
+*.old
+
+# ------------------------------------------------------
+# Coverage / Testing
+# ------------------------------------------------------
+coverage/
+*.lcov
+jest-cache/
+jest-results.json
+
+# ------------------------------------------------------
+# Optional (if using uploads)
+# ------------------------------------------------------
+public/uploads/
+
 
 ############################################################
 # 🧩 IDE / TOOLING / OS

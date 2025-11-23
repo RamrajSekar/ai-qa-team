@@ -237,10 +237,16 @@ async def get_execution(
 async def list_my_executions(
     skip: int = 0,
     limit: int = 20,
+    complexity: Optional[str] = Query(
+        None,
+        description="Filter by testcase complexity: basic | medium | advanced",
+    ),
     current_user=Depends(get_current_user),
 ):
+    user_email = current_user.get("email")
     return await list_executions_for_user(
-        user_email=current_user.get("email"),
+        user_email=user_email,
         skip=skip,
         limit=limit,
+        complexity=complexity,
     )

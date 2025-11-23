@@ -1,26 +1,41 @@
-@import "tailwindcss";
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities);
 
+/* Scan all .tsx files */
+@source "./**/*.{ts,tsx}";
+
+/* Theme variables */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --qs-bg: #ffffff;
+  --qs-bg-soft: #f8f9fb;
+  --qs-border: #e5e7eb;
+  --qs-text: #111827;
+  --qs-text-soft: #6b7280;
+
+  --qs-brand: #4f46e5;
+  --qs-brand-dark: #4338ca;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.dark {
+  --qs-bg: #0f0f11;
+  --qs-bg-soft: #18181b;
+  --qs-border: #2d2d31;
+  --qs-text: #e5e7eb;
+  --qs-text-soft: #9ca3af;
+
+  --qs-brand: #6366f1;
+  --qs-brand-dark: #4f46e5;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html, body {
+  background: var(--qs-bg);
+  color: var(--qs-text);
+  font-family: system-ui, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.theme-transition {
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease;
 }

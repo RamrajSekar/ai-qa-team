@@ -8,11 +8,14 @@ from app.routes import story_routes,auth_routes, subscription_routes, test_execu
 from app.utils.logger import logger
 from app.middleware.error_handler import jwt_exception_handler
 from app.config import settings
+from app.db.init_indexes import init_indexes
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # --- Startup ---
     try:
+        print("🚀 App starting – creating MongoDB indexes")
+        await init_indexes()
         collections = await db.list_collection_names()
         logger.info(f"✅ MongoDB connected. Collections: {collections}")
     except Exception as e:
@@ -32,6 +35,7 @@ async def lifespan(app: FastAPI):
 
 # === Initialize App ===
 app = FastAPI(title="AI QA Team API", lifespan=lifespan)
+
 
 # ✅ Register global middleware
 app.middleware("http")(jwt_exception_handler)
@@ -58,6 +62,7 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=settings.jwt_secret_key
 )
+
 
 # === Routers ===
 app.include_router(auth_routes.router)
