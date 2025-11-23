@@ -52,7 +52,7 @@ origins = [
 app.add_middleware(
     CORSMiddleware,
     # allow_origins=origins,       # Or use ["*"] during development
-    allow_origins=["https://qa-squad.vercel.app"],
+    allow_origins=["https://ai-qa-team.vercel.app/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
