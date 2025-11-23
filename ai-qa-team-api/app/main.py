@@ -51,7 +51,8 @@ origins = [
 # ✅ Add session middleware (REQUIRED for OAuth)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,       # Or use ["*"] during development
+    # allow_origins=origins,       # Or use ["*"] during development
+    allow_origins=["https://qa-squad.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
