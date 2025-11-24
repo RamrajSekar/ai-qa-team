@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     google_client_id: str | None = None
     google_client_secret: str | None = None
     google_redirect_uri: str | None = None
-
+    frontend_url: str | None = None
     class Config:
         env_file = ".env"
         extra = "ignore"

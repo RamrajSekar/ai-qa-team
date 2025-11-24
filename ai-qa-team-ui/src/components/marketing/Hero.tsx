@@ -1,6 +1,7 @@
 'use client';
 
 import ThemeToggle from '@/components/ThemeToggle';
+import AuthTrigger from "@/components/auth/AuthTrigger";
 
 const CloudIcon = () => (
   <svg
@@ -60,18 +61,10 @@ export default function Hero() {
 
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            <a
-              href="/login"
-              className="hidden text-sm font-medium text-[var(--qs-text-soft)] hover:text-[var(--qs-text)] md:inline-block"
-            >
-              Log in
-            </a>
-            <a
-              href="/signup"
-              className="rounded-xl bg-[var(--qs-text)] px-4 py-2 text-sm font-semibold text-[var(--qs-bg)] shadow hover:opacity-90 transition"
-            >
+            <AuthTrigger>Log in</AuthTrigger>
+            <AuthTrigger>
               Get started
-            </a>
+            </AuthTrigger>
           </div>
         </div>
       </header>

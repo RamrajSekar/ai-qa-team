@@ -1,19 +1,19 @@
 import "./globals.css";
-import type { ReactNode } from "react";
+import AuthProvider from "@/components/providers/AuthProvider";
 
 export const metadata = {
   title: "QA Squad",
-  description: "AI-assisted, human-approved test automation.",
+  description: "AI-powered test automation companion",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="theme-transition">
-      <body>{children}</body>
+    <html lang="en">
+      <body>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </body>
     </html>
   );
 }

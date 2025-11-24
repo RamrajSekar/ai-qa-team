@@ -45,14 +45,15 @@ origins = [
     "http://127.0.0.1:8000",  # Swagger docs
     "http://localhost:8000",
     "http://127.0.0.1:3000",  # React frontend (if applicable)
-    "http://localhost:3000"
+    "http://localhost:3000",
+    "https://ai-qa-team.vercel.app/"
 ]
 
 # ✅ Add session middleware (REQUIRED for OAuth)
 app.add_middleware(
     CORSMiddleware,
-    # allow_origins=origins,       # Or use ["*"] during development
-    allow_origins=["https://ai-qa-team.vercel.app/"],
+    allow_origins=origins,       # Or use ["*"] during development
+    # allow_origins=["https://ai-qa-team.vercel.app/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -81,8 +82,3 @@ app.include_router(testcase_routes.router)
 @app.get("/")
 async def root():
     return {"message": "🚀 AI QA Team backend is running!"}
-
-
-@app.get("/health")
-async def health_check():
-    return {"status": "ok"}
