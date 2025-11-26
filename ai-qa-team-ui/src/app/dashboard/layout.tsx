@@ -1,18 +1,29 @@
-'use client';
+"use client";
 
-import React from 'react';
-import {Sidebar} from '@/components/layout/Sidebar';
-import { Topbar } from '@/components/layout/Topbar';
+import { useEffect } from "react";
+import Sidebar from "@/components/layout/Sidebar";
+import { Topbar } from "@/components/layout/Topbar";
+import { useAuth } from "@/components/providers/AuthProvider";
 
-// type DashboardLayoutProps = {
-//   children: React.ReactNode;
-// };
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { refreshSubscription } = useAuth();
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    // Always refresh limits/usage once dashboard layout loads
+    refreshSubscription();
+  }, [refreshSubscription]);
+
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-indigo-50 to-indigo-100">
+    <div className="flex min-h-screen bg-[var(--qs-bg-soft)]">
+      {/* Sidebar */}
       <Sidebar />
-      <div className="flex-1 flex flex-col">
+
+      {/* Main Content */}
+      <div className="flex flex-col flex-1">
         <Topbar />
         <main className="p-6">{children}</main>
       </div>

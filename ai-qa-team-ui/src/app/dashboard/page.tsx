@@ -49,9 +49,9 @@ export default function DashboardPage() {
             Dashboard
           </p>
 
-          <h1 className="text-3xl font-bold text-neutral-900 mt-1">
+          {/* <h1 className="text-3xl font-bold text-neutral-900 mt-1">
             Welcome , {user?.name ?? "there"} 👋
-          </h1>
+          </h1> */}
 
           <p className="text-sm text-neutral-600 mt-2">
             Here's your usage overview and plan details.

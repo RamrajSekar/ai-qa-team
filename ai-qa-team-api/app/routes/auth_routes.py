@@ -16,6 +16,7 @@ from app.utils.auth_dependency import get_current_user, role_required
 from app.utils.jwt_handler import create_access_token, decode_token, create_refresh_token
 from datetime import datetime
 import urllib.parse
+from app.models.subscription import Subscription
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -30,28 +31,74 @@ oauth.register(
     client_kwargs={'scope': 'openid email profile'},
 )
 
+# @router.post("/signup")
+# async def signup(user: User):
+#     existing = await db["users"].find_one({"email": user.email})
+#     if existing:
+#         raise HTTPException(status_code=400, detail="Email already registered")
+
+#     hashed_pw = pwd_context.hash(user.password)
+#     user.password = hashed_pw
+#     await db["users"].insert_one(user.model_dump(exclude={"id"}))
+#     return {"message": "Signup successful"}
+
 @router.post("/signup")
 async def signup(user: User):
+
     existing = await db["users"].find_one({"email": user.email})
     if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(400, "Email already exists")
 
     hashed_pw = pwd_context.hash(user.password)
-    user.password = hashed_pw
-    await db["users"].insert_one(user.model_dump(exclude={"id"}))
-    return {"message": "Signup successful"}
+    user = User(
+        name=user.name,
+        email=user.email,
+        password=hashed_pw,
+        provider="local",
+        role="admin",  # default
+        subscription=Subscription()
+    )
+
+    await db["users"].insert_one(user.model_dump(by_alias=True))
+
+    # Create tokens
+    access = create_access_token({"email": user.email, "role": user.role})
+    refresh = create_refresh_token({"email": user.email, "role": user.role})
+    hashed_access = pwd_context.hash(access)
+    hashed_refresh = pwd_context.hash(refresh)
+    return {
+        "user": user.model_dump(),
+        "access_token": access,
+        "refresh_token": refresh,
+    }
 
 @router.post("/login")
 async def login(credentials: dict):
     user = await db["users"].find_one({"email": credentials["email"]})
-    if not user or not pwd_context.verify(credentials["password"], user["password"]):
+    if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    access_token = create_access_token({"email": user["email"], "role": user["role"]})
-    refresh_token = create_refresh_token({"email": user["email"]})
-    store_refresh_token(user["email"], refresh_token)
+    if not pwd_context.verify(credentials["password"], user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    print("LOGIN USER:", user)  # debug
+
+    # FIX: convert MongoDB ObjectId + datetime to JSON-safe
+    user_data = serialize_doc(user)
+
+    access_token = create_access_token({
+        "email": user_data["email"],
+        "role": user_data["role"]
+    })
+
+    refresh_token = create_refresh_token({
+        "email": user_data["email"]
+    })
+
+    store_refresh_token(user_data["email"], refresh_token)
 
     return {
+        "user": user_data,                # <-- SAFE
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer"
@@ -330,7 +377,7 @@ async def get_my_profile(request: Request):
     user_data["token_checked_at"] = datetime.utcnow().isoformat()
     print("STEP 5: /auth/me called")
     # print("Received cookies:", request.cookies)
-    # print("Decoded user:", user_data)
+    print("Decoded user:", user_data)
     return user_data
 
 @router.post("/logout")

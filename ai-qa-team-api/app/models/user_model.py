@@ -5,12 +5,12 @@ from app.models.subscription import Subscription
 
 
 class User(BaseModel):
-    id: Optional[str] = Field(alias="_id")
+    id: Optional[str] = Field(default=None, alias="_id")
     name: str
     email: EmailStr
     password: Optional[str] = None
     provider: str = "local"  # local, google, github
-    role: str = "tester"     # admin, lead, tester
+    role: str = "admin"     # admin, lead, tester
     subscription: Subscription = Field(default_factory=Subscription)
     created_at: datetime = datetime.now(timezone.utc)
 

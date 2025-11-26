@@ -1,118 +1,107 @@
 "use client";
 
-import { useAuth } from "../providers/AuthProvider";
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { X } from "lucide-react";
+import { useAuth } from "@/components/providers/AuthProvider";
+import LoginForm from "./LoginForm";
+import SignupForm from "./SignupForm";
+import OAuthButton from "./OAuthButton";
 
 export default function AuthModal() {
-  const {
-    authOpen,
-    closeAuth,
-    mode,
-    switchMode,
-    loginWithEmail,
-    signupWithEmail,
-    loginWithGoogle,
-  } = useAuth();
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-
-  if (!authOpen) return null;
-
-  async function onSubmit(e: any) {
-    e.preventDefault();
-    if (mode === "login") {
-      await loginWithEmail(email, password);
-    } else {
-      await signupWithEmail(email, password, name);
-    }
-  }
+  const { authOpen, closeAuth, mode, switchMode } = useAuth();
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.92 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6"
-      >
-        {/* Tabs */}
-        <div className="flex justify-center mb-6">
-          <button
-            className={`px-6 py-2 text-sm font-semibold rounded-full ${
-              mode === "login" ? "bg-indigo-600 text-white" : "text-gray-600"
-            }`}
-            onClick={() => switchMode("login")}
-          >
-            Login
-          </button>
-
-          <button
-            className={`px-6 py-2 text-sm font-semibold rounded-full ml-2 ${
-              mode === "signup" ? "bg-indigo-600 text-white" : "text-gray-600"
-            }`}
-            onClick={() => switchMode("signup")}
-          >
-            Signup
-          </button>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={onSubmit} className="space-y-4">
-          {mode === "signup" && (
-            <input
-              className="w-full border p-3 rounded-xl"
-              placeholder="Full Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          )}
-
-          <input
-            className="w-full border p-3 rounded-xl"
-            placeholder="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-
-          <input
-            className="w-full border p-3 rounded-xl"
-            placeholder="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-
-          <button
-            type="submit"
-            className="w-full bg-indigo-600 text-white py-3 rounded-xl mt-2 font-semibold"
-          >
-            {mode === "login" ? "Login" : "Create Account"}
-          </button>
-        </form>
-
-        {/* OAuth */}
-        <button
-          onClick={loginWithGoogle}
-          className="w-full mt-4 border py-3 rounded-xl flex items-center justify-center gap-2"
+    <AnimatePresence>
+      {authOpen && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
         >
-          <img src="/google.svg" className="h-5 w-5" />
-          Continue with Google
-        </button>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="
+              w-full max-w-md bg-white text-gray-900 rounded-2xl p-8 
+              shadow-2xl border border-gray-200 relative
+            "
+          >
+            {/* Close */}
+            <button
+              onClick={closeAuth}
+              className="absolute right-4 top-4 text-gray-500 hover:text-gray-700"
+            >
+              <X size={22} />
+            </button>
 
-        {/* Close */}
-        <button
-          className="mt-4 text-sm text-gray-500 w-full text-center"
-          onClick={closeAuth}
-        >
-          Close
-        </button>
-      </motion.div>
-    </div>
+            {/* Tabs */}
+            <div className="flex justify-center mb-6 gap-3">
+              <button
+                onClick={() => switchMode("login")}
+                className={`
+                  px-5 py-2 rounded-full text-sm font-medium transition 
+                  ${
+                    mode === "login"
+                      ? "bg-indigo-600 text-white shadow"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }
+                `}
+              >
+                Login
+              </button>
+
+              <button
+                onClick={() => switchMode("signup")}
+                className={`
+                  px-5 py-2 rounded-full text-sm font-medium transition 
+                  ${
+                    mode === "signup"
+                      ? "bg-indigo-600 text-white shadow"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }
+                `}
+              >
+                Sign up
+              </button>
+            </div>
+
+            {/* Forms */}
+            <AnimatePresence mode="wait">
+              {mode === "login" ? (
+                <motion.div
+                  key="login"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                >
+                  <LoginForm />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="signup"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                >
+                  <SignupForm />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Divider */}
+            <div className="flex items-center my-6">
+              <div className="flex-1 h-px bg-gray-300" />
+              <span className="px-4 text-gray-500 text-sm">OR</span>
+              <div className="flex-1 h-px bg-gray-300" />
+            </div>
+
+            {/* OAuth */}
+            <OAuthButton />
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
