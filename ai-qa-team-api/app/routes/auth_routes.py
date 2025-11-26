@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse,JSONResponse
 from authlib.integrations.starlette_client import OAuth
 from app.db.connection import db
 from app.models.user_model import User
@@ -14,7 +14,7 @@ import jwt
 import json
 from app.utils.auth_dependency import get_current_user, role_required
 from app.utils.jwt_handler import create_access_token, decode_token, create_refresh_token
-from datetime import datetime
+from datetime import datetime, timezone
 import urllib.parse
 from app.models.subscription import Subscription
 
@@ -44,65 +44,87 @@ oauth.register(
 
 @router.post("/signup")
 async def signup(user: User):
-
+    # 1️⃣ Check if email already exists
     existing = await db["users"].find_one({"email": user.email})
     if existing:
-        raise HTTPException(400, "Email already exists")
+        raise HTTPException(status_code=400, detail="Email already exists")
 
+    # 2️⃣ Hash password
     hashed_pw = pwd_context.hash(user.password)
-    user = User(
-        name=user.name,
-        email=user.email,
-        password=hashed_pw,
-        provider="local",
-        role="admin",  # default
-        subscription=Subscription()
-    )
 
-    await db["users"].insert_one(user.model_dump(by_alias=True))
+    # 3️⃣ Create default subscription
+    subscription = Subscription().model_dump()
 
-    # Create tokens
-    access = create_access_token({"email": user.email, "role": user.role})
-    refresh = create_refresh_token({"email": user.email, "role": user.role})
-    hashed_access = pwd_context.hash(access)
-    hashed_refresh = pwd_context.hash(refresh)
-    return {
-        "user": user.model_dump(),
+    new_user = {
+        "name": user.name,
+        "email": user.email,
+        "password": hashed_pw,
+        "provider": "local",
+        "role": "admin",   # default
+        "subscription": subscription,
+        "created_at": datetime.now(timezone.utc)
+    }
+
+    await db["users"].insert_one(new_user)
+
+    # 4️⃣ Issue tokens
+    access = create_access_token({"email": user.email, "role": "admin"})
+    refresh = create_refresh_token({"email": user.email, "role": "admin"})
+
+    store_refresh_token(user.email, refresh)
+
+    # 5️⃣ Convert to safe JSON
+    user_data = serialize_doc(new_user)
+
+    response = {
+        "user": user_data,
         "access_token": access,
         "refresh_token": refresh,
     }
+
+    return response
 
 @router.post("/login")
 async def login(credentials: dict):
     user = await db["users"].find_one({"email": credentials["email"]})
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(401, "Invalid credentials")
 
     if not pwd_context.verify(credentials["password"], user["password"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(401, "Invalid credentials")
 
-    print("LOGIN USER:", user)  # debug
-
-    # FIX: convert MongoDB ObjectId + datetime to JSON-safe
     user_data = serialize_doc(user)
 
-    access_token = create_access_token({
-        "email": user_data["email"],
-        "role": user_data["role"]
+    access = create_access_token({"email": user_data["email"], "role": user_data["role"]})
+    refresh = create_refresh_token({"email": user_data["email"], "role": user_data["role"]})
+
+    store_refresh_token(user_data["email"], refresh)
+
+    # --- FIX: Set cookies ---
+    response = JSONResponse({
+        "user": user_data,
+        "status": "ok"
     })
 
-    refresh_token = create_refresh_token({
-        "email": user_data["email"]
-    })
+    response.set_cookie(
+        key="access_token",
+        value=access,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        path="/",
+    )
 
-    store_refresh_token(user_data["email"], refresh_token)
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        path="/",
+    )
 
-    return {
-        "user": user_data,                # <-- SAFE
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer"
-    }
+    return response
 
 @router.get("/{provider}/login")
 async def oauth_login(request: Request, provider: str):
@@ -114,52 +136,6 @@ async def oauth_login(request: Request, provider: str):
     return await oauth.create_client(provider).authorize_redirect(request, redirect_uri)
     # return await client.authorize_redirect(request, settings.re)
 
-
-# @router.get("/{provider}/callback", name="oauth_callback")
-# async def oauth_callback(request: Request, provider: str):
-#     try:
-#         client = oauth.create_client(provider)
-#         if client is None:
-#             raise HTTPException(status_code=404, detail="Unsupported provider")
-
-#         token = await client.authorize_access_token(request)
-        
-#         if provider == "google":
-#             user_info = token["userinfo"]
-#         elif provider == "github":
-#             user_info = await client.get("user", token=token)
-#             user_info = user_info.json()
-#         else:
-#             raise HTTPException(status_code=400, detail="Unsupported provider response")
-
-#         # Normalize user data
-#         email = user_info.get("email")
-#         name = user_info.get("name") or user_info.get("login")
-
-#         existing = await db["users"].find_one({"email": email})
-#         if not existing:
-#             new_user = User(_id=user_info.get("id"), name=name, email=email, provider=provider, role="tester")
-#             await db["users"].insert_one(new_user.model_dump(by_alias=True, exclude_none=True))
-
-#         # ✅ Generate tokens
-#         access_token = create_access_token({"email": email, "role": "tester"})
-#         refresh_token = create_refresh_token({"email": email, "role": "tester"})
-
-#         # ✅ Store refresh token in Redis (optional)
-#         store_refresh_token(email, refresh_token)
-#         return {
-#                 "access_token": access_token,
-#                 "refresh_token": refresh_token,
-#                 "token_type": "bearer",
-#                 "user": {
-#                     "name": name,
-#                     "email": email,
-#                     "provider": provider,
-#                     "role": "tester"
-#                 }
-#             }
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"OAuth callback failed: {str(e)}")
 
 @router.get("/{provider}/callback", name="oauth_callback")
 async def oauth_callback(request: Request, provider: str):
@@ -276,29 +252,25 @@ async def oauth_callback(request: Request, provider: str):
         raise HTTPException(status_code=500, detail=f"OAuth callback failed: {str(e)}")
 
 @router.post("/refresh")
-async def refresh_token(data: dict):
-    old_token = data.get("refresh_token")
-    if not old_token:
+async def refresh_token(request: Request):
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
         raise HTTPException(status_code=400, detail="Missing refresh token")
 
     try:
-        payload = decode_token(old_token)
-        if payload.get("type") != "refresh":
-            raise HTTPException(status_code=400, detail="Invalid token type")
-
+        payload = decode_token(refresh_token)
         email = payload.get("email")
-        stored_token = get_refresh_token(email)
-        if stored_token != old_token:
-            raise HTTPException(status_code=401, detail="Refresh token expired or invalidated")
-
-        # Issue new access token
-        new_access = create_access_token({"email": email, "role": payload.get("role", "tester")})
-        return {"access_token": new_access, "token_type": "bearer"}
-
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Refresh token expired")
-    except jwt.InvalidTokenError:
+    except Exception:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    stored = get_refresh_token(email)
+    if stored != refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh token expired or revoked")
+
+    # Issue NEW access token
+    new_access = create_access_token({"email": email, "role": payload.get("role")})
+
+    return {"access_token": new_access}
 
 
 @router.patch("/update-role")
@@ -337,20 +309,6 @@ async def update_user_role(
         "updated_by": current_user["email"]
     }
 
-# @router.get("/me")
-# async def get_my_profile(current_user=Depends(get_current_user)):
-#     user_email = current_user.get("email")
-#     user = await db["users"].find_one({"email": user_email})
-
-#     if not user:
-#         raise HTTPException(status_code=404, detail="User not found")
-
-#     user_data = serialize_doc(user)
-#     user_data["token_issued_to"] = user_email
-#     user_data["token_checked_at"] = datetime.utcnow().isoformat()
-
-#     return user_data
-
 @router.get("/me")
 async def get_my_profile(request: Request):
     token = request.cookies.get("access_token")
@@ -380,7 +338,33 @@ async def get_my_profile(request: Request):
     print("Decoded user:", user_data)
     return user_data
 
+# @router.post("/logout")
+# async def logout(current_user=Depends(get_current_user)):
+#     delete_refresh_token(current_user["email"])
+    return {"message": "Logged out successfully"}
+
 @router.post("/logout")
 async def logout(current_user=Depends(get_current_user)):
+    # 1️⃣ Invalidate refresh token in Redis
     delete_refresh_token(current_user["email"])
-    return {"message": "Logged out successfully"}
+
+    # 2️⃣ Build response
+    response = JSONResponse({"message": "Logged out successfully"})
+
+    # 3️⃣ Clear cookies (must match original cookie attributes)
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        secure=False,  # TRUE in production HTTPS
+        samesite="lax",
+        path="/"
+    )
+    response.delete_cookie(
+        key="refresh_token",
+        httponly=True,
+        secure=False,  # TRUE in production
+        samesite="lax",
+        path="/"
+    )
+
+    return response

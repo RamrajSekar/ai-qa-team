@@ -1,14 +1,19 @@
 from bson import ObjectId
+from datetime import datetime
 
 def serialize_doc(doc: dict) -> dict:
     """Convert MongoDB document to JSON-serializable dict."""
-    if not doc:
-        return None
-
-    # Convert ObjectId to string and rename to 'id'
-    doc["id"] = str(doc["_id"]) if "_id" in doc else None
-    doc.pop("_id", None)
-    return doc
+    result = {}
+    for k, v in doc.items():
+        if isinstance(v, ObjectId):
+            result[k] = str(v)
+        elif isinstance(v, datetime):
+            result[k] = v.isoformat()
+        elif isinstance(v, dict):
+            result[k] = serialize_doc(v)
+        else:
+            result[k] = v
+    return result
 
 
 def serialize_list(docs: list) -> list:

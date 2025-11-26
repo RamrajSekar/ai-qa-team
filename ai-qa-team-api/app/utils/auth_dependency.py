@@ -1,42 +1,39 @@
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Request, HTTPException, Depends
+from app.db.connection import db
+from app.utils.jwt_handler import decode_token
+from app.utils.mongo_helper import serialize_doc
 import jwt
-from app.config import settings
 
-security = HTTPBearer()
-SECRET_KEY = settings.jwt_secret_key
-ALGORITHM = "HS256"
+# security = HTTPBearer()
+# SECRET_KEY = settings.jwt_secret_key
+# ALGORITHM = "HS256"
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    token = credentials.credentials
+async def get_current_user(request: Request):
+    token = request.cookies.get("access_token")
+
+    if not token:
+        raise HTTPException(401, "Not authenticated")
+
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_email: str = payload.get("email")
-        if user_email is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token or missing email",
-            )
-        return payload  # return full user payload (email, role, etc.)
+        payload = decode_token(token)
     except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired",
-        )
+        raise HTTPException(401, "Access token expired")
     except jwt.InvalidTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-        )
+        raise HTTPException(401, "Invalid access token")
 
-def role_required(required_role: str):
-    def wrapper(current_user=Depends(get_current_user)):
-        user_role = current_user.get("role", "tester")
-        if user_role != required_role:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Requires {required_role} role"
-            )
-        return current_user
-    return wrapper
+    email = payload.get("email")
+    user = await db["users"].find_one({"email": email})
+
+    if not user:
+        raise HTTPException(404, "User not found")
+
+    return serialize_doc(user)
+
+
+def role_required(role: str):
+    async def check_role(user=Depends(get_current_user)):
+        if user["role"] != role:
+            raise HTTPException(403, "Not allowed")
+        return user
+    return check_role
 

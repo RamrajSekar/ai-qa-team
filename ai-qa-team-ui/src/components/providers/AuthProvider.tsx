@@ -15,37 +15,62 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL as string;
 
 export type AuthMode = "login" | "signup";
 
+interface APIOptions extends RequestInit {
+  retry?: boolean; // used internally
+}
+
+async function apiFetch(url: string, options: APIOptions = {}) {
+  const opts: RequestInit = {
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+    ...options,
+  };
+
+  let res = await fetch(url, opts);
+
+  // ⛔ If unauthorized -> try silent refresh once
+  if (res.status === 401 && !options.retry) {
+    console.log("🔄 Access token expired, trying refresh...");
+
+    const refresh = await fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    });
+
+    if (refresh.ok) {
+      console.log("🔐 Refresh successful. Retrying original request...");
+      return apiFetch(url, { ...options, retry: true });
+    }
+
+    console.log("❌ Refresh failed. Logging out.");
+    return res;
+  }
+
+  return res;
+}
+
 export interface AuthContextType {
   user: User | null;
+  loading: boolean;
   authOpen: boolean;
 
   openAuth: (mode?: AuthMode) => void;
   closeAuth: () => void;
-
   mode: AuthMode;
   switchMode: (m: AuthMode) => void;
 
-  loginWithEmail: (
-    email: string,
-    password: string
-  ) => Promise<{ ok: boolean; message?: string }>;
-
-  signupWithEmail: (
-    name: string,
-    email: string,
-    password: string
-  ) => Promise<{ ok: boolean; message?: string }>;
-
+  loginWithEmail: (email: string, password: string) => Promise<any>;
+  signupWithEmail: (name: string, email: string, password: string) => Promise<any>;
   loginWithGoogle: () => void;
 
-  pendingPlan: string | null;
-  setPendingPlan: (p: string | null) => void;
-
-  setUser: (u: User | null) => void;
-
   refreshSubscription: () => Promise<void>;
-
-  loading: boolean;
+  setUser: (u: User | null) => void;
+  logout: () => void;
+  pendingPlan: string | null;
+  setPendingPlan: (plan: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -56,134 +81,137 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [mode, setMode] = useState<AuthMode>("login");
-  const [pendingPlan, setPendingPlan] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  /* ---------------- MODAL ---------------- */
+  const [pendingPlan, setPendingPlan] = useState<string | null>(null);
+  /* ------------- Modal Controls ------------- */
   function openAuth(reqMode?: AuthMode) {
     if (reqMode) setMode(reqMode);
     setAuthOpen(true);
   }
-
   function closeAuth() {
     setAuthOpen(false);
   }
-
   function switchMode(m: AuthMode) {
     setMode(m);
   }
 
-  /* ---------------- EMAIL LOGIN ---------------- */
+  /* ------------- LOGIN ------------- */
   async function loginWithEmail(email: string, password: string) {
     setLoading(true);
-
     try {
-      const res = await fetch(`${API_URL}/auth/login`, {
+      const res = await apiFetch(`${API_URL}/auth/login`, {
         method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
       setLoading(false);
 
-      if (!res.ok)
-        return { ok: false, message: data.detail || "Invalid credentials" };
+      if (!res.ok) return { ok: false, message: data.detail };
 
       setUser(data.user);
-      console.log("AUTHPROVIDER: Logged in user =>", data.user);
-      closeAuth();
       toast.success("Logged in successfully!");
-
+      closeAuth();
       router.push("/dashboard");
+
       return { ok: true };
-    } catch (err) {
+    } catch {
       setLoading(false);
       return { ok: false, message: "Network error" };
     }
   }
 
-  /* ---------------- EMAIL SIGNUP ---------------- */
+  /* ------------- SIGNUP ------------- */
   async function signupWithEmail(name: string, email: string, password: string) {
     setLoading(true);
-
     try {
-      const res = await fetch(`${API_URL}/auth/signup`, {
+      const res = await apiFetch(`${API_URL}/auth/signup`, {
         method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password }),
       });
 
       const data = await res.json();
       setLoading(false);
 
-      if (!res.ok)
-        return { ok: false, message: data.detail || "Signup failed" };
+      if (!res.ok) return { ok: false, message: data.detail };
 
       setUser(data.user);
-
       toast.success("Account created!");
       closeAuth();
-
       router.push("/dashboard");
 
       return { ok: true };
-    } catch (err) {
+    } catch {
       setLoading(false);
       return { ok: false, message: "Network error" };
     }
   }
 
-  /* ---------------- GOOGLE OAUTH ---------------- */
+  /* ------------- OAUTH ------------- */
   function loginWithGoogle() {
     window.location.href = `${API_URL}/auth/google/login`;
   }
 
-  /* ---------------- SUBSCRIPTION REFRESH ---------------- */
+  /* ------------- SUBSCRIPTION REFRESH ------------- */
   async function refreshSubscription() {
-    if (!user?.email) return;
+  if (!user) return;
+
+  // 🚫 Prevent spamming check-plan repeatedly
+  if (user.subscription && Object.keys(user.subscription).length > 0) {
+      return; // already have subscription
+    }
 
     try {
-      const res = await fetch(`${API_URL}/auth/check-plan`, {
-        credentials: "include",
-      });
-      const data = await res.json();
+      const res = await apiFetch(`${API_URL}/auth/check-plan`);
+      if (!res.ok) return;
 
-      if (data.subscription) {
-        setUser((u) => (u ? { ...u, subscription: data.subscription } : u));
-      }
+      const data = await res.json();
+      setUser((prev) =>
+        prev ? { ...prev, subscription: data.subscription } : prev
+      );
     } catch (err) {
-      console.log("Subscription refresh error:", err);
+      console.error("Failed to refresh subscription", err);
     }
   }
 
-  /* ---------------- RESTORE SESSION ---------------- */
+  /* ------------- USER LOGOUT ------------- */
+  async function logout() {
+  try {
+    // Disable refresh retries during logout
+    await apiFetch(`${API_URL}/auth/logout`, {
+      method: "POST",
+      retry: false,
+    });
+  } catch (err) {
+    console.warn("Logout request failed, forcing local logout.");
+  }
+
+  setUser(null);
+  toast.success("Logged out");
+  router.push("/");
+}
+
+  /* ------------- RESTORE SESSION ------------- */
   useEffect(() => {
     async function loadSession() {
       try {
-        const res = await fetch(`${API_URL}/auth/me`, {
-          credentials: "include",
-        });
-
+        const res = await apiFetch(`${API_URL}/auth/me`);
         if (res.ok) {
           const data = await res.json();
-          if (data.user) {
-            console.log("AUTHPROVIDER LOAD SESSION =>", data.user);
-            setUser(data.user);
-          }
+          setUser(data.user);
         }
       } catch {}
     }
-
     loadSession();
   }, []);
+
+  
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        loading,
         authOpen,
         openAuth,
         closeAuth,
@@ -192,11 +220,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginWithEmail,
         signupWithEmail,
         loginWithGoogle,
+        refreshSubscription,
+        setUser,
+        logout,
         pendingPlan,
         setPendingPlan,
-        setUser,
-        refreshSubscription,
-        loading,
       }}
     >
       {children}
@@ -206,6 +234,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be in AuthProvider");
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 }

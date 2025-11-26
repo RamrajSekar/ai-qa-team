@@ -1,56 +1,48 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-// Protected routes that require authentication
-const PROTECTED_PATHS = [
-  '/dashboard',
-  '/projects',
-  '/scenarios',
-  '/testcases',
-  '/executions',
-  '/settings',
+// Protected routes
+const PROTECTED = [
+  "/dashboard",
+  "/projects",
+  "/scenarios",
+  "/executions",
+  "/settings",
+  "/ai",
 ];
 
-// Routes that should NOT be accessible when logged-in
-const AUTH_PAGES = ['/login', '/signup'];
-
 export function middleware(req: NextRequest) {
-  const url = req.nextUrl.clone();
-  const path = url.pathname;
+  const { pathname } = req.nextUrl;
 
-  // Read tokens from cookies (set httpOnly on backend)
-  const accessToken = req.cookies.get('access_token')?.value;
+  // Determine if the path is protected
+  const isProtected = PROTECTED.some((route) =>
+    pathname.startsWith(route)
+  );
 
-  const isProtected = PROTECTED_PATHS.some((route) => path.startsWith(route));
-  const isAuthPage = AUTH_PAGES.includes(path);
-  // 1️⃣ PROTECT PRIVATE ROUTES
-  if (isProtected && !accessToken) {
-    url.pathname = '/';
-    url.searchParams.set('auth', 'login'); // triggers login modal
-    return NextResponse.redirect(url);
+  if (!isProtected) {
+    return NextResponse.next();
   }
 
-  // 2️⃣ REDIRECT LOGGED-IN USERS AWAY FROM LOGIN/SIGNUP
-  if (isAuthPage && accessToken) {
-    url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
+  // Check cookie
+  const accessToken = req.cookies.get("access_token")?.value;
+
+  if (!accessToken) {
+    // Redirect to homepage or login page
+    const loginUrl = new URL("/", req.url);
+    loginUrl.searchParams.set("auth", "login-required");
+    return NextResponse.redirect(loginUrl);
   }
-  // console.log("MIDDLEWARE RUN:");
-//   console.log("Path:", req.nextUrl.pathname);
-//   console.log("Cookies:", req.cookies.getAll());
 
   return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    '/dashboard/:path*',
-    '/projects/:path*',
-    '/scenarios/:path*',
-    '/testcases/:path*',
-    '/executions/:path*',
-    '/settings/:path*',
-    '/login',
-    '/signup',
+    "/dashboard/:path*",
+    "/projects/:path*",
+    "/scenarios/:path*",
+    "/executions/:path*",
+    "/settings/:path*",
+    "/ai/:path*",
   ],
 };

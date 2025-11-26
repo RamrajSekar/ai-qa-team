@@ -1,107 +1,90 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
-import {
-  LayoutDashboard,
-  FolderOpen,
-  Binary,
-  PlayCircle,
-  Settings,
-  Zap,
-} from "lucide-react";
-import { useAuth } from "@/components/providers/AuthProvider";
 import { usePathname } from "next/navigation";
-
-const nav = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Projects", href: "/projects", icon: FolderOpen },
-  { label: "Scenarios", href: "/scenarios", icon: Binary },
-  { label: "Executions", href: "/executions", icon: PlayCircle },
-  { label: "AI Generator", href: "/ai", icon: Zap },
-  { label: "Settings", href: "/settings", icon: Settings },
-];
+import { useAuth } from "@/components/providers/AuthProvider";
+import { 
+  LayoutDashboard,
+  Layers,
+  Workflow,
+  PlayCircle,
+  Bot,
+  Settings,
+  LogOut
+} from "lucide-react";
 
 export default function Sidebar() {
-  const { user } = useAuth();
-  console.log("SIDEBAR USER:", user);
   const pathname = usePathname();
-  const activeColor = "bg-[#6A5ACD]/90 text-white shadow-lg"; // SlateBlue
-  const hoverColor = "hover:bg-white/10";
+  const { user, logout } = useAuth();
+
+  const navItems = [
+    { name: "Dashboard", href: "/dashboard", icon: <LayoutDashboard size={18} /> },
+    { name: "Projects", href: "/projects", icon: <Layers size={18} /> },
+    { name: "Scenarios", href: "/scenarios", icon: <Workflow size={18} /> },
+    { name: "Executions", href: "/executions", icon: <PlayCircle size={18} /> },
+    { name: "AI Generator", href: "/generator", icon: <Bot size={18} /> },
+    { name: "Settings", href: "/settings", icon: <Settings size={18} /> },
+  ];
 
   return (
-    <motion.aside
-      initial={{ x: -20, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={{ duration: 0.4 }}
-      className="
-        w-64 shrink-0 p-5 
-        backdrop-blur-2xl 
-        bg-[#1a1b1f]/60
-        border-r border-white/10
-        text-white flex flex-col
-      "
-    >
-      {/* Logo */}
-      <div className="flex items-center gap-2 mb-6">
-        <div className="h-9 w-9 rounded-xl bg-[#6A5ACD] flex items-center justify-center font-bold">
-          QA
-        </div>
-        <h1 className="font-semibold text-lg tracking-wide">AI QA Team</h1>
+    <aside className="w-64 h-screen bg-[#121214] border-r border-[#1F1F23] text-white flex flex-col">
+      
+      {/* Brand */}
+      <div className="px-6 py-5 border-b border-[#1F1F23]">
+        <h1 className="text-xl font-semibold tracking-tight">
+          AI QA Team
+        </h1>
+        <p className="text-xs text-gray-400 mt-1">Logged in as</p>
+        <p className="text-sm font-medium mt-1">{user?.name}</p>
       </div>
 
-      {/* 👤 User Name */}
-      <div className="mb-8 text-sm text-gray-300 pl-1">
-        <span className="text-gray-400">Logged in as</span>
-        <div className="text-white font-medium text-base mt-1">
-          {user?.name ?? "User"}
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex flex-col gap-1">
-        {nav.map((item) => {
-          const active = pathname.startsWith(item.href);
+      {/* Nav */}
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        {navItems.map((item) => {
+          const active = pathname === item.href;
 
           return (
-            <Link key={item.href} href={item.href}>
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                className={`
-                  flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer 
-                  transition-all
-                  ${active ? activeColor : `text-gray-300 ${hoverColor}`}
-                `}
-              >
-                <item.icon size={18} />
-                <span>{item.label}</span>
-              </motion.div>
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`
+                flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium
+                transition-all duration-150
+                ${active
+                  ? "bg-[#1F1F23] text-white border border-[#2A2A2D]"
+                  : "text-gray-300 hover:bg-[#1A1A1D] hover:text-white"}
+              `}
+            >
+              {item.icon}
+              {item.name}
             </Link>
           );
         })}
       </nav>
 
       {/* Plan Box */}
-      <div
-        className="
-          mt-auto p-4 rounded-2xl 
-          backdrop-blur-xl bg-white/5 
-          border border-white/10
-        "
-      >
-        <p className="text-xs text-gray-400">Your Plan</p>
+      <div className="px-4 py-4 border-t border-[#1F1F23]">
+        <div className="bg-[#1A1A1D] rounded-xl p-4 text-center">
+          <p className="text-xs text-gray-400">Your Plan</p>
+          <p className="text-lg font-semibold mt-1">{user?.subscription?.plan?.toUpperCase()}</p>
 
-        <p className="text-lg font-semibold mt-1">
-          {user?.subscription?.plan?.toUpperCase() ?? "FREE"}
-        </p>
+          <Link
+            href="/pricing"
+            className="mt-3 block bg-[#3B82F6]/20 hover:bg-[#3B82F6]/30 text-blue-400 py-2 rounded-md text-sm font-medium transition"
+          >
+            Upgrade Plan
+          </Link>
+        </div>
 
-        <Link
-          href="/pricing"
-          className="mt-3 block rounded-lg bg-[#6A5ACD] text-white text-center text-sm py-2 hover:bg-[#7a6bf0]"
+        {/* Logout */}
+        <button
+          onClick={logout}
+          className="mt-4 w-full flex items-center justify-center gap-2 text-gray-300 hover:text-white hover:bg-[#1A1A1D] py-2 rounded-lg transition"
         >
-          Upgrade Plan
-        </Link>
+          <LogOut size={16} />
+          Logout
+        </button>
       </div>
-    </motion.aside>
+    </aside>
   );
 }

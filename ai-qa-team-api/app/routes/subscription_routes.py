@@ -4,6 +4,7 @@ from app.services.subscription_services import get_subscription
 from app.models.subscription import Subscription
 from app.db.connection import db
 from app.app_config.plan_limits import PLAN_LIMITS
+from fastapi import Request
 import json
 
 router = APIRouter(prefix="/auth", tags=["Subscription"])
@@ -27,18 +28,27 @@ async def upgrade_plan(plan: str, current_user=Depends(get_current_user)):
     }
 
 @router.get("/check-plan")
-async def check_plan(current_user=Depends(get_current_user)):
-    user_id = current_user.get("_id") or current_user.get("id") or current_user.get("email")
+async def check_plan(request: Request, current_user=Depends(get_current_user)):
+    print("📌 Cookies received at /auth/check-plan:", request.cookies)
+
+    user_id = (
+        current_user.get("_id") or 
+        current_user.get("id") or 
+        current_user.get("email")
+    )
+
     subscription = await get_subscription(user_id)
     print("current_user in /check-plan:", current_user)
+
     if not subscription:
-       # Auto-heal case: attach free subscription if missing
+        # Auto-heal free subscription
         sub = Subscription().model_dump()
         await db["users"].update_one(
             {"$or": [{"_id": user_id}, {"email": user_id}]},
-            {"$set": {"subscription": sub}}
+            {"$set": {"subscription": sub}},
         )
         subscription = sub
+
     return {"subscription": subscription}
 
 @router.get("/plans")
