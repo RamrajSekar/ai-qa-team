@@ -190,13 +190,13 @@ async def oauth_callback(request: Request, provider: str):
 
         print("STEP 1: Entered OAuth callback")
         print("Provider:", provider)
-        print("User info received from provider:", user_info)
+        # print("User info received from provider:", user_info)
 
         print("STEP 2: Issued tokens:")
-        print("Access token:", access_token)
-        print("Refresh token:", refresh_token)
+        # print("Access token:", access_token)
+        # print("Refresh token:", refresh_token)
 
-        print("STEP 3: Redirecting user to:", redirect_url)
+        print("STEP 3: Redirecting user")
 
         # Set secure httpOnly cookies
         response.set_cookie(
@@ -219,7 +219,7 @@ async def oauth_callback(request: Request, provider: str):
             path="/"
         )
         print("STEP 4: Cookies set on response:")
-        print("All response cookies:", response.headers.getlist("set-cookie"))
+        # print("All response cookies:", response.headers.getlist("set-cookie"))
 
         return response
 
@@ -329,8 +329,8 @@ async def get_my_profile(request: Request):
     user_data["token_issued_to"] = user_email
     user_data["token_checked_at"] = datetime.utcnow().isoformat()
     print("STEP 5: /auth/me called")
-    print("Received cookies:", request.cookies)
-    print("Decoded user:", user_data)
+    # print("Received cookies:", request.cookies)
+    # print("Decoded user:", user_data)
     return user_data
 
 @router.post("/logout")

@@ -6,15 +6,18 @@
 
 /* Theme variables */
 :root {
-  --qs-bg: #ffffff;
-  --qs-bg-soft: #f8f9fb;
-  --qs-border: #e5e7eb;
-  --qs-text: #111827;
-  --qs-text-soft: #6b7280;
+  --glass-bg: rgba(255, 255, 255, 0.10);
+  --glass-border: rgba(255, 255, 255, 0.25);
 
-  --qs-brand: #4f46e5;
-  --qs-brand-dark: #4338ca;
+  --brand: #8b5cf6;        /* Purple 500 */
+  --brand-light: #c4b5fd;
+  --brand-dark: #6d28d9;
+
+  --sidebar-bg: rgba(15, 15, 35, 0.65);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --topbar-bg: rgba(255, 255, 255, 0.20);
 }
+
 
 .dark {
   --qs-bg: #0f0f11;

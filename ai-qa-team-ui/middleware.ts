@@ -35,9 +35,9 @@ export function middleware(req: NextRequest) {
     url.pathname = '/dashboard';
     return NextResponse.redirect(url);
   }
-  console.log("MIDDLEWARE RUN:");
-  console.log("Path:", req.nextUrl.pathname);
-  console.log("Cookies:", req.cookies.getAll());
+  // console.log("MIDDLEWARE RUN:");
+//   console.log("Path:", req.nextUrl.pathname);
+//   console.log("Cookies:", req.cookies.getAll());
 
   return NextResponse.next();
 }

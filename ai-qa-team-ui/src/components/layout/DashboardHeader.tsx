@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export default function DashboardHeader() {
-  const { user, setAuth } = useAuth();
+  const { user, setUser } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -19,7 +19,7 @@ export default function DashboardHeader() {
       method: "POST",
       credentials: "include",
     });
-    setAuth(null);
+    setUser(null);
     router.push("/");
   };
 

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 export default function ProfileMenu() {
-  const { user, setAuth } = useAuth();
+  const { user, setUser } = useAuth();
   const [open, setOpen] = useState(false);
 
   const logout = async () => {
@@ -14,7 +14,7 @@ export default function ProfileMenu() {
       credentials: "include",
     });
 
-    setAuth(null);
+    setUser(null);
     window.location.href = "/";
   };
 

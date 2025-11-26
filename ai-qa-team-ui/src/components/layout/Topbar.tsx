@@ -1,51 +1,116 @@
+//   const logout = async () => {
+//     await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+//       method: "POST",
+//       credentials: "include",
+//     });
+//     // Removing Cookies
+//     document.cookie = "access_token=; Max-Age=0; path=/";
+//     document.cookie = "refresh_token=; Max-Age=0; path=/";
+//     setUser(null);
+//     window.location.href = "/";
+//   };
+
 "use client";
 
+import { motion } from "framer-motion";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { LogOut, Settings, User2 } from "lucide-react";
 
 export function Topbar() {
-  const { user, setAuth } = useAuth();
+  const { user, setUser } = useAuth();
+  const plan = user?.subscription?.plan ?? "free";
 
-  const handleLogout = () => {
-    // Remove cookies
-    document.cookie = "access_token=; Max-Age=0; path=/";
-    document.cookie = "refresh_token=; Max-Age=0; path=/";
-    setAuth(null);
+  const logout = async () => {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+    setUser(null);
     window.location.href = "/";
   };
 
   return (
-    <header className="h-16 border-b bg-white flex items-center justify-end px-6">
-      <DropdownMenu>
-        <DropdownMenuTrigger>
-          <Avatar className="cursor-pointer">
-            <AvatarFallback>
-              {user?.name?.[0] ?? "U"}
-            </AvatarFallback>
-          </Avatar>
-        </DropdownMenuTrigger>
+    <motion.header
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.35 }}
+      className="backdrop-blur-xl bg-white/40 border-b border-white/30 shadow-sm sticky top-0 z-50"
+    >
+      <div className="flex items-center justify-between px-6 py-4">
+        {/* ---- LEFT: TITLE ---- */}
+        <h1 className="text-lg font-semibold text-neutral-900">
+          AI QA Team
+        </h1>
 
-        <DropdownMenuContent className="w-48 mr-2">
-          <div className="px-3 py-2 text-sm">
-            <p className="font-medium">{user?.name}</p>
-            <p className="text-neutral-500">{user?.email}</p>
-          </div>
+        <div className="flex items-center gap-4">
+          {/* ---- PLAN TAG ---- */}
+          <span className="
+            px-3 py-1 rounded-full 
+            text-xs font-semibold 
+            bg-indigo-100 text-indigo-700 
+            border border-indigo-200
+          ">
+            {plan.toUpperCase()}
+          </span>
 
-          <DropdownMenuItem onClick={() => window.location.href = "/settings"}>
-            Settings
-          </DropdownMenuItem>
+          {/* ---- PROFILE DROPDOWN ---- */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="focus:outline-none">
+                <Avatar className="h-9 w-9 border border-white/40 shadow">
+                  <AvatarFallback className="bg-indigo-100 text-indigo-700 font-semibold">
+                    {user?.name?.[0] ?? "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </DropdownMenuTrigger>
 
-          <DropdownMenuItem onClick={handleLogout} className="text-red-600">
-            Logout
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </header>
+            <DropdownMenuContent
+              align="end"
+              className="w-56 backdrop-blur-xl bg-white/60 border-white/30 shadow-xl"
+            >
+              <DropdownMenuLabel className="text-neutral-900 text-sm">
+                {user?.name}
+              </DropdownMenuLabel>
+              <p className="text-xs text-neutral-600 px-3 -mt-1 mb-1">
+                {user?.email}
+              </p>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem className="flex items-center gap-2">
+                <User2 className="h-4 w-4 opacity-70" />
+                Profile
+              </DropdownMenuItem>
+
+              <DropdownMenuItem className="flex items-center gap-2">
+                <Settings className="h-4 w-4 opacity-70" />
+                Settings
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem
+                onClick={logout}
+                className="flex items-center gap-2 text-red-600 focus:text-red-700"
+              >
+                <LogOut className="h-4 w-4 opacity-70" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    </motion.header>
   );
 }
+

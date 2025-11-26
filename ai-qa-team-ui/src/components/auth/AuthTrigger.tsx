@@ -1,19 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import AuthModal from "./AuthModal";
-import { Button } from "@/components/ui/button";
+import { ReactNode } from "react";
+import { useAuth } from "../providers/AuthProvider";
 
-export default function AuthTrigger({ children }: { children?: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
+export default function AuthTrigger({ children }: { children: ReactNode }) {
+  const { openAuth } = useAuth();
 
   return (
-    <>
-      <Button variant="ghost" onClick={() => setOpen(true)}>
-        {children || "Log in"}
-      </Button>
-
-      <AuthModal open={open} onClose={() => setOpen(false)} />
-    </>
+    <button onClick={openAuth} className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-medium">
+      {children}
+    </button>
   );
 }

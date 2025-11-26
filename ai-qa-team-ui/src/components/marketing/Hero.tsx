@@ -62,9 +62,7 @@ export default function Hero() {
           <div className="flex items-center gap-3">
             <ThemeToggle />
             <AuthTrigger>Log in</AuthTrigger>
-            <AuthTrigger>
-              Get started
-            </AuthTrigger>
+            <AuthTrigger>Sign Up</AuthTrigger>
           </div>
         </div>
       </header>

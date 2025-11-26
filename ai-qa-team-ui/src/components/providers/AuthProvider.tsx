@@ -1,94 +1,121 @@
-// src/components/providers/AuthProvider.tsx
-'use client';
+"use client";
 
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from 'react';
-import AuthModal from '@/components/auth/AuthModal';
-import type { User } from '@/types/user';
+import { createContext, useContext, useState, ReactNode } from "react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL as string;
+export interface User {
+  name?: string;
+  email?: string;
+  subscription?: any;
+}
 
 interface AuthContextType {
   user: User | null;
-  loading: boolean;
+  setUser: (u: User | null) => void;
+
+  authOpen: boolean;
   openAuth: () => void;
   closeAuth: () => void;
-  setAuth: (user: User | null) => void;
+
+  mode: "login" | "signup";
+  switchMode: (m: "login" | "signup") => void;
+
+  pendingPlan: string | null;
+  setPendingPlan: (p: string | null) => void;
+
+  loginWithEmail: (email: string, password: string) => Promise<void>;
+  signupWithEmail: (email: string, password: string, name: string) => Promise<void>;
+  loginWithGoogle: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null>(null);
 
-export function useAuth(): AuthContextType {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
-  return ctx;
-}
-
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export default function AuthProvider({ children }: AuthProviderProps) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    const syncUser = async () => {
-      try {
-        const res = await fetch(`${API_URL}/auth/me`, {
-          method: 'GET',
-          credentials: 'include', // send httpOnly cookies
-        });
+  const [authOpen, setAuthOpen] = useState(false);
+  const [mode, setMode] = useState<"login" | "signup">("login");
 
-        if (!res.ok) {
-          setLoading(false);
-          return;
-        }
+  const [pendingPlan, setPendingPlan] = useState<string | null>(null);
 
-        const data = await res.json();
+  function openAuth() {
+    setAuthOpen(true);
+  }
+  function closeAuth() {
+    setAuthOpen(false);
+  }
+  function switchMode(m: "login" | "signup") {
+    setMode(m);
+  }
 
-        if (data?.email) {
-          setUser({
-            id: data.id ?? data._id,
-            _id: data._id,
-            name: data.name ?? data.full_name ?? data.email,
-            email: data.email,
-            provider: data.provider,
-            role: data.role,
-            subscription: data.subscription, // ✅ keep full subscription object
-          });
-        }
-      } catch (err) {
-        console.error('Failed to sync auth state', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  /* ---------- Email login ---------- */
+  async function loginWithEmail(email: string, password: string) {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-    syncUser();
-  }, []);
+    if (res.ok) {
+      const data = await res.json();
+      setUser(data.user);
+      closeAuth();
+    } else {
+      throw new Error("Login failed");
+    }
+  }
 
-  const openAuth = () => setOpen(true);
-  const closeAuth = () => setOpen(false);
+  /* ---------- Email signup ---------- */
+  async function signupWithEmail(email: string, password: string, name: string) {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/signup`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password }),
+    });
 
-  const value: AuthContextType = {
-    user,
-    loading,
-    openAuth,
-    closeAuth,
-    setAuth: setUser,
-  };
+    if (res.ok) {
+      const data = await res.json();
+      setUser(data.user);
+      closeAuth();
+    } else {
+      throw new Error("Signup failed");
+    }
+  }
+
+  /* ---------- Google OAuth ---------- */
+  function loginWithGoogle() {
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google/login`;
+  }
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        user,
+        setUser,
+
+        authOpen,
+        openAuth,
+        closeAuth,
+
+        mode,
+        switchMode,
+
+        pendingPlan,
+        setPendingPlan,
+
+        loginWithEmail,
+        signupWithEmail,
+        loginWithGoogle,
+      }}
+    >
       {children}
-      <AuthModal open={open} onClose={closeAuth} />
     </AuthContext.Provider>
   );
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  return ctx;
 }

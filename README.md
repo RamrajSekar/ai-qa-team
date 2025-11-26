@@ -39,6 +39,9 @@ cd ai-qa-team-api
 poetry install
 poetry run uvicorn app.main:app --reload
 
+<!-- LOCAL -->
+py -m uvicorn app.main:app --host localhost --port 8000 --reload
+
 
 Open http://127.0.0.1:8000/docs
  for the interactive Swagger UI.
