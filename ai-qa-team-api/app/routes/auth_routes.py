@@ -18,7 +18,6 @@ from datetime import datetime, timezone
 import urllib.parse
 from app.models.subscription import Subscription
 
-
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -30,6 +29,17 @@ oauth.register(
     server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
     client_kwargs={'scope': 'openid email profile'},
 )
+
+
+
+def to_json_safe(obj):
+    if isinstance(obj, dict):
+        return {k: to_json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [to_json_safe(v) for v in obj]
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    return obj
 
 # @router.post("/signup")
 # async def signup(user: User):
@@ -44,45 +54,47 @@ oauth.register(
 
 @router.post("/signup")
 async def signup(user: User):
-    # 1️⃣ Check if email already exists
-    existing = await db["users"].find_one({"email": user.email})
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already exists")
+    try:
+        # 1️⃣ Check for existing email BEFORE doing anything else
+        existing = await db["users"].find_one({"email": user.email})
+        if existing:
+            raise HTTPException(400, "Email already exists")
 
-    # 2️⃣ Hash password
-    hashed_pw = pwd_context.hash(user.password)
+        # 2️⃣ Hash password
+        hashed_pw = pwd_context.hash(user.password)
 
-    # 3️⃣ Create default subscription
-    subscription = Subscription().model_dump()
+        # 3️⃣ Create subscription (in memory)
+        subscription = Subscription(plan="free")
+        subscription.apply_plan_defaults()
+        subscription_dict = subscription.model_dump()
 
-    new_user = {
-        "name": user.name,
-        "email": user.email,
-        "password": hashed_pw,
-        "provider": "local",
-        "role": "admin",   # default
-        "subscription": subscription,
-        "created_at": datetime.now(timezone.utc)
-    }
+        # 4️⃣ Prepare user document (NOT Pydantic model)
+        user_doc = {
+            "name": user.name,
+            "email": user.email,
+            "password": hashed_pw,
+            "provider": "local",
+            "role": "admin",
+            "subscription": subscription_dict,
+            "created_at": datetime.now(timezone.utc),
+        }
 
-    await db["users"].insert_one(new_user)
+        # 5️⃣ Insert ONLY AFTER everything validated
+        result = await db["users"].insert_one(user_doc)
+        user_doc["_id"] = str(result.inserted_id)
 
-    # 4️⃣ Issue tokens
-    access = create_access_token({"email": user.email, "role": "admin"})
-    refresh = create_refresh_token({"email": user.email, "role": "admin"})
+        # 6️⃣ Generate tokens
+        access = create_access_token({"email": user.email, "role": "admin"})
+        refresh = create_refresh_token({"email": user.email, "role": "admin"})
+        safe_user_doc = to_json_safe(user_doc)
+        response = JSONResponse({"user": safe_user_doc})
+        response.set_cookie("access_token", access, httponly=True, samesite="lax")
+        response.set_cookie("refresh_token", refresh, httponly=True, samesite="lax")
+        return response
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=f"Signup failed: {str(e)}")
 
-    store_refresh_token(user.email, refresh)
-
-    # 5️⃣ Convert to safe JSON
-    user_data = serialize_doc(new_user)
-
-    response = {
-        "user": user_data,
-        "access_token": access,
-        "refresh_token": refresh,
-    }
-
-    return response
 
 @router.post("/login")
 async def login(credentials: dict):
@@ -110,7 +122,7 @@ async def login(credentials: dict):
         key="access_token",
         value=access,
         httponly=True,
-        secure=False,
+        secure=False, # true in production
         samesite="lax",
         path="/",
     )
@@ -119,7 +131,7 @@ async def login(credentials: dict):
         key="refresh_token",
         value=refresh,
         httponly=True,
-        secure=False,
+        secure=False, # true in production
         samesite="lax",
         path="/",
     )
@@ -269,8 +281,10 @@ async def refresh_token(request: Request):
 
     # Issue NEW access token
     new_access = create_access_token({"email": email, "role": payload.get("role")})
+    response = JSONResponse({"access_token": new_access})
+    response.set_cookie("access_token", new_access, httponly=True)
 
-    return {"access_token": new_access}
+    return response
 
 
 @router.patch("/update-role")
@@ -335,8 +349,9 @@ async def get_my_profile(request: Request):
     user_data["token_checked_at"] = datetime.utcnow().isoformat()
     print("STEP 5: /auth/me called")
     # print("Received cookies:", request.cookies)
+    user_data.pop("password", None)
     print("Decoded user:", user_data)
-    return user_data
+    return { "user": user_data }
 
 # @router.post("/logout")
 # async def logout(current_user=Depends(get_current_user)):

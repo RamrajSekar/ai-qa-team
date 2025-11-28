@@ -37,28 +37,28 @@ async def signup(req: SignupRequest):
         raise HTTPException(400, "Email already exists")
 
     hashed_pw = pwd_context.hash(req.password)
+
+    subscription = Subscription(plan="free")  # auto-populates limits
+
     user = User(
         name=req.name,
         email=req.email,
         password=hashed_pw,
         provider="local",
-        role="admin",  # default
-        subscription=Subscription()
+        role="admin",
+        subscription=subscription
     )
 
     await db["users"].insert_one(user.model_dump(by_alias=True))
 
-    # Create tokens
     access = create_access_token({"email": user.email, "role": user.role})
     refresh = create_refresh_token({"email": user.email, "role": user.role})
-    hashed_access = pwd_context.hash(access)
-    hashed_refresh = pwd_context.hash(refresh)
+
     return {
         "user": user.model_dump(),
         "access_token": access,
         "refresh_token": refresh,
     }
-
 
 # -----------------------------
 # LOGIN

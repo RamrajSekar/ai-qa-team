@@ -31,7 +31,7 @@ async function apiFetch(url: string, options: APIOptions = {}) {
 
   let res = await fetch(url, opts);
 
-  // ⛔ If unauthorized -> try silent refresh once
+  // If unauthorized -> try silent refresh once
   if (res.status === 401 && !options.retry) {
     console.log("🔄 Access token expired, trying refresh...");
 
@@ -45,7 +45,7 @@ async function apiFetch(url: string, options: APIOptions = {}) {
       return apiFetch(url, { ...options, retry: true });
     }
 
-    console.log("❌ Refresh failed. Logging out.");
+    console.log("❌ Refresh failed.");
     return res;
   }
 
@@ -97,55 +97,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /* ------------- LOGIN ------------- */
   async function loginWithEmail(email: string, password: string) {
-    setLoading(true);
-    try {
-      const res = await apiFetch(`${API_URL}/auth/login`, {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      });
+  setLoading(true);
+  try {
+    const res = await apiFetch(`${API_URL}/auth/login`, {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
 
-      const data = await res.json();
-      setLoading(false);
+    const data = await res.json();
+    setLoading(false);
 
-      if (!res.ok) return { ok: false, message: data.detail };
-
-      setUser(data.user);
-      toast.success("Logged in successfully!");
-      closeAuth();
-      router.push("/dashboard");
-
-      return { ok: true };
-    } catch {
-      setLoading(false);
-      return { ok: false, message: "Network error" };
+    if (!res.ok) {
+      toast.error(data.detail || "Login failed");
+      return { ok: false };
     }
+
+    // cookies are already set by backend; just store user
+    setUser(data.user ?? data);
+
+    toast.success("Logged in successfully!");
+    closeAuth();
+    router.push("/dashboard");
+
+    return { ok: true };
+  } catch (err) {
+    console.error(err);
+    setLoading(false);
+    toast.error("Network error");
+    return { ok: false, message: "Network error" };
   }
+}
 
   /* ------------- SIGNUP ------------- */
   async function signupWithEmail(name: string, email: string, password: string) {
-    setLoading(true);
-    try {
-      const res = await apiFetch(`${API_URL}/auth/signup`, {
-        method: "POST",
-        body: JSON.stringify({ name, email, password }),
-      });
+  setLoading(true);
+  try {
+    const res = await apiFetch(`${API_URL}/auth/signup`, {
+      method: "POST",
+      body: JSON.stringify({ name, email, password }),
+    });
 
-      const data = await res.json();
-      setLoading(false);
+    const data = await res.json();
+    setLoading(false);
 
-      if (!res.ok) return { ok: false, message: data.detail };
-
-      setUser(data.user);
-      toast.success("Account created!");
-      closeAuth();
-      router.push("/dashboard");
-
-      return { ok: true };
-    } catch {
-      setLoading(false);
-      return { ok: false, message: "Network error" };
+    if (!res.ok) {
+      toast.error(data.detail || "Signup failed");
+      return { ok: false };
     }
+
+    setUser(data.user ?? data);
+
+    toast.success("Account created!");
+    closeAuth();
+    router.push("/dashboard");
+
+    return { ok: true };
+  } catch (err) {
+    console.error(err);
+    setLoading(false);
+    toast.error("Network error");
+    return { ok: false, message: "Network error" };
   }
+}
 
   /* ------------- OAUTH ------------- */
   function loginWithGoogle() {
@@ -177,7 +190,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /* ------------- USER LOGOUT ------------- */
   async function logout() {
   try {
-    // Disable refresh retries during logout
     await apiFetch(`${API_URL}/auth/logout`, {
       method: "POST",
       retry: false,
@@ -198,7 +210,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const res = await apiFetch(`${API_URL}/auth/me`);
         if (res.ok) {
           const data = await res.json();
-          setUser(data.user);
+          if (data.user) setUser(data.user);
+          else setUser(data); // fallback for safety
         }
       } catch {}
     }

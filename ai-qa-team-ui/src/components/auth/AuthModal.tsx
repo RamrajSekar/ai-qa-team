@@ -23,10 +23,7 @@ export default function AuthModal() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="
-              w-full max-w-md bg-white text-gray-900 rounded-2xl p-8 
-              shadow-2xl border border-gray-200 relative
-            "
+            className="w-full max-w-md bg-white text-gray-900 rounded-2xl p-8 shadow-2xl border border-gray-200 relative overflow-hidden"
           >
             {/* Close */}
             <button

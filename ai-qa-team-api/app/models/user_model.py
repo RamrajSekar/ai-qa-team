@@ -13,7 +13,7 @@ class User(BaseModel):
     role: str = "admin"     # admin, lead, tester
     subscription: Subscription = Field(default_factory=Subscription)
     created_at: datetime = datetime.now(timezone.utc)
-
+    onboarding_completed: Optional[bool] = False
     # allows using 'id=' instead of '_id'
     class Config:
         populate_by_name = True 

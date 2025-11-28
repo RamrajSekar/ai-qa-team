@@ -5,43 +5,46 @@ import { useAuth } from "@/components/providers/AuthProvider";
 
 export default function SignupForm() {
   const { signupWithEmail } = useAuth();
-
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  async function submit(e: any) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     await signupWithEmail(name, email, password);
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4">
+    <form onSubmit={submit} className="space-y-4 w-full">
       <input
-        placeholder="Your name"
-        required
-        className="w-full px-4 py-3 rounded-lg border border-gray-300 
-                   focus:ring-2 focus:ring-indigo-500 text-gray-900"
+        type="text"
+        className="
+          w-full px-3 py-2 border rounded-md
+          focus:outline-none focus:ring-2 focus:ring-indigo-500
+        "
+        placeholder="Full Name"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
 
       <input
         type="email"
-        placeholder="Email address"
-        required
-        className="w-full px-4 py-3 rounded-lg border border-gray-300 
-                   focus:ring-2 focus:ring-indigo-500 text-gray-900"
+        className="
+          w-full px-3 py-2 border rounded-md
+          focus:outline-none focus:ring-2 focus:ring-indigo-500
+        "
+        placeholder="Email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
       />
 
       <input
         type="password"
+        className="
+          w-full px-3 py-2 border rounded-md
+          focus:outline-none focus:ring-2 focus:ring-indigo-500
+        "
         placeholder="Password"
-        required
-        className="w-full px-4 py-3 rounded-lg border border-gray-300 
-                   focus:ring-2 focus:ring-indigo-500 text-gray-900"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
@@ -49,11 +52,11 @@ export default function SignupForm() {
       <button
         type="submit"
         className="
-          w-full py-3 rounded-lg bg-indigo-600 text-white font-semibold
-          hover:bg-indigo-700 transition shadow
+          w-full bg-indigo-600 text-white py-2 rounded-md
+          hover:bg-indigo-700 transition
         "
       >
-        Sign Up
+        Sign up
       </button>
     </form>
   );

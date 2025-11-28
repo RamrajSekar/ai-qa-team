@@ -43,40 +43,25 @@ class Subscription(BaseModel):
     limits: LimitModel = Field(default_factory=LimitModel)
 
     class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
     def apply_plan_defaults(self):
-        """Apply plan-specific limits from global PLAN_LIMITS"""
+        """
+        Automatically apply plan defaults only when limits are empty (all zeros).
+        This prevents uninitialized limit values at signup.
+        """
         plan_data = PLAN_LIMITS.get(self.plan, PLAN_LIMITS["free"])
-        self.limits = LimitModel(**{
-            "projects_limit": plan_data["projects_limit"],
-            "stories_limit": plan_data["stories_limit"],
-            "scenarios_limit": plan_data["scenarios_limit"],
-            "executions_limit": plan_data["executions_limit"],
-            "team_members_limit": plan_data["team_members_limit"],
-            "ai_gen_limit": plan_data["ai_gen_limit"],
 
-            # 🆕 new testcase limits
-            "testcases_basic_limit": plan_data.get("testcases_basic_limit", 0),
-            "testcases_medium_limit": plan_data.get("testcases_medium_limit", 0),
-            "testcases_advanced_limit": plan_data.get("testcases_advanced_limit", 0),
-        })
-
-    def upgrade_to(self, plan: str) -> "Subscription":
-        now = datetime.now(timezone.utc)
-        if plan not in PLAN_LIMITS:
-            raise ValueError(f"Invalid plan name: {plan}")
-
-        limits = PLAN_LIMITS[plan]
-
-        return Subscription(
-            plan=plan,
-            start_date=now,
-            expiry_date=now + timedelta(days=30),
-            status="active",
-            limits=LimitModel(**limits),
-            provider=self.provider or "manual",
-            usage=UsageModel()
-        )
+        # Detect empty limits model
+        if self.limits.projects_limit == 0 and self.limits.scenarios_limit == 0:
+            self.limits = LimitModel(
+                projects_limit=plan_data["projects_limit"],
+                stories_limit=plan_data["stories_limit"],
+                scenarios_limit=plan_data["scenarios_limit"],
+                executions_limit=plan_data["executions_limit"],
+                team_members_limit=plan_data["team_members_limit"],
+                ai_gen_limit=plan_data["ai_gen_limit"],
+                testcases_basic_limit=plan_data.get("testcases_basic_limit", 0),
+                testcases_medium_limit=plan_data.get("testcases_medium_limit", 0),
+                testcases_advanced_limit=plan_data.get("testcases_advanced_limit", 0),
+            )
