@@ -24,14 +24,23 @@ export function middleware(req: NextRequest) {
   }
 
   // Check cookie
-  const accessToken = req.cookies.get("access_token")?.value;
+  // const accessToken = req.cookies.get("access_token")?.value;
 
+  // if (!accessToken) {
+  //   // Redirect to homepage or login page
+  //   const loginUrl = new URL("/", req.url);
+  //   loginUrl.searchParams.set("auth", "login-required");
+  //   return NextResponse.redirect(loginUrl);
+  // }
+  if (isProtected) {
+  const accessToken = req.cookies.get("access_token")?.value;
   if (!accessToken) {
-    // Redirect to homepage or login page
-    const loginUrl = new URL("/", req.url);
-    loginUrl.searchParams.set("auth", "login-required");
-    return NextResponse.redirect(loginUrl);
+     const loginUrl = new URL("/", req.url);
+     loginUrl.searchParams.set("auth", "login-required");
+     return NextResponse.redirect(loginUrl);
+    }
   }
+
 
   return NextResponse.next();
 }

@@ -38,4 +38,7 @@ export interface User {
   provider?: string;
   role?: string;
   subscription?: Subscription;
+  // Onboarding
+  onboarding_status?: 'not_started' | 'in_progress' | 'completed';
+  onboarding_step?: number;
 }

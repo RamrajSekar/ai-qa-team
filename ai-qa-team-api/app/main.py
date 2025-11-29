@@ -69,7 +69,7 @@ app.add_middleware(
 # === Routers ===
 app.include_router(auth_routes.router)
 app.include_router(health_routes.router)
-# app.include_router(user_routes.router)
+app.include_router(user_routes.router)
 app.include_router(subscription_routes.router)
 app.include_router(project_routes.router)
 app.include_router(environment_routes.router)

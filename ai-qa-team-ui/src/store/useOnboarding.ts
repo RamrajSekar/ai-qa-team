@@ -1,13 +1,19 @@
-'use client';
+"use client";
 
-import { create } from 'zustand';
+import { create } from "zustand";
 
-type OnboardingStatus = {
+export interface OnboardingStore {
   completed: boolean;
-  setCompleted: (value: boolean) => void;
-};
+  currentStep: number;
+  setStep: (step: number) => void;
+  setCompleted: () => void;
+}
 
-export const useOnboarding = create<OnboardingStatus>((set) => ({
+export const useOnboarding = create<OnboardingStore>((set) => ({
   completed: false,
-  setCompleted: (value) => set({ completed: value }),
+  currentStep: 0,
+
+  setStep: (step) => set({ currentStep: step }),
+
+  setCompleted: () => set({ completed: true }),
 }));

@@ -2,17 +2,16 @@ from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import RedirectResponse,JSONResponse
 from authlib.integrations.starlette_client import OAuth
 from app.db.connection import db
-from app.models.user_model import User
+from app.models.user_model import User, OnboardingModel
 from app.config import settings
 from app.utils.redis_client import store_refresh_token, get_refresh_token, delete_refresh_token
-from app.utils.auth_dependency import get_current_user
 from passlib.context import CryptContext
 from app.utils.oauth_client import oauth
 from pydantic import BaseModel, Field
 from app.utils.mongo_helper import serialize_doc, serialize_list
 import jwt
 import json
-from app.utils.auth_dependency import get_current_user, role_required
+from app.utils.auth_dependency import get_current_user, role_required, extract_token
 from app.utils.jwt_handler import create_access_token, decode_token, create_refresh_token
 from datetime import datetime, timezone
 import urllib.parse
@@ -68,6 +67,7 @@ async def signup(user: User):
         subscription.apply_plan_defaults()
         subscription_dict = subscription.model_dump()
 
+        onboarding = OnboardingModel()
         # 4️⃣ Prepare user document (NOT Pydantic model)
         user_doc = {
             "name": user.name,
@@ -76,6 +76,7 @@ async def signup(user: User):
             "provider": "local",
             "role": "admin",
             "subscription": subscription_dict,
+            "onboarding":onboarding.model_dump(),
             "created_at": datetime.now(timezone.utc),
         }
 
@@ -325,7 +326,7 @@ async def update_user_role(
 
 @router.get("/me")
 async def get_my_profile(request: Request):
-    token = request.cookies.get("access_token")
+    token = extract_token(request)
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 

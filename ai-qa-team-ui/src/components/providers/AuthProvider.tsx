@@ -99,32 +99,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function loginWithEmail(email: string, password: string) {
   setLoading(true);
   try {
-    const res = await apiFetch(`${API_URL}/auth/login`, {
-      method: "POST",
+    const res = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
+      credentials: 'include', // cookie-based
     });
 
     const data = await res.json();
     setLoading(false);
 
     if (!res.ok) {
-      toast.error(data.detail || "Login failed");
+      toast.error(data.detail || 'Login failed');
       return { ok: false };
     }
 
-    // cookies are already set by backend; just store user
-    setUser(data.user ?? data);
+    const userData = data.user ?? data;
+    setUser(userData);
 
-    toast.success("Logged in successfully!");
+    const status = userData.onboarding_status ?? 'not_started';
+    if (status === 'completed') {
+      router.push('/dashboard');
+    } else {
+      router.push('/onboarding');
+    }
+
+    toast.success('Logged in successfully!');
     closeAuth();
-    router.push("/dashboard");
-
     return { ok: true };
   } catch (err) {
     console.error(err);
     setLoading(false);
-    toast.error("Network error");
-    return { ok: false, message: "Network error" };
+    return { ok: false, message: 'Network error' };
   }
 }
 
@@ -132,31 +138,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signupWithEmail(name: string, email: string, password: string) {
   setLoading(true);
   try {
-    const res = await apiFetch(`${API_URL}/auth/signup`, {
-      method: "POST",
+    const res = await fetch(`${API_URL}/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password }),
+      credentials: 'include',
     });
 
     const data = await res.json();
     setLoading(false);
 
     if (!res.ok) {
-      toast.error(data.detail || "Signup failed");
+      toast.error(data.detail || 'Signup failed');
       return { ok: false };
     }
 
-    setUser(data.user ?? data);
+    const userData = data.user ?? data;
+    setUser(userData);
 
-    toast.success("Account created!");
+    // New users always start onboarding
+    router.push('/onboarding');
+    toast.success('Account created!');
     closeAuth();
-    router.push("/dashboard");
 
     return { ok: true };
   } catch (err) {
     console.error(err);
     setLoading(false);
-    toast.error("Network error");
-    return { ok: false, message: "Network error" };
+    return { ok: false, message: 'Network error' };
   }
 }
 
@@ -205,15 +214,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /* ------------- RESTORE SESSION ------------- */
   useEffect(() => {
-    async function loadSession() {
+  async function loadSession() {
       try {
-        const res = await apiFetch(`${API_URL}/auth/me`);
+        const res = await fetch(`${API_URL}/auth/me`, {
+          credentials: 'include',
+        });
         if (res.ok) {
           const data = await res.json();
-          if (data.user) setUser(data.user);
-          else setUser(data); // fallback for safety
+          const userData = data.user ?? data;
+          setUser(userData);
         }
-      } catch {}
+      } catch (err) {
+        console.error('Failed to load session', err);
+      }
     }
     loadSession();
   }, []);

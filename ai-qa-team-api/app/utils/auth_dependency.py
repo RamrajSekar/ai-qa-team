@@ -8,26 +8,36 @@ import jwt
 # SECRET_KEY = settings.jwt_secret_key
 # ALGORITHM = "HS256"
 
-async def get_current_user(request: Request):
+def extract_token(request: Request):
     token = request.cookies.get("access_token")
+    
+    if not token:
+        auth = request.headers.get("authorization")
+        if auth and auth.startswith("Bearer "):
+            token = auth.split(" ")[1]
+    
+    return token
 
+
+async def get_current_user(request: Request):
+    token = extract_token(request)
     if not token:
         raise HTTPException(401, "Not authenticated")
 
     try:
         payload = decode_token(token)
     except jwt.ExpiredSignatureError:
-        raise HTTPException(401, "Access token expired")
+        raise HTTPException(401, "Expired")
     except jwt.InvalidTokenError:
-        raise HTTPException(401, "Invalid access token")
+        raise HTTPException(401, "Invalid")
 
     email = payload.get("email")
     user = await db["users"].find_one({"email": email})
-
     if not user:
         raise HTTPException(404, "User not found")
 
     return serialize_doc(user)
+
 
 
 def role_required(role: str):
