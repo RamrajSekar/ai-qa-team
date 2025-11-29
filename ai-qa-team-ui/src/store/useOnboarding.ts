@@ -1,19 +1,20 @@
-"use client";
-
 import { create } from "zustand";
 
-export interface OnboardingStore {
-  completed: boolean;
-  currentStep: number;
-  setStep: (step: number) => void;
-  setCompleted: () => void;
+interface OnboardingStore {
+  open: boolean;
+  step: number;
+  start: () => void;
+  next: () => void;
+  back: () => void;
+  close: () => void;
 }
 
 export const useOnboarding = create<OnboardingStore>((set) => ({
-  completed: false,
-  currentStep: 0,
+  open: false,
+  step: 1,
 
-  setStep: (step) => set({ currentStep: step }),
-
-  setCompleted: () => set({ completed: true }),
+  start: () => set({ open: true, step: 1 }),
+  next: () => set((s) => ({ step: s.step + 1 })),
+  back: () => set((s) => ({ step: Math.max(1, s.step - 1) })),
+  close: () => set({ open: false }),
 }));

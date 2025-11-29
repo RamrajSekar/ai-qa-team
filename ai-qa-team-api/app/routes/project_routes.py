@@ -35,7 +35,17 @@ async def create_project(
 
     result = await db["projects"].insert_one(data)
     data["id"] = str(result.inserted_id)
-
+    await db["users"].update_one(
+    {"email": current_user["email"]},
+            {
+                "$set": {
+                    "onboarding.steps.project": True,
+                    "onboarding.current_step": 2,
+                    "onboarding.onboarding_status": "in_progress",
+                    "onboarding.context.project_id": data["project_id"]
+            }
+    }
+    )
     return ProjectResponse(**data)
 
 # -------------------------------------------------------------------

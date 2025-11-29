@@ -1,45 +1,44 @@
 "use client";
+import React from "react";
 
-import { useRouter } from "next/navigation";
-
-export interface StepFooterProps {
-  next?: string;        // URL to navigate forward
-  back?: string;        // URL to navigate backward
-  disableNext?: boolean;
+interface StepFooterProps {
+  onNext?: () => void;
+  onBack?: () => void;
+  nextLabel?: string;
+  backLabel?: string;
+  disabled?: boolean;
 }
 
 export default function StepFooter({
-  next,
-  back,
-  disableNext = false,
+  onNext,
+  onBack,
+  nextLabel = "Continue",
+  backLabel = "Back",
+  disabled = false,
 }: StepFooterProps) {
-  const router = useRouter();
-
   return (
-    <div className="mt-10 flex justify-between w-full">
-      {/* BACK BUTTON */}
-      <button
-        className="px-4 py-2 rounded-md border"
-        disabled={!back}
-        onClick={() => back && router.push(back)}
-      >
-        Back
-      </button>
+    <div className="flex justify-between mt-8">
+      {onBack ? (
+        <button
+          onClick={onBack}
+          className="px-4 py-2 rounded-md border hover:bg-gray-100"
+        >
+          {backLabel}
+        </button>
+      ) : (
+        <div />
+      )}
 
-      {/* NEXT BUTTON */}
-      <button
-        className="px-4 py-2 rounded-md bg-purple-600 text-white disabled:bg-gray-300"
-        disabled={disableNext || !next}
-        onClick={() => next && !disableNext && router.push(next)}
-      >
-        Continue
-      </button>
+      {onNext && (
+        <button
+          onClick={onNext}
+          disabled={disabled}
+          className={`px-4 py-2 rounded-md bg-purple-600 text-white 
+            hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed`}
+        >
+          {nextLabel}
+        </button>
+      )}
     </div>
   );
 }
-
-// ✔ default export
-// export default StepFooter;
-
-// ✔ named export (fixes your error)
-// export const StepFooter = StepFooterComponent;1

@@ -30,6 +30,18 @@ export interface Subscription {
   limits?: UsageLimits;
 }
 
+export interface OnboardingInfo {
+  onboarding_status: "not_started" | "in_progress" | "completed";
+  current_step: number;
+  steps: {
+    project: boolean;
+    environment: boolean;
+    add_users: boolean;
+    test_import: boolean;
+    finish: boolean;
+  };
+}
+
 export interface User {
   id?: string;
   _id?: string;
@@ -38,7 +50,5 @@ export interface User {
   provider?: string;
   role?: string;
   subscription?: Subscription;
-  // Onboarding
-  onboarding_status?: 'not_started' | 'in_progress' | 'completed';
-  onboarding_step?: number;
+  onboarding?: OnboardingInfo;
 }

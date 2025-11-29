@@ -7,13 +7,17 @@ class OnboardingModel(BaseModel):
     onboarding_status: Literal["not_started", "in_progress", "completed"] = "not_started"
     current_step: int = 1
     steps: dict = {
-        "profile": False,
         "project": False,
         "environment": False,
-        "ai_agent": False,
+        "add_users": False,
         "test_import": False,
         "finish": False
     }
+    context: dict = {
+        "project_id": None,
+        "environment_id": None
+    }
+
 
 class User(BaseModel):
     id: Optional[str] = Field(default=None, alias="_id")
