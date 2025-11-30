@@ -5,207 +5,187 @@ import {
   useContext,
   useState,
   useEffect,
-  ReactNode,
+  useCallback,
 } from "react";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
-import { User } from "@/types/user";
 import { apiFetch } from "@/utils/api";
-const API_URL = process.env.NEXT_PUBLIC_API_URL as string;
 
-export type AuthMode = "login" | "signup";
+interface AuthContextValue {
+  user: any;
+  setUser: (u: any) => void;
 
-/* -----------------------------------------------------
-   Auth Context Types
------------------------------------------------------ */
-export interface AuthContextType {
-  user: User | null;
-  loading: boolean;
   authOpen: boolean;
-
-  openAuth: (mode?: AuthMode) => void;
+  openAuth: (mode?: "login" | "signup") => void;
   closeAuth: () => void;
-  mode: AuthMode;
-  switchMode: (m: AuthMode) => void;
 
-  loginWithEmail: (email: string, password: string) => Promise<any>;
-  signupWithEmail: (name: string, email: string, password: string) => Promise<any>;
+  mode: "login" | "signup";
+  switchMode: (m: "login" | "signup") => void;
+
+  loginWithEmail: (email: string, password: string) => Promise<{ ok: boolean }>;
+  signupWithEmail: (
+    name: string,
+    email: string,
+    password: string
+  ) => Promise<{ ok: boolean }>;
   loginWithGoogle: () => void;
 
+  logout: () => Promise<void>;
   refreshSubscription: () => Promise<void>;
-  setUser: (u: User | null) => void;
-  logout: () => void;
+
   pendingPlan: string | null;
-  setPendingPlan: (plan: string | null) => void;
+  setPendingPlan: (p: string | null) => void;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextValue | null>(null);
 
-/* -----------------------------------------------------
-   Auth Provider Component
------------------------------------------------------ */
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const router = useRouter();
+// ---------------------------------------------------------------------
+// PROVIDER
+// ---------------------------------------------------------------------
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<any>(null);
 
-  const [user, setUser] = useState<User | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
-  const [mode, setMode] = useState<AuthMode>("login");
-  const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<"login" | "signup">("login");
+
   const [pendingPlan, setPendingPlan] = useState<string | null>(null);
 
-  /* ------------------ Modal Controls ------------------ */
-  function openAuth(reqMode?: AuthMode) {
-    if (reqMode) setMode(reqMode);
+  // ---------------------------------------------------------------------
+  // AUTH MODAL CONTROL
+  // ---------------------------------------------------------------------
+  const openAuth = (desiredMode?: "login" | "signup") => {
+    if (desiredMode) setMode(desiredMode);
     setAuthOpen(true);
-  }
-  function closeAuth() {
-    setAuthOpen(false);
-  }
-  function switchMode(m: AuthMode) {
-    setMode(m);
-  }
+  };
 
-  /* ---------------------- LOGIN ----------------------- */
-  async function loginWithEmail(email: string, password: string) {
-    setLoading(true);
+  const closeAuth = () => setAuthOpen(false);
+
+  const switchMode = (m: "login" | "signup") => setMode(m);
+
+  // ---------------------------------------------------------------------
+  // LOGIN WITH EMAIL
+  // ---------------------------------------------------------------------
+  const loginWithEmail = async (email: string, password: string) => {
     try {
-      const res = await apiFetch(`${API_URL}/auth/login`, {
+      const res = await apiFetch("/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
 
-      setLoading(false);
+      if (!res.ok) return { ok: false };
 
-      if (!res.ok) {
-        toast.error(res.data?.detail || "Invalid login credentials");
-        return { ok: false };
-      }
+      // backend returns { ok: true, user }
+      setUser(res.data.user);
 
-      const userData = res.data.user ?? res.data;
-      setUser(userData);
+      // fetch latest user + subscription
+      await refreshSubscription();
 
-      router.push(
-        userData.onboarding_status === "completed"
-          ? "/dashboard"
-          : "/onboarding"
-      );
-
-      toast.success("Logged in successfully!");
       closeAuth();
       return { ok: true };
     } catch (err) {
-      console.error(err);
-      setLoading(false);
-      toast.error("Network error");
+      console.error("loginWithEmail failed:", err);
       return { ok: false };
     }
-  }
+  };
 
-  /* ---------------------- SIGNUP ---------------------- */
-  async function signupWithEmail(name: string, email: string, password: string) {
-    setLoading(true);
+  // ---------------------------------------------------------------------
+  // SIGNUP WITH EMAIL
+  // ---------------------------------------------------------------------
+  const signupWithEmail = async (
+    name: string,
+    email: string,
+    password: string
+  ) => {
     try {
-      const res = await apiFetch(`${API_URL}/auth/signup`, {
+      const res = await apiFetch("/auth/signup", {
         method: "POST",
         body: JSON.stringify({ name, email, password }),
       });
 
-      setLoading(false);
+      if (!res.ok) return { ok: false };
 
-      if (!res.ok) {
-        toast.error(res.data?.detail || "Signup failed");
-        return { ok: false };
-      }
+      setUser(res.data.user);
+      await refreshSubscription();
 
-      const userData = res.data.user ?? res.data;
-      setUser(userData);
-
-      router.push("/onboarding");
-      toast.success("Account created!");
       closeAuth();
-
       return { ok: true };
     } catch (err) {
-      console.error(err);
-      setLoading(false);
-      toast.error("Network error");
+      console.error("signupWithEmail failed:", err);
       return { ok: false };
     }
-  }
+  };
 
-  /* ---------------------- GOOGLE LOGIN ---------------------- */
-  function loginWithGoogle() {
-    window.location.href = `${API_URL}/auth/google/login`;
-  }
+  // ---------------------------------------------------------------------
+  // GOOGLE LOGIN
+  // ---------------------------------------------------------------------
+  const loginWithGoogle = () => {
+    if (typeof window === "undefined") return;
+    const cb = `${window.location.origin}/oauth/callback`;
+    window.location.href =
+      `${process.env.NEXT_PUBLIC_API_URL}/auth/google?callback=` +
+      encodeURIComponent(cb);
+  };
 
-  /* ------------------ SUBSCRIPTION CHECK ------------------ */
-  async function refreshSubscription() {
-    if (!user) return;
-
-    if (user.subscription && Object.keys(user.subscription).length > 0) {
-      return; // already loaded
-    }
-
+  // ---------------------------------------------------------------------
+  // LOGOUT
+  // ---------------------------------------------------------------------
+  const logout = async () => {
     try {
-      const res = await apiFetch(`${API_URL}/auth/check-plan`);
-      if (!res.ok) return;
-
-      const result = res.data;
-      setUser((prev) =>
-        prev ? { ...prev, subscription: result.subscription } : prev
-      );
-    } catch (err) {
-      console.error("Failed to refresh subscription", err);
+      await apiFetch("/auth/logout", { method: "POST" });
+    } catch (e) {
+      console.error("Logout failed", e);
     }
-  }
-
-  /* ---------------------- LOGOUT ---------------------- */
-  async function logout() {
-    try {
-      await apiFetch(`${API_URL}/auth/logout`, { method: "POST" });
-    } catch {
-      console.warn("Logout request failed — forcing local logout.");
-    }
-
     setUser(null);
-    toast.success("Logged out");
-    router.push("/");
-  }
+    window.location.href = "/";
+  };
 
-  /* ------------------- RESTORE SESSION ------------------- */
-  useEffect(() => {
-    async function loadSession() {
-      try {
-        const res = await apiFetch(`${API_URL}/auth/me`);
+  // ---------------------------------------------------------------------
+  // REFRESH SUBSCRIPTION + USER
+  // ---------------------------------------------------------------------
+  const refreshSubscription = useCallback(async () => {
+    try {
+      const res = await apiFetch("/auth/me");
 
-        if (res.ok) {
-          const userData = res.data.user ?? res.data;
-          setUser(userData);
-        }
-      } catch (err) {
-        console.error("Session restore failed", err);
+      if (res.ok && res.data?.user) {
+        setUser(res.data.user);
       }
+    } catch (err) {
+      console.error("refreshSubscription failed:", err);
     }
+  }, []);
 
-    loadSession();
+  // ---------------------------------------------------------------------
+  // LOAD USER ON PAGE START
+  // ---------------------------------------------------------------------
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiFetch("/auth/me");
+        if (res.ok && res.data?.user) setUser(res.data.user);
+      } catch {
+        /* not logged in */
+      }
+    })();
   }, []);
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        loading,
+        setUser,
+
         authOpen,
         openAuth,
         closeAuth,
+
         mode,
         switchMode,
+
         loginWithEmail,
         signupWithEmail,
         loginWithGoogle,
-        refreshSubscription,
-        setUser,
+
         logout,
+        refreshSubscription,
+
         pendingPlan,
         setPendingPlan,
       }}
@@ -215,11 +195,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/* -----------------------------------------------------
-   Hook
------------------------------------------------------ */
+// ---------------------------------------------------------------------
+// HOOK
+// ---------------------------------------------------------------------
 export function useAuth() {
-  // console.log("useAuth executed at:", new Error().stack);
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;

@@ -99,6 +99,7 @@ async def signup(user: User):
 
 @router.post("/login")
 async def login(credentials: dict):
+    print("LOGIN REQ =", credentials["email"], credentials["password"])
     user = await db["users"].find_one({"email": credentials["email"]})
     if not user:
         raise HTTPException(401, "Invalid credentials")
@@ -352,7 +353,7 @@ async def get_my_profile(request: Request):
     # print("Received cookies:", request.cookies)
     user_data.pop("password", None)
     print("Decoded user:", user_data)
-    return { "user": user_data }
+    return { "ok": True, "user": user_data }
 
 # @router.post("/logout")
 # async def logout(current_user=Depends(get_current_user)):

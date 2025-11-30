@@ -1,13 +1,5 @@
-import "../globals.css";
+// src/app/(marketing)/layout.tsx
 
-export default function MarketingLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="min-h-screen bg-white">
-      {children}
-    </div>
-  );
+export default function MarketingLayout({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
 }

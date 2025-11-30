@@ -1,6 +1,5 @@
 "use client";
-console.log("Hero render SSR from E");
-// import AuthTrigger from "@/components/auth/AuthTrigger";
+import Link from "next/link";
 
 export default function Pricing() {
   return (
@@ -39,7 +38,8 @@ export default function Pricing() {
             </ul>
 
             {/* <AuthTrigger>Get Started Free</AuthTrigger> */}
-            <a href="/auth/signup">Get Started Free</a>
+            {/* <a href="/auth/signup">Get Started Free</a> */}
+            <Link href="/auth">Get Started Free</Link>
           </div>
 
           {/* PRO PLAN */}
@@ -69,7 +69,8 @@ export default function Pricing() {
             </ul>
 
             {/* <AuthTrigger>Choose PRO</AuthTrigger> */}
-            <a href="/auth?plan=pro">Get Started Pro</a>
+            {/* <a href="/auth?plan=pro">Get Started Pro</a> */}
+            <Link href="/auth">Choose PRO</Link>
           </div>
 
           {/* ENTERPRISE PLAN */}
