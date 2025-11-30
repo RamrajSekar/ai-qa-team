@@ -140,15 +140,28 @@ async def login(credentials: dict):
 
     return response
 
+# @router.get("/{provider}/login")
+# async def oauth_login(request: Request, provider: str):
+#     client = oauth.create_client(provider)
+#     if client is None:
+#         raise HTTPException(status_code=404, detail="Unsupported provider")
+
+#     redirect_uri = request.url_for("oauth_callback", provider=provider)
+#     return await oauth.create_client(provider).authorize_redirect(request, redirect_uri)
+#     # return await client.authorize_redirect(request, settings.re)
+
 @router.get("/{provider}/login")
-async def oauth_login(request: Request, provider: str):
+async def oauth_login(request: Request, provider: str, callback: str | None = None):
     client = oauth.create_client(provider)
     if client is None:
-        raise HTTPException(status_code=404, detail="Unsupported provider")
+        raise HTTPException(404, "Unsupported provider")
 
+    # Allow frontend override
     redirect_uri = request.url_for("oauth_callback", provider=provider)
-    return await oauth.create_client(provider).authorize_redirect(request, redirect_uri)
-    # return await client.authorize_redirect(request, settings.re)
+
+    if callback:
+        redirect_uri = callback
+    return await client.authorize_redirect(request, redirect_uri)
 
 
 @router.get("/{provider}/callback", name="oauth_callback")

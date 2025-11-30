@@ -1,75 +1,63 @@
-// src/app/(app)/dashboard/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { apiFetch } from "@/utils/api";
 import CreateProjectModal from "@/components/projects/CreateProjectModal";
 import ExecutionTrendChart from "@/components/dashboard/ExecutionTrendChart";
 import AiUsageChart from "@/components/dashboard/AiUsage";
 import OnboardingModal from "@/components/onboarding/OnboardingModal";
-
-interface Project {
-  id: string;
-  project_id: string;
-  name: string;
-  created_by: string;
-  created_at: string;
-}
+import { apiFetch } from "@/utils/api";
+import Link from "next/link";
 
 export default function DashboardPage() {
   const { user, setUser } = useAuth();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [openProjectModal, setOpenProjectModal] = useState(false);
   const [openOnboarding, setOpenOnboarding] = useState(false);
 
-  const loadProjects = async () => {
+  async function loadProjects() {
     setLoading(true);
-    const res = await apiFetch("/projects");
-    if (res.ok && Array.isArray(res.data)) {
-      setProjects(res.data);
-    }
+    const res = await apiFetch(`/projects`);
+    if (res.ok) setProjects(res.data);
     setLoading(false);
-  };
+  }
 
-  const refreshUser = async () => {
-    const res = await apiFetch("/auth/me");
-    if (res.ok) {
-      setUser(res.data.user);
-    }
-  };
+  async function refreshUser() {
+    const res = await apiFetch(`/auth/me`);
+    if (res.ok) setUser(res.data.user);
+  }
 
+  /* LOAD PROJECTS */
   useEffect(() => {
     loadProjects();
   }, []);
 
-  // Only open onboarding when we *know* user is loaded and not completed
+  /* OPEN ONBOARDING ONLY IF NEEDED */
   useEffect(() => {
     if (!user) return;
+
     const status = user.onboarding?.onboarding_status;
-    if (status && status !== "completed") {
+
+    if (status !== "completed") {
       setOpenOnboarding(true);
     }
   }, [user]);
 
-  if (!user) {
-    return <p className="p-6">Loading...</p>;
-  }
+  if (!user) return <p className="p-6">Loading...</p>;
 
-  const usage = user.subscription?.usage;
-  const limits = user.subscription?.limits;
+  const usage = user.subscription?.usage || {};
+  const limits = user.subscription?.limits || {};
 
   return (
     <div className="relative p-6 space-y-10">
+
+      {/* ONBOARDING */}
       {openOnboarding && (
         <OnboardingModal
           user={user}
-          refreshUser={async () => {
-            await refreshUser();
-            await loadProjects();
-          }}
+          refreshUser={refreshUser}
           onProjectsReload={loadProjects}
           onClose={() => setOpenOnboarding(false)}
         />
@@ -78,6 +66,7 @@ export default function DashboardPage() {
       {/* HEADER */}
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Dashboard</h2>
+
         <button
           onClick={() => setOpenProjectModal(true)}
           className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700"
@@ -86,35 +75,12 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* KPI cards */}
+      {/* KPI CARDS */}
       <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <p className="text-sm text-gray-500">Projects</p>
-          <p className="text-2xl font-bold">
-            {(usage?.projects_used ?? projects.length)}/{limits?.projects_limit ?? "—"}
-          </p>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <p className="text-sm text-gray-500">Executions</p>
-          <p className="text-2xl font-bold">
-            {usage?.executions_used ?? 0}/{limits?.executions_limit ?? "—"}
-          </p>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <p className="text-sm text-gray-500">AI Generations</p>
-          <p className="text-2xl font-bold">
-            {usage?.ai_gen_used ?? 0}/{limits?.ai_gen_limit ?? "—"}
-          </p>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <p className="text-sm text-gray-500">Team Members</p>
-          <p className="text-2xl font-bold">
-            {usage?.team_members_used ?? 0}/{limits?.team_members_limit ?? "—"}
-          </p>
-        </div>
+        <KPI title="Projects" used={usage.projects_used} max={limits.projects_limit} />
+        <KPI title="Executions" used={usage.executions_used} max={limits.executions_limit} />
+        <KPI title="AI Generations" used={usage.ai_gen_used} max={limits.ai_gen_limit} />
+        <KPI title="Team Members" used={usage.team_members_used} max={limits.team_members_limit} />
       </div>
 
       {/* CHARTS */}
@@ -149,7 +115,7 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4">
-            {projects.map((p) => (
+            {projects.map((p: any) => (
               <Link
                 key={p.project_id}
                 href={`/projects/${p.project_id}`}
@@ -163,15 +129,24 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {/* PROJECT CREATE MODAL */}
       <CreateProjectModal
         open={openProjectModal}
         onClose={() => setOpenProjectModal(false)}
-        onCreated={async () => {
-          await loadProjects();
-          await refreshUser(); // keep subscription usage in sync
-        }}
+        onCreated={loadProjects}
         createdBy={user.email}
       />
+    </div>
+  );
+}
+
+function KPI({ title, used, max }: { title: string; used: any; max: any }) {
+  return (
+    <div className="bg-white p-4 rounded-lg shadow border">
+      <p className="text-sm text-gray-500">{title}</p>
+      <p className="text-2xl font-bold">
+        {used ?? 0}/{max ?? 0}
+      </p>
     </div>
   );
 }
