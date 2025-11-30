@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { usePathname } from "next/navigation";
+import { useProjects } from "@/hooks/useProjects";
+
 
 import {
   LayoutGrid,
@@ -15,22 +17,57 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  Layers,
 } from "lucide-react";
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const { projects } = useProjects();
+  // Detect current project ID from URL
+  const projectMatch = pathname.match(/^\/projects\/([^/]+)/);
+  const currentProjectId = projectMatch ? projectMatch[1] : null;
 
-  const menu = [
+  // pick 3 or 4 most recent projects
+  const recent = projects.slice(0, 4);
+  // Global Menu
+  const globalMenu = [
     { name: "Dashboard", icon: <LayoutGrid size={18} />, href: "/dashboard" },
     { name: "Projects", icon: <FolderOpen size={18} />, href: "/projects" },
-    { name: "Environments", icon: <FolderOpen size={18} />, href: "/envrionments" },
-    { name: "Scenarios", icon: <Puzzle size={18} />, href: "/scenarios" },
-    { name: "Executions", icon: <Zap size={18} />, href: "/executions" },
     { name: "AI Generator", icon: <Bot size={18} />, href: "/ai" },
     { name: "Settings", icon: <Settings size={18} />, href: "/settings" },
   ];
+
+  // Project-specific menu (only when inside /projects/[id])
+  const projectMenu = currentProjectId
+    ? [
+        {
+          name: "Overview",
+          icon: <Layers size={18} />,
+          href: `/projects/${currentProjectId}`,
+        },
+        {
+          name: "Environments",
+          icon: <FolderOpen size={18} />,
+          href: `/projects/${currentProjectId}/environments`,
+        },
+        {
+          name: "Scenarios",
+          icon: <Puzzle size={18} />,
+          href: `/projects/${currentProjectId}/scenarios`,
+        },
+        {
+          name: "Executions",
+          icon: <Zap size={18} />,
+          href: `/projects/${currentProjectId}/executions`,
+        },
+      ]
+    : [];
+
+  // Helper to highlight active menu
+  const isActive = (href: string) =>
+    pathname === href || pathname.startsWith(href + "/");
 
   return (
     <aside
@@ -56,11 +93,7 @@ export default function Sidebar() {
           onClick={() => setCollapsed(!collapsed)}
           className="p-1 rounded-md hover:bg-gray-800"
         >
-          {collapsed ? (
-            <ChevronRight size={18} />
-          ) : (
-            <ChevronLeft size={18} />
-          )}
+          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
       </div>
 
@@ -78,39 +111,97 @@ export default function Sidebar() {
         )}
       </div>
 
-      {/* MENU */}
+      {/* GLOBAL MENU */}
       <nav className="flex-1 px-2 py-4 space-y-1">
-        {menu.map((item) => {
-          const active = pathname.startsWith(item.href);
+        {globalMenu.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={`group relative flex items-center gap-3 px-3 py-2 rounded-md transition cursor-pointer
+              ${
+                isActive(item.href)
+                  ? "bg-purple-600 text-white shadow-md"
+                  : "hover:bg-gray-800 text-gray-300"
+              }
+              ${collapsed ? "justify-center" : ""}
+            `}
+          >
+            {isActive(item.href) && (
+              <span className="absolute left-0 top-0 h-full w-1 bg-purple-400 rounded-r-md" />
+            )}
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`
-                group relative flex items-center gap-3 px-3 py-2 rounded-md 
-                transition cursor-pointer
+            {item.icon}
+            {!collapsed && <span>{item.name}</span>}
+          </Link>
+        ))}
+
+        {/* PROJECT MENU */}
+        {currentProjectId && (
+          <>
+            {!collapsed && (
+              <p className="mt-4 mb-2 text-xs uppercase text-gray-500">
+                Project
+              </p>
+            )}
+
+            {projectMenu.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`group relative flex items-center gap-3 px-3 py-2 rounded-md transition cursor-pointer
                 ${
-                  active
+                  isActive(item.href)
                     ? "bg-purple-600 text-white shadow-md"
                     : "hover:bg-gray-800 text-gray-300"
                 }
                 ${collapsed ? "justify-center" : ""}
               `}
-            >
-              {/* PURPLE ACCENT BAR (left side) */}
-              {active && (
-                <span
-                  className="absolute left-0 top-0 h-full w-1 bg-purple-400 rounded-r-md"
-                />
-              )}
+              >
+                {isActive(item.href) && (
+                  <span className="absolute left-0 top-0 h-full w-1 bg-purple-400 rounded-r-md" />
+                )}
 
-              {item.icon}
-              {!collapsed && <span>{item.name}</span>}
-            </Link>
-          );
-        })}
+                {item.icon}
+                {!collapsed && <span>{item.name}</span>}
+              </Link>
+            ))}
+          </>
+        )}
       </nav>
+      {/* RECENT PROJECTS */}
+      {!collapsed && recent.length > 0 && (
+        <div className="px-4 py-4 border-t border-gray-700">
+          <p className="text-xs uppercase text-gray-500 mb-2">Recent Projects</p>
+          {recent.map((p) => (
+            <Link
+              key={p.project_id}
+              href={`/projects/${p.project_id}`}
+              className={`block text-sm py-1.5 rounded hover:bg-gray-800 px-2 ${
+                pathname.includes(p.project_id) ? "bg-purple-600 text-white" : "text-gray-300"
+              }`}
+            >
+              {p.name}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* Collapsed mode */}
+      {collapsed && recent.length > 0 && (
+        <div className="px-2 py-4 border-t border-gray-700 flex flex-col gap-3">
+          {recent.map((p) => (
+            <Link
+              key={p.project_id}
+              href={`/projects/${p.project_id}`}
+              className={`w-10 h-10 rounded-md flex items-center justify-center text-xs hover:bg-gray-800 ${
+                pathname.includes(p.project_id) ? "bg-purple-600" : "bg-gray-800"
+              }`}
+            >
+              {p.name[0]}
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* PLAN BOX */}
       <div className="p-4 border-t border-gray-700 text-center">

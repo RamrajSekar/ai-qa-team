@@ -12,10 +12,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { LogOut, Settings, User2 } from "lucide-react";
+import { useProjects } from "@/hooks/useProjects";
+import { usePathname, useRouter } from "next/navigation";
+
 
 export function Topbar() {
   const { user, setUser } = useAuth();
   const plan = user?.subscription?.plan ?? "free";
+  const router = useRouter();
+  const pathname = usePathname();
+  const { projects } = useProjects();
+
+  const match = pathname.match(/^\/projects\/([^/]+)/);
+  const activeProjectId = match ? match[1] : null;
+
+  const activeProject = projects.find(
+  (p) => p.project_id === activeProjectId
+  );
 
   const logout = async () => {
     await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
@@ -49,6 +62,36 @@ export function Topbar() {
           ">
             {plan.toUpperCase()}
           </span>
+
+          {/* ---- PROJECT SWITCHER ---- */}
+          {activeProject && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="px-3 py-1.5 bg-white/70 rounded-md text-sm shadow cursor-pointer hover:bg-white">
+                  {activeProject.name} ▼
+                </button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent className="w-56">
+                {projects.map((p) => (
+                  <DropdownMenuItem
+                    key={p.project_id}
+                    onClick={() => router.push(`/projects/${p.project_id}`)}
+                    className={p.project_id === activeProjectId ? "bg-purple-100" : ""}
+                  >
+                    {p.name}
+                  </DropdownMenuItem>
+                ))}
+
+                <DropdownMenuItem
+                  className="text-purple-600 font-semibold"
+                  onClick={() => router.push("/projects")}
+                >
+                  + New Project
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           {/* ---- PROFILE DROPDOWN ---- */}
           <DropdownMenu>
