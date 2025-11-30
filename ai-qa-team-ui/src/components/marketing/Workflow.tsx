@@ -1,3 +1,5 @@
+"use client";
+console.log("Hero render SSR from G");
 import AgentPanel from './AgentPanel';
 
 export default function Workflow() {

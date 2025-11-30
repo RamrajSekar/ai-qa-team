@@ -20,21 +20,18 @@ export default function LoginForm() {
     setError("");
 
     try {
-      const res = await apiFetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
-        {
+      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
           method: "POST",
           body: JSON.stringify({ email, password }),
+        });
+
+        if (!res.ok) {
+          setError("Invalid login credentials");
+          setLoading(false);
+          return;
         }
-      );
 
-      if (!res.ok) {
-        setError("Invalid login credentials");
-        setLoading(false);
-        return;
-      }
-
-      const data = await res.json();
+      const data = res.data;
 
       // 1️⃣ Save user to global store
       setUser(data.user);

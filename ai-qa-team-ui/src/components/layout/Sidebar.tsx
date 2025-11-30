@@ -25,6 +25,7 @@ export default function Sidebar() {
   const menu = [
     { name: "Dashboard", icon: <LayoutGrid size={18} />, href: "/dashboard" },
     { name: "Projects", icon: <FolderOpen size={18} />, href: "/projects" },
+    { name: "Environments", icon: <FolderOpen size={18} />, href: "/envrionments" },
     { name: "Scenarios", icon: <Puzzle size={18} />, href: "/scenarios" },
     { name: "Executions", icon: <Zap size={18} />, href: "/executions" },
     { name: "AI Generator", icon: <Bot size={18} />, href: "/ai" },

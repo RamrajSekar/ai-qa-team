@@ -26,21 +26,21 @@ export default function DashboardPage() {
   const [openOnboarding, setOpenOnboarding] = useState(false);
 
   async function loadProjects() {
-    setLoading(true);
-    const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL}/projects`);
-    if (res.ok) setProjects(await res.json());
-    setLoading(false);
+  setLoading(true);
+  const res = await apiFetch("/projects");
+  if (res.ok && Array.isArray(res.data)) {
+    setProjects(res.data);
   }
+  setLoading(false);
+}
 
   // Refresh user
   async function refreshUser() {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
-        credentials: "include",
-      });
+      const res = await apiFetch("/auth/me");
 
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.data;
         setUser(data.user);
       }
     } catch (e) {
@@ -67,6 +67,7 @@ export default function DashboardPage() {
         <OnboardingModal
           user={user}
           refreshUser={refreshUser}
+          onProjectsReload={loadProjects}
           onClose={() => setOpenOnboarding(false)}
         />
       )}
@@ -108,7 +109,7 @@ export default function DashboardPage() {
 
       {/* CHARTS AREA */}
       <div className="grid grid-cols-2 gap-4 mb-10">
-
+        {/* Dummy data to be replaced later */}
         <ExecutionTrendChart
           data={[
             { date: "Mon", total: 5, passed: 4, failed: 1 },

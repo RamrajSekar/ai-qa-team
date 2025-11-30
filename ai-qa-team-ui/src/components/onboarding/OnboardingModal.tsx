@@ -11,10 +11,11 @@ import { OnboardingStep } from "../onboarding/types";
 interface OnboardingModalProps {
   user: User;
   refreshUser: () => Promise<void>;
+  onProjectsReload: () => Promise<void>;
   onClose: () => void;
 }
 
-export default function OnboardingModal({ user, refreshUser, onClose }:OnboardingModalProps) {
+export default function OnboardingModal({ user, refreshUser,onProjectsReload, onClose }:OnboardingModalProps) {
   const [step, setStep] = useState<OnboardingStep>(
     (user?.onboarding?.current_step as OnboardingStep) || 1
   );
@@ -42,10 +43,11 @@ export default function OnboardingModal({ user, refreshUser, onClose }:Onboardin
     ),
     3: (
       <StepFinish
-        // user={user}
+        user={user}
+        onProjectsReload={onProjectsReload}
         refreshUser={refreshUser}
         close={onClose}
-        // back={back}
+        back={back}
       />
     )
   };

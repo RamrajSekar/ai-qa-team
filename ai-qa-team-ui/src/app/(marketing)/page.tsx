@@ -5,6 +5,7 @@ import Roadmap from '@/components/marketing/Roadmap';
 import Pricing from '@/components/marketing/Pricing';
 import Footer from '@/components/marketing/Footer';
 
+
 export default function MarketingPage() {
   return (
     <>

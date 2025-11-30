@@ -1,12 +1,8 @@
 "use client";
-
-import Link from "next/link";
-import { useAuth } from "@/components/providers/AuthProvider";
-import AuthTrigger from "@/components/auth/AuthTrigger";
+console.log("Hero render SSR from E");
+// import AuthTrigger from "@/components/auth/AuthTrigger";
 
 export default function Pricing() {
-  const { openAuth, setPendingPlan } = useAuth();
-
   return (
     <section
       id="pricing"
@@ -22,7 +18,7 @@ export default function Pricing() {
         </p>
 
         <div className="mt-12 grid gap-8 md:grid-cols-3">
-          {/* ---------- FREE PLAN ---------- */}
+          {/* FREE PLAN */}
           <div className="rounded-2xl border border-[var(--qs-border)] bg-[var(--qs-bg)] p-6 shadow flex flex-col">
             <h3 className="text-xl font-semibold text-[var(--qs-text)]">Free</h3>
             <p className="mt-1 text-sm text-[var(--qs-text-soft)]">
@@ -42,17 +38,11 @@ export default function Pricing() {
               <li>10 Basic Testcases</li>
             </ul>
 
-            <button
-              onClick={() => {
-                setPendingPlan(null);
-                openAuth();
-              }}
-          >
-              Get Started Free
-            </button>
+            {/* <AuthTrigger>Get Started Free</AuthTrigger> */}
+            <a href="/auth/signup">Get Started Free</a>
           </div>
 
-          {/* ---------- PRO PLAN ---------- */}
+          {/* PRO PLAN */}
           <div className="relative rounded-2xl border-4 border-violet-600 bg-[var(--qs-bg)] p-6 shadow-2xl flex flex-col scale-[1.02]">
             <span className="absolute -top-3 right-5 rounded-full bg-violet-600 px-3 py-1 text-xs font-bold text-white shadow">
               Most popular
@@ -78,17 +68,11 @@ export default function Pricing() {
               <li>100 Advanced</li>
             </ul>
 
-            <button
-              onClick={() => {
-                setPendingPlan("pro");
-                openAuth();
-              }}
-            >
-              Choose PRO
-            </button>
+            {/* <AuthTrigger>Choose PRO</AuthTrigger> */}
+            <a href="/auth?plan=pro">Get Started Pro</a>
           </div>
 
-          {/* ---------- ENTERPRISE PLAN ---------- */}
+          {/* ENTERPRISE PLAN */}
           <div className="rounded-2xl border border-[var(--qs-border)] bg-[var(--qs-bg)] p-6 shadow flex flex-col">
             <h3 className="text-xl font-semibold text-[var(--qs-text)]">
               Enterprise
@@ -98,7 +82,7 @@ export default function Pricing() {
             </p>
 
             <p className="mt-6 text-4xl font-bold text-[var(--qs-text)]">
-              Let&apos;s talk
+              Let's talk
             </p>
             <p className="text-sm text-[var(--qs-text-soft)]">custom pricing</p>
 

@@ -50,7 +50,7 @@ export default function CreateProjectModal({
     setLoading(false);
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const err = await res.data.catch(() => ({}));
       setError(err.detail || "Could not create project.");
       return;
     }

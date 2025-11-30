@@ -1,4 +1,5 @@
-// components/marketing/Roadmap.tsx
+"use client";
+console.log("Hero render SSR from F");
 const Roadmap = () => {
   return (
     <section className='border-b border-[var(--qs-border)] bg-[var(--qs-bg)]'>

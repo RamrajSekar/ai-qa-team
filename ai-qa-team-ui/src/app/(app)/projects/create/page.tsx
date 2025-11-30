@@ -1,29 +1,64 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { apiFetch } from "@/utils/api";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 export default function CreateProjectPage() {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL as string;
   const router = useRouter();
+  const { user } = useAuth();
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!user) {
+      toast.error("You must be logged in to create a project");
+      router.push("/login");
+    }
+  }, [user, router]);
+
   async function createProject() {
-    const res = await fetch(`${API_URL}/projects`, {
+    if (!user) {
+      toast.error("You must be logged in");
+      return;
+    }
+
+    if (!name.trim()) {
+      toast.error("Project name is required");
+      return;
+    }
+
+    const payload = {
+      name,
+      description,
+      created_by: user.email,
+    };
+
+    const res = await apiFetch("/projects", {
       method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, description }),
+      body: JSON.stringify(payload),
     });
 
-    if (!res.ok) return toast.error("Failed to create project");
+    if (!res.ok) {
+      console.error("Project creation failed", res.data);
+      toast.error(res.data?.detail || "Project creation failed");
+      return;
+    }
 
-    const data = await res.json();
     toast.success("Project created!");
-    router.push(`/projects/${data.project_id}`);
+    router.push("/projects/${res.data.project_id}");
+  }
+
+  if (!user) {
+    return (
+      <div className="p-10 text-center text-gray-500">
+        Redirecting to login...
+      </div>
+    );
   }
 
   return (

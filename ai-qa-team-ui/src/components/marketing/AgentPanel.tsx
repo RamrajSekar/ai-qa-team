@@ -1,3 +1,5 @@
+"use client";
+
 export default function AgentPanel() {
   return (
     <aside className="mt-10 w-full max-w-xs rounded-2xl border border-[var(--qs-border)] bg-[var(--qs-bg)] p-6 shadow-sm lg:mt-0 lg:w-72">

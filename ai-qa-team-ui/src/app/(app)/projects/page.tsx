@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/utils/api";
+import CreateProjectModal from "@/components/projects/CreateProjectModal";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 interface Project {
   id: string;
@@ -10,23 +12,29 @@ interface Project {
   name: string;
   created_by: string;
   created_at: string;
-  agent_identities: Record<string, any>;
 }
 
 export default function ProjectsPage() {
+  const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openModal, setOpenModal] = useState(false);
 
   async function loadProjects() {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL}/projects`);
-    if (res.ok) {
-      const data = await res.json();
-      setProjects(data);
+      const res = await apiFetch(`/projects`);
+
+      if (res.ok && Array.isArray(res.data)) {
+        setProjects(res.data);
+      } else {
+        setProjects([]);
+      }
+
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   useEffect(() => {
@@ -35,12 +43,21 @@ export default function ProjectsPage() {
 
   return (
     <div className="p-6">
-      <h2 className="text-xl font-bold mb-4">Your Projects</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-bold">Your Projects</h2>
+
+        <button
+          onClick={() => setOpenModal(true)}
+          className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+        >
+          + Create Project
+        </button>
+      </div>
 
       {loading ? (
         <p>Loading...</p>
       ) : projects.length === 0 ? (
-        <p>No projects found.</p>
+        <p className="text-gray-500 mt-10">No projects found.</p>
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {projects.map((p) => (
@@ -55,6 +72,13 @@ export default function ProjectsPage() {
           ))}
         </div>
       )}
+
+      <CreateProjectModal
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        onCreated={loadProjects}
+        createdBy={user?.email ?? ""}
+      />
     </div>
   );
 }

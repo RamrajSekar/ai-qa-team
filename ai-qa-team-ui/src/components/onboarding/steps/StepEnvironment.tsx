@@ -21,12 +21,20 @@ export default function StepEnvironment({
 }: StepEnvironmentProps) {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [openEnvModal, setOpenEnvModal] = useState(false);
-
+  const [name] = useState("");
   useEffect(() => {
     async function fetchProject() {
-      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL}/projects`);
+      
+      // const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL}/projects`);
+      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL}/projects`, {
+      method: "GET",
+      body: JSON.stringify({
+        name,
+        created_by: user.email,
+      }),
+    });
       if (res.ok) {
-        const list = await res.json();
+        const list = await res.data;
         if (list.length > 0) setProjectId(list[0].project_id);
       }
     }

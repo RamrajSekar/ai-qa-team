@@ -1,4 +1,5 @@
-// components/marketing/Footer.tsx
+"use client";
+console.log("Hero render SSR from C");
 const Footer = () => {
   const currentYear = new Date().getFullYear();
 

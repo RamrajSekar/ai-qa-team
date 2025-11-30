@@ -33,7 +33,7 @@ export default function EnvironmentsPage({ params }: PageProps) {
     );
 
     if (res.ok) {
-      const data: Environment[] = await res.json();
+      const data: Environment[] = await res.data;
       setEnvironments(data);
     }
 

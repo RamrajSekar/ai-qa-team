@@ -14,12 +14,13 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 # -------------------------------------------------------------------
 # 1. CREATE PROJECT
 # -------------------------------------------------------------------
-@router.post("/", response_model=ProjectResponse)
+@router.post("", response_model=ProjectResponse)
 async def create_project(
     project: ProjectCreate,
     current_user=Depends(get_current_user),
     _: None = Depends(subscription_required("projects"))
 ):
+    # Generate next project ID
     new_project_id = await get_next_sequence("project_id", "PRJ")
 
     data = project.model_dump()
@@ -27,31 +28,42 @@ async def create_project(
     data["created_by"] = current_user["email"]
     data["created_at"] = datetime.now(timezone.utc).isoformat()
 
-    # FIX: Convert AgentIdentities → dict
+    # Ensure agent identities stored as dict
     if hasattr(project, "agent_identities"):
         data["agent_identities"] = project.agent_identities.model_dump()
     else:
         data["agent_identities"] = {}
 
+    # Insert project
     result = await db["projects"].insert_one(data)
     data["id"] = str(result.inserted_id)
+
+    # 🔥 Increment project usage (FIXES DASHBOARD & /projects)
     await db["users"].update_one(
-    {"email": current_user["email"]},
-            {
-                "$set": {
-                    "onboarding.steps.project": True,
-                    "onboarding.current_step": 2,
-                    "onboarding.onboarding_status": "in_progress",
-                    "onboarding.context.project_id": data["project_id"]
-            }
-    }
+        {"email": current_user["email"]},
+        {"$inc": {"subscription.usage.projects_used": 1}}
     )
+
+    # 🔥 Update onboarding steps
+    await db["users"].update_one(
+        {"email": current_user["email"]},
+        {
+            "$set": {
+                "onboarding.steps.project": True,
+                "onboarding.current_step": 2,
+                "onboarding.onboarding_status": "in_progress",
+                "onboarding.context.project_id": data["project_id"]
+            }
+        }
+    )
+
     return ProjectResponse(**data)
+
 
 # -------------------------------------------------------------------
 # 2. LIST PROJECTS FOR USER
 # -------------------------------------------------------------------
-@router.get("/", response_model=list[ProjectResponse])
+@router.get("", response_model=list[ProjectResponse])
 async def list_projects(current_user=Depends(get_current_user)):
     email = current_user.get("email")
 

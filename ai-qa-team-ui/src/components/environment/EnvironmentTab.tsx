@@ -25,7 +25,7 @@ export default function EnvironmentTab({ projectId }: Props) {
     );
 
     if (res.ok) {
-      const data = (await res.json()) as Environment[];
+      const data = (await res.data) as Environment[];
       setEnvironments(data);
     }
     setLoading(false);

@@ -1,15 +1,3 @@
-//   const logout = async () => {
-//     await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
-//       method: "POST",
-//       credentials: "include",
-//     });
-//     // Removing Cookies
-//     document.cookie = "access_token=; Max-Age=0; path=/";
-//     document.cookie = "refresh_token=; Max-Age=0; path=/";
-//     setUser(null);
-//     window.location.href = "/";
-//   };
-
 "use client";
 
 import { motion } from "framer-motion";

@@ -1,4 +1,5 @@
-// components/marketing/Features.tsx
+"use client";
+console.log("Hero render SSR from B");
 const Features = () => {
   return (
     <section
