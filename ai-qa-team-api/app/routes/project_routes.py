@@ -110,6 +110,10 @@ async def update_project(
     email = current_user.get("email")
 
     update_data = {k: v for k, v in data.items() if v is not None}
+    if "project_id" in update_data:
+        exists = await db["projects"].find_one({"project_id": update_data["project_id"]})
+        if exists and exists["project_id"] != project_id:
+            raise HTTPException(400, "Project ID already exists")
 
     result = await db["projects"].update_one(
         {"project_id": project_id, "created_by": email},

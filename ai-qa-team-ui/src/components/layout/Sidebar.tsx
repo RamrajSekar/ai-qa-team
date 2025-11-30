@@ -6,7 +6,6 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { usePathname } from "next/navigation";
 import { useProjects } from "@/hooks/useProjects";
 
-
 import {
   LayoutGrid,
   FolderOpen,
@@ -18,20 +17,21 @@ import {
   ChevronRight,
   LogOut,
   Layers,
+  Info,
 } from "lucide-react";
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const { projects } = useProjects();
-  // Detect current project ID from URL
-  const projectMatch = pathname.match(/^\/projects\/([^/]+)/);
-  const currentProjectId = projectMatch ? projectMatch[1] : null;
 
-  // pick 3 or 4 most recent projects
-  const recent = projects.slice(0, 4);
-  // Global Menu
+  const { projects } = useProjects();
+
+  // detect active project
+  const match = pathname.match(/^\/projects\/([^/]+)/);
+  const currentProjectId = match ? match[1] : null;
+
+  // global menu
   const globalMenu = [
     { name: "Dashboard", icon: <LayoutGrid size={18} />, href: "/dashboard" },
     { name: "Projects", icon: <FolderOpen size={18} />, href: "/projects" },
@@ -39,7 +39,7 @@ export default function Sidebar() {
     { name: "Settings", icon: <Settings size={18} />, href: "/settings" },
   ];
 
-  // Project-specific menu (only when inside /projects/[id])
+  // project menu
   const projectMenu = currentProjectId
     ? [
         {
@@ -65,25 +65,29 @@ export default function Sidebar() {
       ]
     : [];
 
-  // Helper to highlight active menu
-  const isActive = (href: string) =>
+  // highlighting logic
+  const isActiveGlobal = (href: string) => pathname === href;
+  const isActiveProject = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
+
+  // recent projects
+  const recent = projects.slice(0, 4);
 
   return (
     <aside
       className={`h-screen flex flex-col bg-gray-900 text-white transition-all duration-300 ${
         collapsed ? "w-16" : "w-64"
-      }`}
+      } shadow-xl`}
     >
       {/* HEADER */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-gray-700">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center font-bold">
+          <div className="w-9 h-9 rounded-lg bg-purple-600 flex items-center justify-center font-bold shadow">
             QA
           </div>
 
           {!collapsed && (
-            <span className="font-semibold text-lg whitespace-nowrap">
+            <span className="font-semibold text-lg whitespace-nowrap tracking-tight">
               AI QA Team
             </span>
           )}
@@ -91,120 +95,168 @@ export default function Sidebar() {
 
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="p-1 rounded-md hover:bg-gray-800"
+          className="p-1 rounded-md hover:bg-gray-800 transition"
         >
           {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
       </div>
 
-      {/* USER */}
+      {/* USER SECTION */}
       <div className="px-4 py-3 text-gray-300 text-sm border-b border-gray-700">
         {!collapsed ? (
           <>
             <p className="text-xs opacity-60">Logged in as</p>
-            <p className="font-medium">{user?.name || "User"}</p>
+            <p className="font-medium truncate">{user?.name || "User"}</p>
           </>
         ) : (
-          <div className="mx-auto text-center w-full text-xs opacity-70">
+          <div className="mx-auto text-center w-full text-xs opacity-70 font-medium">
             {user?.name?.[0] || "U"}
           </div>
         )}
       </div>
 
-      {/* GLOBAL MENU */}
-      <nav className="flex-1 px-2 py-4 space-y-1">
-        {globalMenu.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`group relative flex items-center gap-3 px-3 py-2 rounded-md transition cursor-pointer
-              ${
-                isActive(item.href)
-                  ? "bg-purple-600 text-white shadow-md"
-                  : "hover:bg-gray-800 text-gray-300"
-              }
-              ${collapsed ? "justify-center" : ""}
-            `}
-          >
-            {isActive(item.href) && (
-              <span className="absolute left-0 top-0 h-full w-1 bg-purple-400 rounded-r-md" />
-            )}
+      {/* NAVIGATION */}
+      <nav className="flex-1 px-2 py-4 space-y-1 relative">
+        {/* GLOBAL SECTION */}
+        {!collapsed && (
+          <p className="text-xs uppercase text-gray-500 px-3 flex items-center gap-2 mb-1 tracking-wide">
+            <Info size={12} /> Global
+          </p>
+        )}
 
-            {item.icon}
-            {!collapsed && <span>{item.name}</span>}
-          </Link>
-        ))}
+        {globalMenu.map((item) => {
+          const active = isActiveGlobal(item.href);
 
-        {/* PROJECT MENU */}
-        {currentProjectId && (
-          <>
-            {!collapsed && (
-              <p className="mt-4 mb-2 text-xs uppercase text-gray-500">
-                Project
-              </p>
-            )}
-
-            {projectMenu.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`group relative flex items-center gap-3 px-3 py-2 rounded-md transition cursor-pointer
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`
+                group relative flex items-center gap-3 px-3 py-2 rounded-md 
+                transition-all cursor-pointer font-medium
                 ${
-                  isActive(item.href)
-                    ? "bg-purple-600 text-white shadow-md"
+                  active
+                    ? "bg-purple-600 shadow-lg text-white"
                     : "hover:bg-gray-800 text-gray-300"
                 }
                 ${collapsed ? "justify-center" : ""}
               `}
-              >
-                {isActive(item.href) && (
-                  <span className="absolute left-0 top-0 h-full w-1 bg-purple-400 rounded-r-md" />
-                )}
+            >
+              {active && (
+                <span className="absolute left-0 top-0 h-full w-1 bg-purple-400 rounded-r-md"></span>
+              )}
 
-                {item.icon}
-                {!collapsed && <span>{item.name}</span>}
-              </Link>
-            ))}
+              {item.icon}
+              {!collapsed && <span>{item.name}</span>}
+
+              {/* Tooltip for collapsed mode */}
+              {collapsed && (
+                <span
+                  className="absolute left-14 opacity-0 group-hover:opacity-100 text-xs px-2 py-1 bg-black/80 rounded 
+                  pointer-events-none transition whitespace-nowrap"
+                >
+                  {item.name}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+
+        {/* PROJECT SECTION */}
+        {currentProjectId && (
+          <>
+            {!collapsed && (
+              <p className="text-xs uppercase text-gray-500 px-3 mt-5 mb-1 tracking-wide flex items-center gap-2">
+                <FolderOpen size={12} /> Project
+              </p>
+            )}
+
+            {projectMenu.map((item) => {
+              const active = isActiveProject(item.href);
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`
+                  group relative flex items-center gap-3 px-3 py-2 rounded-md 
+                  transition cursor-pointer font-medium
+                  ${
+                    active
+                      ? "bg-purple-600 text-white shadow-lg"
+                      : "hover:bg-gray-800 text-gray-300"
+                  }
+                  ${collapsed ? "justify-center" : ""}
+                `}
+                >
+                  {active && (
+                    <span className="absolute left-0 top-0 h-full w-1 bg-purple-400"></span>
+                  )}
+
+                  {item.icon}
+                  {!collapsed && <span>{item.name}</span>}
+
+                  {/* Tooltip collapsed */}
+                  {collapsed && (
+                    <span className="absolute left-14 opacity-0 group-hover:opacity-100 text-xs px-2 py-1 bg-black/70 rounded-md">
+                      {item.name}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
           </>
         )}
-      </nav>
-      {/* RECENT PROJECTS */}
-      {!collapsed && recent.length > 0 && (
-        <div className="px-4 py-4 border-t border-gray-700">
-          <p className="text-xs uppercase text-gray-500 mb-2">Recent Projects</p>
-          {recent.map((p) => (
-            <Link
-              key={p.project_id}
-              href={`/projects/${p.project_id}`}
-              className={`block text-sm py-1.5 rounded hover:bg-gray-800 px-2 ${
-                pathname.includes(p.project_id) ? "bg-purple-600 text-white" : "text-gray-300"
-              }`}
-            >
-              {p.name}
-            </Link>
-          ))}
-        </div>
-      )}
 
-      {/* Collapsed mode */}
-      {collapsed && recent.length > 0 && (
-        <div className="px-2 py-4 border-t border-gray-700 flex flex-col gap-3">
-          {recent.map((p) => (
-            <Link
-              key={p.project_id}
-              href={`/projects/${p.project_id}`}
-              className={`w-10 h-10 rounded-md flex items-center justify-center text-xs hover:bg-gray-800 ${
-                pathname.includes(p.project_id) ? "bg-purple-600" : "bg-gray-800"
-              }`}
-            >
-              {p.name[0]}
-            </Link>
-          ))}
-        </div>
-      )}
+        {/* RECENT PROJECTS */}
+        {!collapsed && recent.length > 0 && (
+          <div className="mt-6 pt-4 border-t border-gray-700">
+            <p className="text-xs uppercase text-gray-500 px-3 mb-2 tracking-wide">
+              Recent Projects
+            </p>
+
+            {recent.map((p) => (
+              <Link
+                key={p.project_id}
+                href={`/projects/${p.project_id}`}
+                className={`block text-sm py-1.5 rounded px-3 mb-1 transition
+                ${
+                  pathname.includes(p.project_id)
+                    ? "bg-purple-700 text-white shadow-md"
+                    : "hover:bg-gray-800 text-gray-300"
+                }`}
+              >
+                {p.name}
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {/* Collapsed Recent */}
+        {collapsed && recent.length > 0 && (
+          <div className="px-2 mt-4 border-t border-gray-700 flex flex-col items-center gap-3 pt-4">
+            {recent.map((p) => (
+              <Link
+                key={p.project_id}
+                href={`/projects/${p.project_id}`}
+                className={`
+                  w-10 h-10 flex items-center justify-center rounded-md text-xs 
+                  ${
+                    pathname.includes(p.project_id)
+                      ? "bg-purple-600"
+                      : "bg-gray-800 hover:bg-gray-700"
+                  }
+                `}
+              >
+                {p.name[0]}
+              </Link>
+            ))}
+          </div>
+        )}
+      </nav>
 
       {/* PLAN BOX */}
-      <div className="p-4 border-t border-gray-700 text-center">
+      <div className="p-4 border-t border-gray-800 text-center">
         {!collapsed ? (
           <>
             <p className="text-xs">Your Plan</p>
@@ -226,7 +278,7 @@ export default function Sidebar() {
         )}
       </div>
 
-      {/* LOGOUT BUTTON */}
+      {/* LOGOUT */}
       <div className="border-t border-gray-800 p-4">
         <button
           onClick={logout}
