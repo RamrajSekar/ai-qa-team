@@ -23,7 +23,6 @@ export default function EditProjectModal({
   const [name, setName] = useState(project?.name || "");
   const [description, setDescription] = useState(project?.description || "");
   const [loading, setLoading] = useState(false);
-
   // Reset fields when modal opens
   useEffect(() => {
     if (project) {
@@ -48,6 +47,10 @@ export default function EditProjectModal({
 
       if (res.ok) {
         await onUpdated();
+        // refresh the global project list
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("projects-updated"));
+        }
         onClose();
       }
     } finally {

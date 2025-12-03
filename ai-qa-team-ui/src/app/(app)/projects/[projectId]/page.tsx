@@ -82,7 +82,7 @@ export default function ProjectPage() {
   const [testcases, setTestcases] = useState<Testcase[]>([]);
   const [environments, setEnvironments] = useState<Env[]>([]);
   const [executions, setExecutions] = useState<Execution[]>([]);
-
+  console.log("Project from API:", project);
   useEffect(() => {
     loadAll();
   }, [projectId]);

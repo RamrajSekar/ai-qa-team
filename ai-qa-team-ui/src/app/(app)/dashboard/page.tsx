@@ -13,10 +13,10 @@ export default function DashboardPage() {
   const { user, setUser } = useAuth();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [openProjectModal, setOpenProjectModal] = useState(false);
   const [openOnboarding, setOpenOnboarding] = useState(false);
 
+  /** Load project list */
   async function loadProjects() {
     setLoading(true);
     const res = await apiFetch(`/projects`);
@@ -24,22 +24,31 @@ export default function DashboardPage() {
     setLoading(false);
   }
 
+  /** Load fresh user (usage, onboarding, limits) */
   async function refreshUser() {
     const res = await apiFetch(`/auth/me`);
     if (res.ok) setUser(res.data.user);
   }
 
-  /* LOAD PROJECTS */
+  /** Initial load */
   useEffect(() => {
     loadProjects();
+    refreshUser();
   }, []);
 
-  /* OPEN ONBOARDING ONLY IF NEEDED */
+  /** Reopen onboarding when last project is deleted */
+  useEffect(() => {
+    if (!loading && projects.length === 0) {
+      setOpenOnboarding(true);
+    }
+    refreshUser(); // Also refresh usage counts
+  }, [projects]);
+
+  /** Initial onboarding based on user settings */
   useEffect(() => {
     if (!user) return;
 
     const status = user.onboarding?.onboarding_status;
-
     if (status !== "completed") {
       setOpenOnboarding(true);
     }
@@ -53,7 +62,7 @@ export default function DashboardPage() {
   return (
     <div className="relative p-6 space-y-10">
 
-      {/* ONBOARDING */}
+      {/* ONBOARDING MODAL */}
       {openOnboarding && (
         <OnboardingModal
           user={user}
@@ -129,7 +138,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* PROJECT CREATE MODAL */}
+      {/* CREATE PROJECT MODAL */}
       <CreateProjectModal
         open={openProjectModal}
         onClose={() => setOpenProjectModal(false)}

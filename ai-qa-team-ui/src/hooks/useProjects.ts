@@ -24,7 +24,16 @@ export function useProjects() {
   }
 
   useEffect(() => {
+    // Initial load
     load();
+
+    // 🔥 Listen for project updates globally
+    const refresh = () => load();
+    window.addEventListener("projects-updated", refresh);
+
+    return () => {
+      window.removeEventListener("projects-updated", refresh);
+    };
   }, []);
 
   return { projects, loading, reload: load };

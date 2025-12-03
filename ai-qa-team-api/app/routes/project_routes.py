@@ -158,6 +158,20 @@ async def update_agent_identities(
 # -------------------------------------------------------------------
 # 6. DELETE PROJECT
 # -------------------------------------------------------------------
+# @router.delete("/{project_id}")
+# async def delete_project(
+#     project_id: str,
+#     current_user=Depends(get_current_user)
+# ):
+#     email = current_user.get("email")
+
+#     result = await db["projects"].delete_one({"project_id": project_id, "created_by": email})
+
+#     if result.deleted_count == 0:
+#         raise HTTPException(status_code=404, detail="Project not found or access denied")
+
+#     return {"message": "Project deleted successfully"}
+
 @router.delete("/{project_id}")
 async def delete_project(
     project_id: str,
@@ -165,9 +179,33 @@ async def delete_project(
 ):
     email = current_user.get("email")
 
-    result = await db["projects"].delete_one({"project_id": project_id, "created_by": email})
+    result = await db["projects"].delete_one(
+        {"project_id": project_id, "created_by": email}
+    )
+    
 
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Project not found or access denied")
+
+    # 🔥 Decrement usage count
+    await db["users"].update_one(
+        {"email": email},
+        {"$inc": {"subscription.usage.projects_used": -1}}
+    )
+
+    # Check if 0 left
+    user = await db["users"].find_one({"email": email})
+
+    if user["subscription"]["usage"]["projects_used"] <= 0:
+        await db["users"].update_one(
+            {"email": email},
+            {
+                "$set": {
+                    "onboarding.onboarding_status": "pending",
+                    "onboarding.current_step": 1,
+                    "onboarding.context.project_id": None
+                }
+            }
+        )
 
     return {"message": "Project deleted successfully"}
