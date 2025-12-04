@@ -1,76 +1,107 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Trash } from "lucide-react";
 
-interface Props {
-  variables: Record<string, any>;
-  setVariables: (v: Record<string, any>) => void;
+interface VariablesMap {
+  [key: string]: string;
 }
 
-export default function VariablesEditor({ variables, setVariables }: Props) {
-  const [newKey, setNewKey] = useState("");
-  const [newValue, setNewValue] = useState("");
+export default function VariablesEditor({
+  variables,
+  setVariables,
+}: {
+  variables: VariablesMap;
+  setVariables: (x: VariablesMap) => void;
+}) {
+  const [error, setError] = useState("");
 
   function addVariable() {
-    if (!newKey) return;
-    setVariables({ ...variables, [newKey]: newValue });
-    setNewKey("");
-    setNewValue("");
+    const newVars = { ...variables };
+    let newKey = "NEW_VAR";
+
+    // Avoid duplicates
+    let suffix = 1;
+    while (newVars[newKey]) {
+      newKey = `NEW_VAR_${suffix++}`;
+    }
+
+    newVars[newKey] = "";
+    setVariables(newVars);
+  }
+
+  function updateKey(oldKey: string, newKey: string) {
+    if (!newKey.trim()) {
+      setError("Variable key cannot be empty");
+      return;
+    }
+
+    if (oldKey !== newKey && variables[newKey]) {
+      setError("Duplicate variable key");
+      return;
+    }
+
+    setError("");
+    const updated = { ...variables };
+    updated[newKey] = updated[oldKey];
+    delete updated[oldKey];
+    setVariables(updated);
+  }
+
+  function updateValue(key: string, value: string) {
+    const updated = { ...variables };
+    updated[key] = value;
+    setVariables(updated);
   }
 
   function removeVariable(key: string) {
-    const copy = { ...variables };
-    delete copy[key];
-    setVariables(copy);
+    const updated = { ...variables };
+    delete updated[key];
+    setVariables(updated);
   }
 
   return (
-    <div className="border p-4 rounded-lg bg-gray-50 space-y-3">
-      <h3 className="font-medium">Variables</h3>
+    <div className="space-y-4">
+      <button
+        onClick={addVariable}
+        className="bg-purple-600 text-white px-3 py-1 rounded text-sm"
+      >
+        + Add Variable
+      </button>
 
-      {/* Add field */}
-      <div className="grid grid-cols-3 gap-2">
-        <input
-          value={newKey}
-          onChange={(e) => setNewKey(e.target.value)}
-          className="border rounded-md p-2"
-          placeholder="Key"
-        />
-        <input
-          value={newValue}
-          onChange={(e) => setNewValue(e.target.value)}
-          className="border rounded-md p-2"
-          placeholder="Value"
-        />
-        <button
-          onClick={addVariable}
-          className="bg-purple-600 hover:bg-purple-700 text-white rounded-md px-3"
-        >
-          <Plus size={16} />
-        </button>
-      </div>
+      {error && (
+        <p className="text-sm text-red-500 font-medium">{error}</p>
+      )}
 
-      {/* Existing variables */}
-      {Object.keys(variables).length === 0 && (
-        <p className="text-xs text-gray-500">No variables added.</p>
+      {Object.entries(variables).length === 0 && (
+        <p className="text-sm text-gray-500">No variables added yet.</p>
       )}
 
       {Object.entries(variables).map(([key, value]) => (
         <div
           key={key}
-          className="flex items-center justify-between border rounded-md bg-white p-2"
+          className="flex items-center gap-4 border rounded p-4 bg-gray-50"
         >
-          <span className="font-mono text-sm">{key}</span>
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-xs text-gray-600">{String(value)}</span>
-            <button
-              onClick={() => removeVariable(key)}
-              className="text-red-500 hover:text-red-700"
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
+          <input
+            className="border p-2 rounded w-1/3"
+            value={key}
+            onChange={(e) => updateKey(key, e.target.value)}
+            placeholder="KEY"
+          />
+
+          <input
+            className="border p-2 rounded w-1/3"
+            value={value}
+            onChange={(e) => updateValue(key, e.target.value)}
+            placeholder="value"
+          />
+
+          <button
+            onClick={() => removeVariable(key)}
+            className="text-red-500 hover:text-red-700"
+          >
+            <Trash size={18} />
+          </button>
         </div>
       ))}
     </div>

@@ -39,6 +39,11 @@ async def create_env(
     response_model=list[ProjectEnvironmentResponse],
     summary="List Environments",
 )
+@router.get(
+    "/",
+    response_model=list[ProjectEnvironmentResponse],
+    summary="List Environments",
+)
 async def get_envs(
     project_id: Optional[str] = Query(None),
     current_user=Depends(get_current_user)
@@ -62,12 +67,12 @@ async def get_env(
 # -------------------------------------------------------
 # UPDATE ENVIRONMENT
 # -------------------------------------------------------
-@router.put(
+@router.patch(
     "/{env_id}",
     response_model=ProjectEnvironmentResponse,
     summary="Update Environment",
 )
-async def update_env(
+async def patch_env(
     env_id: str,
     env: ProjectEnvironment,
     current_user=Depends(get_current_user)

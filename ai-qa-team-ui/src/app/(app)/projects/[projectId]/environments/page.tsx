@@ -1,25 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { Plus, Globe } from "lucide-react";
 import { apiFetch } from "@/utils/api";
 import type { Environment } from "@/types/environment";
 import EnvironmentCard from "@/components/environment/EnvironmentCard";
 import EnvironmentModal from "@/components/environment/EnvironmentModal";
 
-interface PageProps {
-  params: {
-    projectId: string;   // ✅ FIX — Next.js dynamic param
-  };
-}
-
-export default function EnvironmentsPage({ params }: PageProps) {
-  const project_id = params.projectId; // unified name
+export default function EnvironmentsPage() {
+  const params = useParams();
+  const project_id = params.projectId as string;
 
   const [environments, setEnvironments] = useState<Environment[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // unified modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [mode, setMode] = useState<"create" | "edit">("create");
   const [selectedEnv, setSelectedEnv] = useState<Environment | null>(null);
@@ -28,14 +22,16 @@ export default function EnvironmentsPage({ params }: PageProps) {
     setLoading(true);
 
     const res = await apiFetch(`/environments?project_id=${project_id}`);
+    console.log("ENV FETCH:", res);
 
     if (res.ok && Array.isArray(res.data)) {
-      // normalize MongoDB response (_id to id)
       const normalized = res.data.map((env: any) => ({
         ...env,
         id: env.id ?? env._id ?? "",
       }));
       setEnvironments(normalized);
+    } else {
+      console.error("Failed to fetch environments:", res);
     }
 
     setLoading(false);
@@ -66,12 +62,11 @@ export default function EnvironmentsPage({ params }: PageProps) {
 
   async function handleSaved() {
     await loadEnvironments();
-    handleCloseModal();   // ✅ modal closes automatically after save
+    handleCloseModal();
   }
 
   return (
     <div className="p-6 space-y-6">
-      {/* HEADER */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold">Project Environments</h2>
@@ -89,7 +84,6 @@ export default function EnvironmentsPage({ params }: PageProps) {
         </button>
       </div>
 
-      {/* LIST / EMPTY / LOADING */}
       {loading ? (
         <p>Loading environments...</p>
       ) : environments.length === 0 ? (
@@ -116,7 +110,6 @@ export default function EnvironmentsPage({ params }: PageProps) {
         </div>
       )}
 
-      {/* UNIFIED MODAL */}
       <EnvironmentModal
         open={modalOpen}
         mode={mode}

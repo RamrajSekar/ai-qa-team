@@ -1,22 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff, Plus, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Trash } from "lucide-react";
 
-export interface Credential {
+interface Credential {
   role: string;
   username: string;
   password: string;
-  notes?: string;
+  notes: string;
 }
 
-interface Props {
+export default function CredentialFields({
+  credentials,
+  setCredentials,
+}: {
   credentials: Credential[];
-  setCredentials: (c: Credential[]) => void;
-}
-
-export default function CredentialFields({ credentials, setCredentials }: Props) {
-  const [showPasswordIndex, setShowPasswordIndex] = useState<number | null>(null);
+  setCredentials: (x: Credential[]) => void;
+}) {
+  const [visibleIndex, setVisibleIndex] = useState<number | null>(null);
 
   function addCredential() {
     setCredentials([
@@ -25,107 +26,98 @@ export default function CredentialFields({ credentials, setCredentials }: Props)
     ]);
   }
 
-  function removeCredential(i: number) {
-    setCredentials(credentials.filter((_, idx) => idx !== i));
-  }
-
-  function updateField<T extends keyof Credential>(
-    i: number,
-    field: T,
-    value: Credential[T]
-  ) {
+  function update(i: number, field: keyof Credential, value: string) {
     const updated = [...credentials];
-    updated[i] = { ...updated[i], [field]: value };
+    updated[i][field] = value;
     setCredentials(updated);
   }
 
+  function remove(i: number) {
+    setCredentials(credentials.filter((_, idx) => idx !== i));
+  }
+
   return (
-    <div className="space-y-3 border p-4 rounded-lg bg-gray-50">
-      <div className="flex justify-between items-center">
-        <h3 className="font-medium">Credentials</h3>
-        <button
-          type="button"
-          onClick={addCredential}
-          className="flex items-center gap-1 text-sm bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded"
-        >
-          <Plus size={16} /> Add
-        </button>
-      </div>
+    <div className="space-y-4">
+      <button
+        onClick={addCredential}
+        className="bg-purple-600 text-white px-3 py-1 rounded text-sm"
+      >
+        + Add Credential
+      </button>
 
       {credentials.length === 0 && (
-        <p className="text-xs text-gray-500">No credentials added.</p>
+        <p className="text-sm text-gray-500">No credentials added yet.</p>
       )}
 
-      {credentials.map((c, i) => (
-        <div
-          key={i}
-          className="border rounded-lg p-3 bg-white shadow-sm relative"
-        >
-          {/* Remove button */}
+      {credentials.map((cred, i) => (
+        <div key={i} className="border rounded p-4 bg-gray-50 space-y-4 relative">
+          {/* DELETE BUTTON */}
           <button
-            type="button"
-            onClick={() => removeCredential(i)}
-            className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+            onClick={() => remove(i)}
+            className="absolute right-4 top-4 text-red-500 hover:text-red-700"
           >
-            <Trash2 size={16} />
+            <Trash size={18} />
           </button>
 
-          <div className="grid grid-cols-2 gap-3 mt-3">
+          {/* ROLE / USERNAME / PASSWORD */}
+          <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="text-xs font-medium">Role</label>
+              <label className="text-sm font-medium">Role</label>
               <input
-                className="border rounded-md w-full p-2 mt-1"
-                placeholder="admin, qa, customer"
-                value={c.role}
-                onChange={(e) => updateField(i, "role", e.target.value)}
+                className="border p-2 rounded w-full mt-1"
+                value={cred.role}
+                onChange={(e) => update(i, "role", e.target.value)}
+                placeholder="e.g. admin"
               />
             </div>
 
             <div>
-              <label className="text-xs font-medium">Username</label>
+              <label className="text-sm font-medium">Username</label>
               <input
-                className="border rounded-md w-full p-2 mt-1"
-                value={c.username}
-                onChange={(e) => updateField(i, "username", e.target.value)}
+                className="border p-2 rounded w-full mt-1"
+                value={cred.username}
+                onChange={(e) => update(i, "username", e.target.value)}
+                placeholder="username"
               />
             </div>
 
-            <div className="col-span-2">
-              <label className="text-xs font-medium flex items-center justify-between">
+            <div>
+              <label className="text-sm font-medium flex items-center justify-between">
                 Password
                 <button
                   type="button"
                   onClick={() =>
-                    setShowPasswordIndex(showPasswordIndex === i ? null : i)
+                    setVisibleIndex(visibleIndex === i ? null : i)
                   }
-                  className="text-gray-600 hover:text-gray-800"
                 >
-                  {showPasswordIndex === i ? (
-                    <EyeOff size={14} />
+                  {visibleIndex === i ? (
+                    <EyeOff size={16} />
                   ) : (
-                    <Eye size={14} />
+                    <Eye size={16} />
                   )}
                 </button>
               </label>
 
               <input
-                className="border rounded-md w-full p-2 mt-1"
-                type={showPasswordIndex === i ? "text" : "password"}
-                value={c.password}
-                onChange={(e) => updateField(i, "password", e.target.value)}
+                className="border p-2 rounded w-full mt-1"
+                type={visibleIndex === i ? "text" : "password"}
+                value={cred.password}
+                onChange={(e) => update(i, "password", e.target.value)}
+                placeholder="••••••••"
               />
             </div>
+          </div>
 
-            <div className="col-span-2">
-              <label className="text-xs font-medium">Notes (optional)</label>
-              <textarea
-                className="border rounded-md w-full p-2 mt-1"
-                placeholder="Any additional notes..."
-                value={c.notes}
-                rows={2}
-                onChange={(e) => updateField(i, "notes", e.target.value)}
-              />
-            </div>
+          {/* NOTES */}
+          <div>
+            <label className="text-sm font-medium">Notes</label>
+            <textarea
+              className="border p-2 rounded w-full mt-1"
+              rows={2}
+              value={cred.notes}
+              onChange={(e) => update(i, "notes", e.target.value)}
+              placeholder="Additional notes, tokens, etc."
+            />
           </div>
         </div>
       ))}

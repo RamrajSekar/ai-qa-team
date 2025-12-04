@@ -11,13 +11,16 @@ interface ApiResponse {
 }
 
 /* -----------------------------------------------------
-   UNIFIED apiFetch — every API call returns:
-   { ok, status, data }
+   UNIFIED & ROBUST apiFetch() — NEVER breaks UI
+   Handles:
+   ✔ Raw lists (FastAPI returns list)
+   ✔ JSON objects
+   ✔ { data: ... } formats
+   ✔ Empty responses
+   ✔ Token refresh flow
 ----------------------------------------------------- */
 export async function apiFetch(url: string, options: APIOptions = {}): Promise<ApiResponse> {
-  const path = url.startsWith("http")
-    ? url
-    : `${API_URL}${url}`;
+  const path = url.startsWith("http") ? url : `${API_URL}${url}`;
 
   const opts: RequestInit = {
     credentials: "include",
@@ -30,9 +33,11 @@ export async function apiFetch(url: string, options: APIOptions = {}): Promise<A
 
   let res = await fetch(path, opts);
 
-  // Token expired → attempt refresh
+  /* ----------------------------
+     AUTO REFRESH TOKEN FLOW
+  ---------------------------- */
   if (res.status === 401 && !options.retry) {
-    console.log("🔄 Access token expired → Attempting refresh...");
+    console.log("🔄 Access token expired → refreshing...");
 
     const refresh = await fetch(`${API_URL}/auth/refresh`, {
       method: "POST",
@@ -40,24 +45,49 @@ export async function apiFetch(url: string, options: APIOptions = {}): Promise<A
     });
 
     if (refresh.ok) {
-      console.log("🔐 Refresh OK → retrying original request...");
+      console.log("🔐 Refresh success → retrying original request...");
       return apiFetch(path, { ...options, retry: true });
     }
 
-    console.log("❌ Refresh failed — returning original response.");
+    console.log("❌ Refresh failed, user must login.");
   }
 
-  // Always return unified data structure
-  let data = null;
+  /* ----------------------------
+     SAFE JSON PARSING
+  ---------------------------- */
+  let raw: any = null;
   try {
-    data = await res.json();
+    raw = await res.json();
   } catch {
-    data = null;
+    raw = null;
   }
 
+  /* ----------------------------
+     UNIFIED DATA NORMALIZATION
+  ---------------------------- */
+
+  // Case 1: FastAPI returns raw list → keep as data
+  if (Array.isArray(raw)) {
+    return {
+      ok: res.ok,
+      status: res.status,
+      data: raw,
+    };
+  }
+
+  // Case 2: FastAPI returns an object with data wrapper
+  if (raw && typeof raw === "object" && "data" in raw) {
+    return {
+      ok: res.ok,
+      status: res.status,
+      data: raw.data,
+    };
+  }
+
+  // Case 3: regular object or null
   return {
     ok: res.ok,
     status: res.status,
-    data,
+    data: raw,
   };
 }

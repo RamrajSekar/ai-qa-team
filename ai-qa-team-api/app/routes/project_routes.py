@@ -52,7 +52,8 @@ async def create_project(
                 "onboarding.steps.project": True,
                 "onboarding.current_step": 2,
                 "onboarding.onboarding_status": "in_progress",
-                "onboarding.context.project_id": data["project_id"]
+                "onboarding.context.project_id": data["project_id"],
+                
             }
         }
     )

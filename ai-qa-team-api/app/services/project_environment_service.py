@@ -10,36 +10,78 @@ from app.services.story_service import get_next_sequence
 # CREATE ENVIRONMENT
 # -------------------------------------------------------
 async def create_environment(env: ProjectEnvironment, current_user):
-    # Auto-generate environment ID
+    # Generate sequential environment ID like ENV001
     new_env_id = await get_next_sequence("env_id", "ENV")
 
-    env_dict = env.model_dump()
+    # Convert incoming model → dictionary but EXCLUDE env_id
+    env_dict = env.model_dump(exclude={"env_id"})
+
+    # Inject system-generated fields
     env_dict["env_id"] = new_env_id
     env_dict["created_by"] = current_user["email"]
 
+    # Insert into DB
     result = await db["environments"].insert_one(env_dict)
+
+    # Add public-facing ID
     env_dict["id"] = str(result.inserted_id)
 
+    # --- Update Onboarding State ---
+    await db["users"].update_one(
+        {"email": current_user["email"]},
+        {
+            "$set": {
+                "onboarding.context.environment_id": new_env_id,
+                "onboarding.steps.environment": True,
+                "onboarding.current_step": 3
+            }
+        }
+    )
+
+    # Return response model
     return ProjectEnvironmentResponse(**env_dict)
 
 # -------------------------------------------------------
 # LIST ENVIRONMENTS
 # -------------------------------------------------------
+# async def list_environments(project_id: str | None, current_user):
+#     query = {"created_by": current_user["email"]}
+
+#     if project_id:
+#         query["project_id"] = project_id
+
+#     cursor = db["environments"].find(query)
+#     docs = await cursor.to_list(100)
+
+#     return [
+#         ProjectEnvironmentResponse(
+#             **{**doc, "id": str(doc["_id"])}
+#         )
+#         for doc in docs
+#     ]
+
 async def list_environments(project_id: str | None, current_user):
+    print("DEBUG: list_environments called")
+    print("DEBUG: project_id =", project_id)
+    print("DEBUG: current_user =", current_user["email"])
+
     query = {"created_by": current_user["email"]}
 
     if project_id:
         query["project_id"] = project_id
 
-    cursor = db["environments"].find(query)
-    docs = await cursor.to_list(100)
+    print("DEBUG: MongoDB Query =", query)
 
-    return [
-        ProjectEnvironmentResponse(
-            **{**doc, "id": str(doc["_id"])}
-        )
-        for doc in docs
-    ]
+    cursor = db["environments"].find(query)
+    results = await cursor.to_list(100)
+
+    print("DEBUG: RAW RESULTS FROM DB =", results)
+
+    parsed = [{**doc, "id": str(doc["_id"])} for doc in results]
+
+    print("DEBUG: PARSED ENVIRONMENTS RETURNED =", parsed)
+
+    return parsed
 
 # -------------------------------------------------------
 # GET SINGLE ENVIRONMENT

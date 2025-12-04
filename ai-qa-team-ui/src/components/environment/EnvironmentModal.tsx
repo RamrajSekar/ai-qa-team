@@ -1,101 +1,99 @@
 "use client";
 
-import { useState } from "react";
-import { apiFetch } from "@/utils/api";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import CredentialFields from "./CredentialFields";
+import VariablesEditor from "./VariablesEditor";
 
-const tabs = ["General", "Auth", "Credentials", "Variables", "Execution"];
+// ----------------------------------------
+// TABS
+// ----------------------------------------
+const TABS = ["General", "Auth", "Credentials", "Variables", "Execution"];
 
+// ----------------------------------------
+// MAIN MODAL COMPONENT
+// ----------------------------------------
 export default function EnvironmentModal({
   open,
   onClose,
-  mode,
+  mode,            // "create" | "edit"
   projectId,
   env,
-  onSaved,
+  onSaved
 }: any) {
+
+  // -------------------------------
+  // Unified form object
+  // -------------------------------
+  const [form, setForm] = useState({
+    env_type: "",
+    base_url: "",
+    api_base_url: "",
+    auth_type: "none",
+    auth_token: "",
+    credentials: [],
+    variables: {},
+    default_browser: "chromium",
+    default_headed: false,
+    default_timeout_ms: 10000,
+  });
+
   const [activeTab, setActiveTab] = useState("General");
 
-  // Main fields
-  const [envType, setEnvType] = useState(env?.env_type || "");
-  const [baseUrl, setBaseUrl] = useState(env?.base_url || "");
-  const [apiBaseUrl, setApiBaseUrl] = useState(env?.api_base_url || "");
+  // -----------------------------------
+  // Sync form values when editing
+  // -----------------------------------
+  useEffect(() => {
+    if (open && mode === "edit" && env) {
+      setForm({
+        env_type: env.env_type || "",
+        base_url: env.base_url || "",
+        api_base_url: env.api_base_url || "",
+        auth_type: env.auth_type || "none",
+        auth_token: env.auth_token || "",
+        credentials: env.credentials || [],
+        variables: env.variables || {},
+        default_browser: env.default_browser || "chromium",
+        default_headed: env.default_headed || false,
+        default_timeout_ms: env.default_timeout_ms || 10000,
+      });
+      setActiveTab("General");
+    }
 
-  // Auth fields
-  const [authType, setAuthType] = useState(env?.auth_type || "none");
-  const [authToken, setAuthToken] = useState(env?.auth_token || "");
-
-  // Credentials
-  const [credentials, setCredentials] = useState(env?.credentials || []);
-
-  // Variables
-  const [variables, setVariables] = useState(env?.variables || {});
-
-  // Execution
-  const [defaultBrowser, setDefaultBrowser] = useState(
-    env?.default_browser || "chromium"
-  );
-  const [defaultHeaded, setDefaultHeaded] = useState(
-    env?.default_headed || false
-  );
-  const [defaultTimeoutMs, setDefaultTimeoutMs] = useState(
-    env?.default_timeout_ms || 10000
-  );
+    if (open && mode === "create") {
+      setForm({
+        env_type: "",
+        base_url: "",
+        api_base_url: "",
+        auth_type: "none",
+        auth_token: "",
+        credentials: [],
+        variables: {},
+        default_browser: "chromium",
+        default_headed: false,
+        default_timeout_ms: 10000,
+      });
+      setActiveTab("General");
+    }
+  }, [open, mode, env]);
 
   if (!open) return null;
 
-  function addCredential() {
-    setCredentials([
-      ...credentials,
-      { role: "", username: "", password: "", notes: "" },
-    ]);
+  // -----------------------------------
+  // Update form fields
+  // -----------------------------------
+  function updateField(key: string, value: any) {
+    setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  function updateCredential(i: number, field: string, value: any) {
-    const updated = [...credentials];
-    updated[i][field] = value;
-    setCredentials(updated);
-  }
-
-  function removeCredential(i: number) {
-  setCredentials(
-    credentials.filter((_: unknown, idx: number) => idx !== i)
-  );
-}
-
-  function addVariable() {
-    setVariables({ ...variables, "": "" });
-  }
-
-  function updateVariable(oldKey: string, key: string, value: string) {
-    const updated = { ...variables };
-    delete updated[oldKey];
-    updated[key] = value;
-    setVariables(updated);
-  }
-
-  function removeVariable(key: string) {
-    const updated = { ...variables };
-    delete updated[key];
-    setVariables(updated);
-  }
-
+  // -----------------------------------
+  // Save
+  // -----------------------------------
   async function handleSave() {
     const payload = {
       project_id: projectId,
-      env_type: envType,
-      base_url: baseUrl,
-      api_base_url: apiBaseUrl,
-
-      auth_type: authType,
-      auth_token: authType === "bearer" ? authToken : null,
-
-      credentials,
-      variables,
-
-      default_browser: defaultBrowser,
-      default_headed: defaultHeaded,
-      default_timeout_ms: defaultTimeoutMs,
+      ...form,
+      auth_token: form.auth_type === "bearer" ? form.auth_token : null,
     };
 
     const url =
@@ -105,8 +103,10 @@ export default function EnvironmentModal({
 
     const method = mode === "edit" ? "PATCH" : "POST";
 
-    const res = await apiFetch(url, {
+    const res = await fetch(process.env.NEXT_PUBLIC_API_URL + url, {
       method,
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
 
@@ -119,7 +119,7 @@ export default function EnvironmentModal({
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
       <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
+        initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         className="bg-white rounded-xl shadow-2xl w-[900px] max-h-[90vh] overflow-hidden flex flex-col"
       >
@@ -128,17 +128,15 @@ export default function EnvironmentModal({
           <h2 className="text-xl font-semibold">
             {mode === "edit" ? "Edit Environment" : "Create Environment"}
           </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-black text-xl"
-          >
+
+          <button onClick={onClose} className="text-gray-500 hover:text-black text-xl">
             ✕
           </button>
         </div>
 
         {/* TAB BAR */}
         <div className="px-6 py-3 border-b flex gap-4 text-sm font-medium">
-          {tabs.map((t) => (
+          {TABS.map((t) => (
             <button
               key={t}
               onClick={() => setActiveTab(t)}
@@ -158,241 +156,33 @@ export default function EnvironmentModal({
           <AnimatePresence mode="wait">
             {/* GENERAL */}
             {activeTab === "General" && (
-              <motion.div
-                key="general"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="space-y-4"
-              >
-                <div>
-                  <label className="text-sm font-medium">Environment Name</label>
-                  <input
-                    value={envType}
-                    onChange={(e) => setEnvType(e.target.value)}
-                    className="w-full border p-2 rounded mt-1"
-                    placeholder="qa / staging / client-dev / integration"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <label className="text-sm font-medium">Base URL</label>
-                    <input
-                      value={baseUrl}
-                      onChange={(e) => setBaseUrl(e.target.value)}
-                      className="w-full border p-2 rounded mt-1"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium">API Base URL</label>
-                    <input
-                      value={apiBaseUrl}
-                      onChange={(e) => setApiBaseUrl(e.target.value)}
-                      className="w-full border p-2 rounded mt-1"
-                    />
-                  </div>
-                </div>
-              </motion.div>
+              <TabGeneral form={form} updateField={updateField} />
             )}
 
             {/* AUTH */}
             {activeTab === "Auth" && (
-              <motion.div
-                key="auth"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="space-y-4"
-              >
-                <label className="text-sm font-medium">Auth Type</label>
-                <select
-                  value={authType}
-                  onChange={(e) => setAuthType(e.target.value)}
-                  className="border p-2 rounded"
-                >
-                  <option value="none">None</option>
-                  <option value="basic">Basic Auth</option>
-                  <option value="bearer">Bearer Token</option>
-                </select>
-
-                {authType === "bearer" && (
-                  <div>
-                    <label className="text-sm font-medium">Bearer Token</label>
-                    <input
-                      value={authToken}
-                      onChange={(e) => setAuthToken(e.target.value)}
-                      className="w-full border p-2 rounded mt-1"
-                    />
-                  </div>
-                )}
-              </motion.div>
+              <TabAuth form={form} updateField={updateField} />
             )}
 
             {/* CREDENTIALS */}
             {activeTab === "Credentials" && (
-              <motion.div
-                key="creds"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="space-y-4"
-              >
-                <button
-                  onClick={addCredential}
-                  className="bg-purple-600 text-white px-3 py-1 rounded text-sm"
-                >
-                  + Add Credential
-                </button>
-
-                {credentials.map((cred: any, i: number) => (
-                  <div
-                    key={i}
-                    className="border rounded p-4 bg-gray-50 space-y-2"
-                  >
-                    <div className="grid grid-cols-3 gap-4">
-                      <input
-                        className="border p-2 rounded"
-                        placeholder="Role"
-                        value={cred.role}
-                        onChange={(e) =>
-                          updateCredential(i, "role", e.target.value)
-                        }
-                      />
-                      <input
-                        className="border p-2 rounded"
-                        placeholder="Username"
-                        value={cred.username}
-                        onChange={(e) =>
-                          updateCredential(i, "username", e.target.value)
-                        }
-                      />
-                      <input
-                        type="password"
-                        className="border p-2 rounded"
-                        placeholder="Password"
-                        value={cred.password}
-                        onChange={(e) =>
-                          updateCredential(i, "password", e.target.value)
-                        }
-                      />
-                    </div>
-
-                    <textarea
-                      className="border p-2 rounded w-full"
-                      placeholder="Notes"
-                      value={cred.notes}
-                      onChange={(e) =>
-                        updateCredential(i, "notes", e.target.value)
-                      }
-                    />
-
-                    <button
-                      className="text-red-500 text-sm"
-                      onClick={() => removeCredential(i)}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </motion.div>
+              <CredentialFields
+                credentials={form.credentials}
+                setCredentials={(v: any) => updateField("credentials", v)}
+              />
             )}
 
             {/* VARIABLES */}
             {activeTab === "Variables" && (
-              <motion.div
-                key="vars"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="space-y-4"
-              >
-                <button
-                  onClick={addVariable}
-                  className="bg-purple-600 text-white px-3 py-1 rounded text-sm"
-                >
-                  + Add Variable
-                </button>
-
-                {Object.entries(variables).map(([key, val]) => (
-                  <div key={key} className="flex gap-3 items-center">
-                    <input
-                      className="border p-2 rounded w-1/3"
-                      defaultValue={key}
-                      onChange={(e) =>
-                        updateVariable(key, e.target.value, val as string)
-                      }
-                    />
-                    <input
-                      className="border p-2 rounded w-1/3"
-                      defaultValue={val as string}
-                      onChange={(e) =>
-                        updateVariable(key, key, e.target.value)
-                      }
-                    />
-                    <button
-                      className="text-red-500 text-sm"
-                      onClick={() => removeVariable(key)}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </motion.div>
+              <VariablesEditor
+                variables={form.variables}
+                setVariables={(v: any) => updateField("variables", v)}
+              />
             )}
 
-            {/* EXECUTION */}
+            {/* EXEC */}
             {activeTab === "Execution" && (
-              <motion.div
-                key="exec"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="space-y-4"
-              >
-                <div className="grid grid-cols-3 gap-6">
-                  <div>
-                    <label className="text-sm font-medium">
-                      Default Browser
-                    </label>
-                    <select
-                      value={defaultBrowser}
-                      onChange={(e) => setDefaultBrowser(e.target.value)}
-                      className="border p-2 rounded w-full mt-1"
-                    >
-                      <option value="chromium">Chromium</option>
-                      <option value="firefox">Firefox</option>
-                      <option value="webkit">Webkit</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium flex gap-2 items-center">
-                      Headed Mode
-                      <input
-                        type="checkbox"
-                        checked={defaultHeaded}
-                        onChange={(e) => setDefaultHeaded(e.target.checked)}
-                      />
-                    </label>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium">
-                      Timeout (ms)
-                    </label>
-                    <input
-                      type="number"
-                      className="border p-2 rounded w-full mt-1"
-                      value={defaultTimeoutMs}
-                      onChange={(e) =>
-                        setDefaultTimeoutMs(Number(e.target.value))
-                      }
-                    />
-                  </div>
-                </div>
-              </motion.div>
+              <TabExecution form={form} updateField={updateField} />
             )}
           </AnimatePresence>
         </div>
@@ -405,10 +195,10 @@ export default function EnvironmentModal({
 
           <button
             onClick={handleSave}
-            disabled={!envType || !baseUrl}
+            disabled={!form.env_type || !form.base_url}
             className={`px-4 py-2 rounded text-white 
               ${
-                envType && baseUrl
+                form.env_type && form.base_url
                   ? "bg-purple-600 hover:bg-purple-700"
                   : "bg-gray-400 cursor-not-allowed"
               }`}
@@ -418,5 +208,140 @@ export default function EnvironmentModal({
         </div>
       </motion.div>
     </div>
+  );
+}
+
+//
+// ------------------------------------------------------
+// SUB COMPONENTS
+// ------------------------------------------------------
+//
+
+function TabGeneral({ form, updateField }: any) {
+  return (
+    <motion.div
+      key="general"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="space-y-4"
+    >
+      <div>
+        <label className="text-sm font-medium">Environment Name</label>
+        <input
+          value={form.env_type}
+          onChange={(e) => updateField("env_type", e.target.value)}
+          placeholder="qa / staging / prod"
+          className="w-full border p-2 rounded mt-1"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-6">
+        <div>
+          <label className="text-sm font-medium">Base URL</label>
+          <input
+            value={form.base_url}
+            onChange={(e) => updateField("base_url", e.target.value)}
+            className="w-full border p-2 rounded mt-1"
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">API Base URL</label>
+          <input
+            value={form.api_base_url}
+            onChange={(e) => updateField("api_base_url", e.target.value)}
+            className="w-full border p-2 rounded mt-1"
+          />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function TabAuth({ form, updateField }: any) {
+  return (
+    <motion.div
+      key="auth"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="space-y-4"
+    >
+      <label className="text-sm font-medium">Auth Type</label>
+
+      <select
+        value={form.auth_type}
+        onChange={(e) => updateField("auth_type", e.target.value)}
+        className="border p-2 rounded"
+      >
+        <option value="none">None</option>
+        <option value="basic">Basic Auth</option>
+        <option value="bearer">Bearer Token</option>
+      </select>
+
+      {form.auth_type === "bearer" && (
+        <div>
+          <label className="text-sm font-medium">Bearer Token</label>
+          <input
+            value={form.auth_token}
+            onChange={(e) => updateField("auth_token", e.target.value)}
+            className="w-full border p-2 rounded mt-1"
+          />
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+function TabExecution({ form, updateField }: any) {
+  return (
+    <motion.div
+      key="exec"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="space-y-4"
+    >
+      <div className="grid grid-cols-3 gap-6">
+        <div>
+          <label className="text-sm font-medium">Default Browser</label>
+          <select
+            value={form.default_browser}
+            onChange={(e) => updateField("default_browser", e.target.value)}
+            className="border p-2 rounded w-full mt-1"
+          >
+            <option value="chromium">Chromium</option>
+            <option value="firefox">Firefox</option>
+            <option value="webkit">Webkit</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium flex gap-2 items-center">
+            Headed
+            <input
+              type="checkbox"
+              checked={form.default_headed}
+              onChange={(e) =>
+                updateField("default_headed", e.target.checked)
+              }
+            />
+          </label>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">Timeout (ms)</label>
+          <input
+            type="number"
+            className="border p-2 rounded w-full mt-1"
+            value={form.default_timeout_ms}
+            onChange={(e) =>
+              updateField("default_timeout_ms", Number(e.target.value))
+            }
+          />
+        </div>
+      </div>
+    </motion.div>
   );
 }
