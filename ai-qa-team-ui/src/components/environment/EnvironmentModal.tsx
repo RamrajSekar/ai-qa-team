@@ -1,288 +1,422 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { useState } from "react";
 import { apiFetch } from "@/utils/api";
-import { Environment } from "@/types/environment";
+import { motion, AnimatePresence } from "framer-motion";
 
-export interface EnvironmentModalProps {
-  open: boolean;
-  mode: "create" | "edit";
-  projectId: string;
-  env: Environment | null;
-  onClose: () => void;
-  onSaved: () => Promise<void>;
-}
+const tabs = ["General", "Auth", "Credentials", "Variables", "Execution"];
 
 export default function EnvironmentModal({
   open,
+  onClose,
   mode,
   projectId,
   env,
-  onClose,
   onSaved,
-}: EnvironmentModalProps) {
-  const [loading, setLoading] = useState(false);
+}: any) {
+  const [activeTab, setActiveTab] = useState("General");
 
-  const [envType, setEnvType] = useState<Environment["env_type"]>("qa");
-  const [baseUrl, setBaseUrl] = useState("");
-  const [apiBaseUrl, setApiBaseUrl] = useState("");
+  // Main fields
+  const [envType, setEnvType] = useState(env?.env_type || "");
+  const [baseUrl, setBaseUrl] = useState(env?.base_url || "");
+  const [apiBaseUrl, setApiBaseUrl] = useState(env?.api_base_url || "");
 
-  const [authType, setAuthType] = useState<Environment["auth_type"]>("none");
-  const [authToken, setAuthToken] = useState("");
+  // Auth fields
+  const [authType, setAuthType] = useState(env?.auth_type || "none");
+  const [authToken, setAuthToken] = useState(env?.auth_token || "");
 
-  const [defaultBrowser, setDefaultBrowser] =
-    useState<Environment["default_browser"]>("chromium");
+  // Credentials
+  const [credentials, setCredentials] = useState(env?.credentials || []);
 
-  const [defaultHeaded, setDefaultHeaded] = useState(false);
-  const [timeoutMs, setTimeoutMs] = useState(10000);
+  // Variables
+  const [variables, setVariables] = useState(env?.variables || {});
 
-  const [credentials, setCredentials] = useState<Environment["credentials"]>([]);
-  const [variables, setVariables] = useState<[string, string][]>([]);
+  // Execution
+  const [defaultBrowser, setDefaultBrowser] = useState(
+    env?.default_browser || "chromium"
+  );
+  const [defaultHeaded, setDefaultHeaded] = useState(
+    env?.default_headed || false
+  );
+  const [defaultTimeoutMs, setDefaultTimeoutMs] = useState(
+    env?.default_timeout_ms || 10000
+  );
 
-  // LOAD EXISTING ENVIRONMENT (EDIT MODE)
-  useEffect(() => {
-    if (!env) return;
+  if (!open) return null;
 
-    setEnvType(env.env_type);
-    setBaseUrl(env.base_url);
-    setApiBaseUrl(env.api_base_url || "");
+  function addCredential() {
+    setCredentials([
+      ...credentials,
+      { role: "", username: "", password: "", notes: "" },
+    ]);
+  }
 
-    setAuthType(env.auth_type);
-    setAuthToken(env.auth_token || "");
+  function updateCredential(i: number, field: string, value: any) {
+    const updated = [...credentials];
+    updated[i][field] = value;
+    setCredentials(updated);
+  }
 
-    setDefaultBrowser(env.default_browser);
-    setDefaultHeaded(env.default_headed);
-    setTimeoutMs(env.default_timeout_ms);
+  function removeCredential(i: number) {
+  setCredentials(
+    credentials.filter((_: unknown, idx: number) => idx !== i)
+  );
+}
 
-    setCredentials(env.credentials || []);
+  function addVariable() {
+    setVariables({ ...variables, "": "" });
+  }
 
-    setVariables(
-      Object.entries(env.variables || {}).map(([k, v]) => [k, String(v)])
-    );
-  }, [env]);
+  function updateVariable(oldKey: string, key: string, value: string) {
+    const updated = { ...variables };
+    delete updated[oldKey];
+    updated[key] = value;
+    setVariables(updated);
+  }
 
-  async function save() {
-    setLoading(true);
+  function removeVariable(key: string) {
+    const updated = { ...variables };
+    delete updated[key];
+    setVariables(updated);
+  }
 
-    const payload: Environment = {
-      id: env?.id ?? "",
+  async function handleSave() {
+    const payload = {
       project_id: projectId,
-      env_id: env?.env_id ?? "",
       env_type: envType,
       base_url: baseUrl,
       api_base_url: apiBaseUrl,
+
       auth_type: authType,
-      auth_token: authType !== "none" ? authToken : undefined,
+      auth_token: authType === "bearer" ? authToken : null,
+
       credentials,
+      variables,
+
       default_browser: defaultBrowser,
       default_headed: defaultHeaded,
-      default_timeout_ms: timeoutMs,
-      variables: Object.fromEntries(variables.filter(([k]) => k.trim() !== "")),
+      default_timeout_ms: defaultTimeoutMs,
     };
 
     const url =
       mode === "edit"
-        ? `${process.env.NEXT_PUBLIC_API_URL}/environments/${env?.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/environments`;
+        ? `/environments/${env.env_id}`
+        : `/environments`;
+
+    const method = mode === "edit" ? "PATCH" : "POST";
 
     const res = await apiFetch(url, {
-      method: mode === "edit" ? "PUT" : "POST",
+      method,
       body: JSON.stringify(payload),
     });
 
-    setLoading(false);
-
     if (res.ok) {
-      await onSaved();
+      onSaved();
       onClose();
     }
   }
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white w-full max-w-3xl rounded-lg shadow-xl p-6 overflow-y-auto max-h-[90vh]">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">
-            {mode === "create" ? "Create Environment" : "Edit Environment"}
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-white rounded-xl shadow-2xl w-[900px] max-h-[90vh] overflow-hidden flex flex-col"
+      >
+        {/* HEADER */}
+        <div className="flex justify-between items-center px-6 py-4 border-b">
+          <h2 className="text-xl font-semibold">
+            {mode === "edit" ? "Edit Environment" : "Create Environment"}
           </h2>
-
-          <button onClick={onClose}>
-            <X size={22} />
-          </button>
-        </div>
-
-        {/* --- FORM START --- */}
-        
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="label">Environment Type</label>
-            <select
-              value={envType}
-              onChange={(e) =>
-                setEnvType(e.target.value as Environment["env_type"])
-              }
-              className="input"
-            >
-              <option value="local">Local</option>
-              <option value="dev">Dev</option>
-              <option value="qa">QA</option>
-              <option value="staging">Staging</option>
-              <option value="prod">Prod</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="label">Base URL</label>
-            <input
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
-              className="input"
-            />
-          </div>
-
-          <div>
-            <label className="label">API Base URL</label>
-            <input
-              value={apiBaseUrl}
-              onChange={(e) => setApiBaseUrl(e.target.value)}
-              className="input"
-            />
-          </div>
-
-          <div>
-            <label className="label">Auth Type</label>
-            <select
-              value={authType}
-              onChange={(e) =>
-                setAuthType(e.target.value as Environment["auth_type"])
-              }
-              className="input"
-            >
-              <option value="none">None</option>
-              <option value="basic">Basic</option>
-              <option value="bearer">Bearer Token</option>
-            </select>
-          </div>
-
-          {authType !== "none" && (
-            <div className="col-span-2">
-              <label className="label">Auth Token</label>
-              <input
-                value={authToken}
-                onChange={(e) => setAuthToken(e.target.value)}
-                className="input"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* --- CREDENTIALS --- */}
-        <div className="mt-8">
-          <h3 className="font-semibold text-lg mb-2">Credentials</h3>
-
-          {credentials.map((c, idx) => (
-            <div key={idx} className="border p-3 rounded-md mb-3">
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  className="input"
-                  value={c.username}
-                  onChange={(e) => {
-                    const copy = [...credentials];
-                    copy[idx].username = e.target.value;
-                    setCredentials(copy);
-                  }}
-                  placeholder="Username"
-                />
-
-                <input
-                  className="input"
-                  value={c.password}
-                  onChange={(e) => {
-                    const copy = [...credentials];
-                    copy[idx].password = e.target.value;
-                    setCredentials(copy);
-                  }}
-                  placeholder="Password"
-                />
-              </div>
-
-              <input
-                className="input mt-2"
-                value={c.notes || ""}
-                onChange={(e) => {
-                  const copy = [...credentials];
-                  copy[idx].notes = e.target.value;
-                  setCredentials(copy);
-                }}
-                placeholder="Notes (optional)"
-              />
-            </div>
-          ))}
-
           <button
-            onClick={() =>
-              setCredentials([
-                ...credentials,
-                { role: "qa", username: "", password: "" },
-              ])
-            }
-            className="btn-secondary"
+            onClick={onClose}
+            className="text-gray-500 hover:text-black text-xl"
           >
-            Add Credential
+            ✕
           </button>
         </div>
 
-        {/* --- VARIABLES --- */}
-        <div className="mt-8">
-          <h3 className="font-semibold text-lg mb-2">Variables</h3>
-
-          {variables.map(([k, v], idx) => (
-            <div key={idx} className="flex gap-2 mb-2">
-              <input
-                value={k}
-                onChange={(e) => {
-                  const copy = [...variables];
-                  copy[idx][0] = e.target.value;
-                  setVariables(copy);
-                }}
-                className="input"
-                placeholder="Key"
-              />
-              <input
-                value={v}
-                onChange={(e) => {
-                  const copy = [...variables];
-                  copy[idx][1] = e.target.value;
-                  setVariables(copy);
-                }}
-                className="input"
-                placeholder="Value"
-              />
-            </div>
+        {/* TAB BAR */}
+        <div className="px-6 py-3 border-b flex gap-4 text-sm font-medium">
+          {tabs.map((t) => (
+            <button
+              key={t}
+              onClick={() => setActiveTab(t)}
+              className={`pb-2 ${
+                activeTab === t
+                  ? "text-purple-600 border-b-2 border-purple-600"
+                  : "text-gray-500 hover:text-black"
+              }`}
+            >
+              {t}
+            </button>
           ))}
+        </div>
 
-          <button
-            onClick={() => setVariables([...variables, ["", ""]])}
-            className="btn-secondary"
-          >
-            Add Variable
-          </button>
+        {/* CONTENT */}
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+          <AnimatePresence mode="wait">
+            {/* GENERAL */}
+            {activeTab === "General" && (
+              <motion.div
+                key="general"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="text-sm font-medium">Environment Name</label>
+                  <input
+                    value={envType}
+                    onChange={(e) => setEnvType(e.target.value)}
+                    className="w-full border p-2 rounded mt-1"
+                    placeholder="qa / staging / client-dev / integration"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-sm font-medium">Base URL</label>
+                    <input
+                      value={baseUrl}
+                      onChange={(e) => setBaseUrl(e.target.value)}
+                      className="w-full border p-2 rounded mt-1"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">API Base URL</label>
+                    <input
+                      value={apiBaseUrl}
+                      onChange={(e) => setApiBaseUrl(e.target.value)}
+                      className="w-full border p-2 rounded mt-1"
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* AUTH */}
+            {activeTab === "Auth" && (
+              <motion.div
+                key="auth"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="space-y-4"
+              >
+                <label className="text-sm font-medium">Auth Type</label>
+                <select
+                  value={authType}
+                  onChange={(e) => setAuthType(e.target.value)}
+                  className="border p-2 rounded"
+                >
+                  <option value="none">None</option>
+                  <option value="basic">Basic Auth</option>
+                  <option value="bearer">Bearer Token</option>
+                </select>
+
+                {authType === "bearer" && (
+                  <div>
+                    <label className="text-sm font-medium">Bearer Token</label>
+                    <input
+                      value={authToken}
+                      onChange={(e) => setAuthToken(e.target.value)}
+                      className="w-full border p-2 rounded mt-1"
+                    />
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* CREDENTIALS */}
+            {activeTab === "Credentials" && (
+              <motion.div
+                key="creds"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="space-y-4"
+              >
+                <button
+                  onClick={addCredential}
+                  className="bg-purple-600 text-white px-3 py-1 rounded text-sm"
+                >
+                  + Add Credential
+                </button>
+
+                {credentials.map((cred: any, i: number) => (
+                  <div
+                    key={i}
+                    className="border rounded p-4 bg-gray-50 space-y-2"
+                  >
+                    <div className="grid grid-cols-3 gap-4">
+                      <input
+                        className="border p-2 rounded"
+                        placeholder="Role"
+                        value={cred.role}
+                        onChange={(e) =>
+                          updateCredential(i, "role", e.target.value)
+                        }
+                      />
+                      <input
+                        className="border p-2 rounded"
+                        placeholder="Username"
+                        value={cred.username}
+                        onChange={(e) =>
+                          updateCredential(i, "username", e.target.value)
+                        }
+                      />
+                      <input
+                        type="password"
+                        className="border p-2 rounded"
+                        placeholder="Password"
+                        value={cred.password}
+                        onChange={(e) =>
+                          updateCredential(i, "password", e.target.value)
+                        }
+                      />
+                    </div>
+
+                    <textarea
+                      className="border p-2 rounded w-full"
+                      placeholder="Notes"
+                      value={cred.notes}
+                      onChange={(e) =>
+                        updateCredential(i, "notes", e.target.value)
+                      }
+                    />
+
+                    <button
+                      className="text-red-500 text-sm"
+                      onClick={() => removeCredential(i)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </motion.div>
+            )}
+
+            {/* VARIABLES */}
+            {activeTab === "Variables" && (
+              <motion.div
+                key="vars"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="space-y-4"
+              >
+                <button
+                  onClick={addVariable}
+                  className="bg-purple-600 text-white px-3 py-1 rounded text-sm"
+                >
+                  + Add Variable
+                </button>
+
+                {Object.entries(variables).map(([key, val]) => (
+                  <div key={key} className="flex gap-3 items-center">
+                    <input
+                      className="border p-2 rounded w-1/3"
+                      defaultValue={key}
+                      onChange={(e) =>
+                        updateVariable(key, e.target.value, val as string)
+                      }
+                    />
+                    <input
+                      className="border p-2 rounded w-1/3"
+                      defaultValue={val as string}
+                      onChange={(e) =>
+                        updateVariable(key, key, e.target.value)
+                      }
+                    />
+                    <button
+                      className="text-red-500 text-sm"
+                      onClick={() => removeVariable(key)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </motion.div>
+            )}
+
+            {/* EXECUTION */}
+            {activeTab === "Execution" && (
+              <motion.div
+                key="exec"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="space-y-4"
+              >
+                <div className="grid grid-cols-3 gap-6">
+                  <div>
+                    <label className="text-sm font-medium">
+                      Default Browser
+                    </label>
+                    <select
+                      value={defaultBrowser}
+                      onChange={(e) => setDefaultBrowser(e.target.value)}
+                      className="border p-2 rounded w-full mt-1"
+                    >
+                      <option value="chromium">Chromium</option>
+                      <option value="firefox">Firefox</option>
+                      <option value="webkit">Webkit</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium flex gap-2 items-center">
+                      Headed Mode
+                      <input
+                        type="checkbox"
+                        checked={defaultHeaded}
+                        onChange={(e) => setDefaultHeaded(e.target.checked)}
+                      />
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">
+                      Timeout (ms)
+                    </label>
+                    <input
+                      type="number"
+                      className="border p-2 rounded w-full mt-1"
+                      value={defaultTimeoutMs}
+                      onChange={(e) =>
+                        setDefaultTimeoutMs(Number(e.target.value))
+                      }
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* FOOTER */}
-        <div className="mt-8 flex justify-end gap-3">
-          <button className="btn-secondary" onClick={onClose}>
+        <div className="flex justify-end gap-4 px-6 py-4 border-t bg-gray-50">
+          <button onClick={onClose} className="px-4 py-2 border rounded">
             Cancel
           </button>
 
-          <button className="btn-primary" onClick={save} disabled={loading}>
-            {loading ? "Saving..." : "Save Environment"}
+          <button
+            onClick={handleSave}
+            disabled={!envType || !baseUrl}
+            className={`px-4 py-2 rounded text-white 
+              ${
+                envType && baseUrl
+                  ? "bg-purple-600 hover:bg-purple-700"
+                  : "bg-gray-400 cursor-not-allowed"
+              }`}
+          >
+            Save Environment
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

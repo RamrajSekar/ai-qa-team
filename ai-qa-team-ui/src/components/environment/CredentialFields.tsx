@@ -1,84 +1,134 @@
 "use client";
 
-import { Credentials } from "@/types/environment";
-import { Plus, Trash } from "lucide-react";
+import { useState } from "react";
+import { Eye, EyeOff, Plus, Trash2 } from "lucide-react";
 
-interface Props {
-  items: Credentials[];
-  onChange: (items: Credentials[]) => void;
+export interface Credential {
+  role: string;
+  username: string;
+  password: string;
+  notes?: string;
 }
 
-export default function CredentialFields({ items, onChange }: Props) {
-  function addCred() {
-    onChange([
-      ...items,
-      { role: "qa", username: "", password: "", notes: "" },
+interface Props {
+  credentials: Credential[];
+  setCredentials: (c: Credential[]) => void;
+}
+
+export default function CredentialFields({ credentials, setCredentials }: Props) {
+  const [showPasswordIndex, setShowPasswordIndex] = useState<number | null>(null);
+
+  function addCredential() {
+    setCredentials([
+      ...credentials,
+      { role: "", username: "", password: "", notes: "" },
     ]);
   }
 
-  function removeCred(idx: number) {
-    onChange(items.filter((_, i) => i !== idx));
+  function removeCredential(i: number) {
+    setCredentials(credentials.filter((_, idx) => idx !== i));
+  }
+
+  function updateField<T extends keyof Credential>(
+    i: number,
+    field: T,
+    value: Credential[T]
+  ) {
+    const updated = [...credentials];
+    updated[i] = { ...updated[i], [field]: value };
+    setCredentials(updated);
   }
 
   return (
-    <div className="space-y-3">
-      {items.map((c, idx) => (
-        <div key={idx} className="border p-3 rounded-md">
-          {/* REMOVE BUTTON */}
-          <div className="flex justify-between items-center">
-            <strong>{c.role}</strong>
-            <button
-              className="text-red-500"
-              onClick={() => removeCred(idx)}
-            >
-              <Trash size={16} />
-            </button>
+    <div className="space-y-3 border p-4 rounded-lg bg-gray-50">
+      <div className="flex justify-between items-center">
+        <h3 className="font-medium">Credentials</h3>
+        <button
+          type="button"
+          onClick={addCredential}
+          className="flex items-center gap-1 text-sm bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded"
+        >
+          <Plus size={16} /> Add
+        </button>
+      </div>
+
+      {credentials.length === 0 && (
+        <p className="text-xs text-gray-500">No credentials added.</p>
+      )}
+
+      {credentials.map((c, i) => (
+        <div
+          key={i}
+          className="border rounded-lg p-3 bg-white shadow-sm relative"
+        >
+          {/* Remove button */}
+          <button
+            type="button"
+            onClick={() => removeCredential(i)}
+            className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+          >
+            <Trash2 size={16} />
+          </button>
+
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            <div>
+              <label className="text-xs font-medium">Role</label>
+              <input
+                className="border rounded-md w-full p-2 mt-1"
+                placeholder="admin, qa, customer"
+                value={c.role}
+                onChange={(e) => updateField(i, "role", e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium">Username</label>
+              <input
+                className="border rounded-md w-full p-2 mt-1"
+                value={c.username}
+                onChange={(e) => updateField(i, "username", e.target.value)}
+              />
+            </div>
+
+            <div className="col-span-2">
+              <label className="text-xs font-medium flex items-center justify-between">
+                Password
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowPasswordIndex(showPasswordIndex === i ? null : i)
+                  }
+                  className="text-gray-600 hover:text-gray-800"
+                >
+                  {showPasswordIndex === i ? (
+                    <EyeOff size={14} />
+                  ) : (
+                    <Eye size={14} />
+                  )}
+                </button>
+              </label>
+
+              <input
+                className="border rounded-md w-full p-2 mt-1"
+                type={showPasswordIndex === i ? "text" : "password"}
+                value={c.password}
+                onChange={(e) => updateField(i, "password", e.target.value)}
+              />
+            </div>
+
+            <div className="col-span-2">
+              <label className="text-xs font-medium">Notes (optional)</label>
+              <textarea
+                className="border rounded-md w-full p-2 mt-1"
+                placeholder="Any additional notes..."
+                value={c.notes}
+                rows={2}
+                onChange={(e) => updateField(i, "notes", e.target.value)}
+              />
+            </div>
           </div>
-
-          {/* USERNAME + PASSWORD */}
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            <input
-              value={c.username}
-              onChange={(e) => {
-                const arr = [...items];
-                arr[idx].username = e.target.value;
-                onChange(arr);
-              }}
-              className="input"
-              placeholder="Username"
-            />
-
-            <input
-              value={c.password}
-              onChange={(e) => {
-                const arr = [...items];
-                arr[idx].password = e.target.value;
-                onChange(arr);
-              }}
-              className="input"
-              placeholder="Password"
-            />
-          </div>
-
-          <textarea
-            value={c.notes || ""}
-            onChange={(e) => {
-              const arr = [...items];
-              arr[idx].notes = e.target.value;
-              onChange(arr);
-            }}
-            className="input mt-2"
-            placeholder="Notes"
-          />
         </div>
       ))}
-
-      <button
-        onClick={addCred}
-        className="bg-gray-200 px-3 py-1 rounded-md flex items-center gap-2"
-      >
-        <Plus size={16} /> Add Credential
-      </button>
     </div>
   );
 }

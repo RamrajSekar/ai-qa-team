@@ -1,77 +1,78 @@
-'use client';
+"use client";
 
-import { Plus, Trash } from 'lucide-react';
-import { Dispatch, SetStateAction } from 'react';
+import { useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
 
-export interface VariablesEditorProps {
-  items: [string, string][];
-  onChange: Dispatch<SetStateAction<[string, string][]>> | ((items: [string, string][]) => void);
+interface Props {
+  variables: Record<string, any>;
+  setVariables: (v: Record<string, any>) => void;
 }
 
-export default function VariablesEditor({ items, onChange }: VariablesEditorProps) {
-  function updateKey(idx: number, key: string) {
-    const copy = items.map((entry, i) =>
-      i === idx ? [key, entry[1]] : entry
-    ) as [string, string][];
-    (onChange as (items: [string, string][]) => void)(copy);
+export default function VariablesEditor({ variables, setVariables }: Props) {
+  const [newKey, setNewKey] = useState("");
+  const [newValue, setNewValue] = useState("");
+
+  function addVariable() {
+    if (!newKey) return;
+    setVariables({ ...variables, [newKey]: newValue });
+    setNewKey("");
+    setNewValue("");
   }
 
-  function updateValue(idx: number, value: string) {
-    const copy = items.map((entry, i) =>
-      i === idx ? [entry[0], value] : entry
-    ) as [string, string][];
-    (onChange as (items: [string, string][]) => void)(copy);
-  }
-
-  function addRow() {
-    const copy = [...items, ['', '']] as [string, string][];
-    (onChange as (items: [string, string][]) => void)(copy);
-  }
-
-  function removeRow(idx: number) {
-    const copy = items.filter((_, i) => i !== idx) as [string, string][];
-    (onChange as (items: [string, string][]) => void)(copy);
+  function removeVariable(key: string) {
+    const copy = { ...variables };
+    delete copy[key];
+    setVariables(copy);
   }
 
   return (
-    <div>
-      {items.length === 0 && (
-        <p className='mb-2 text-sm text-gray-400'>
-          No variables yet. Add entries like <code>basePath=/admin</code>.
-        </p>
+    <div className="border p-4 rounded-lg bg-gray-50 space-y-3">
+      <h3 className="font-medium">Variables</h3>
+
+      {/* Add field */}
+      <div className="grid grid-cols-3 gap-2">
+        <input
+          value={newKey}
+          onChange={(e) => setNewKey(e.target.value)}
+          className="border rounded-md p-2"
+          placeholder="Key"
+        />
+        <input
+          value={newValue}
+          onChange={(e) => setNewValue(e.target.value)}
+          className="border rounded-md p-2"
+          placeholder="Value"
+        />
+        <button
+          onClick={addVariable}
+          className="bg-purple-600 hover:bg-purple-700 text-white rounded-md px-3"
+        >
+          <Plus size={16} />
+        </button>
+      </div>
+
+      {/* Existing variables */}
+      {Object.keys(variables).length === 0 && (
+        <p className="text-xs text-gray-500">No variables added.</p>
       )}
 
-      {items.map(([key, value], idx) => (
-        <div key={idx} className='mb-2 flex gap-2'>
-          <input
-            value={key}
-            onChange={(e) => updateKey(idx, e.target.value)}
-            className='w-1/3 rounded-md border border-gray-300 px-2 py-1 text-sm'
-            placeholder='Key'
-          />
-          <input
-            value={value}
-            onChange={(e) => updateValue(idx, e.target.value)}
-            className='flex-1 rounded-md border border-gray-300 px-2 py-1 text-sm'
-            placeholder='Value'
-          />
-          <button
-            type='button'
-            onClick={() => removeRow(idx)}
-            className='text-red-500 hover:text-red-600'
-          >
-            <Trash size={16} />
-          </button>
+      {Object.entries(variables).map(([key, value]) => (
+        <div
+          key={key}
+          className="flex items-center justify-between border rounded-md bg-white p-2"
+        >
+          <span className="font-mono text-sm">{key}</span>
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-xs text-gray-600">{String(value)}</span>
+            <button
+              onClick={() => removeVariable(key)}
+              className="text-red-500 hover:text-red-700"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
         </div>
       ))}
-
-      <button
-        type='button'
-        onClick={addRow}
-        className='mt-2 inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-1 text-xs hover:bg-gray-50'
-      >
-        <Plus size={14} /> Add variable
-      </button>
     </div>
   );
 }

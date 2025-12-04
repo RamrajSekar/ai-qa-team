@@ -1,4 +1,3 @@
-// src/app/projects/[project_id]/environments/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -6,48 +5,68 @@ import { Plus, Globe } from "lucide-react";
 import { apiFetch } from "@/utils/api";
 import type { Environment } from "@/types/environment";
 import EnvironmentCard from "@/components/environment/EnvironmentCard";
-import NewEnvironmentModal from "./NewEnvironmentModal";
-import EditEnvironmentModal from "./EditEnvironmentModal";
+import EnvironmentModal from "@/components/environment/EnvironmentModal";
 
 interface PageProps {
   params: {
-    project_id: string;
+    projectId: string;   // ✅ FIX — Next.js dynamic param
   };
 }
 
 export default function EnvironmentsPage({ params }: PageProps) {
-  const { project_id } = params;
+  const project_id = params.projectId; // unified name
 
   const [environments, setEnvironments] = useState<Environment[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
+  // unified modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [mode, setMode] = useState<"create" | "edit">("create");
   const [selectedEnv, setSelectedEnv] = useState<Environment | null>(null);
 
   async function loadEnvironments() {
     setLoading(true);
 
-    const res = await apiFetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/environments?project_id=${project_id}`
-    );
+    const res = await apiFetch(`/environments?project_id=${project_id}`);
 
-    if (res.ok) {
-      const data: Environment[] = await res.data;
-      setEnvironments(data);
+    if (res.ok && Array.isArray(res.data)) {
+      // normalize MongoDB response (_id to id)
+      const normalized = res.data.map((env: any) => ({
+        ...env,
+        id: env.id ?? env._id ?? "",
+      }));
+      setEnvironments(normalized);
     }
 
     setLoading(false);
   }
 
   useEffect(() => {
-    if (!project_id) return;
-    loadEnvironments();
+    if (project_id) {
+      loadEnvironments();
+    }
   }, [project_id]);
+
+  function handleAdd() {
+    setSelectedEnv(null);
+    setMode("create");
+    setModalOpen(true);
+  }
 
   function handleEdit(env: Environment) {
     setSelectedEnv(env);
-    setEditOpen(true);
+    setMode("edit");
+    setModalOpen(true);
+  }
+
+  function handleCloseModal() {
+    setModalOpen(false);
+    setSelectedEnv(null);
+  }
+
+  async function handleSaved() {
+    await loadEnvironments();
+    handleCloseModal();   // ✅ modal closes automatically after save
   }
 
   return (
@@ -57,12 +76,12 @@ export default function EnvironmentsPage({ params }: PageProps) {
         <div>
           <h2 className="text-xl font-semibold">Project Environments</h2>
           <p className="text-sm text-gray-500">
-            Manage URLs, credentials, auth tokens, browsers & variables.
+            Manage endpoints, credentials, auth tokens, browsers & variables.
           </p>
         </div>
 
         <button
-          onClick={() => setCreateOpen(true)}
+          onClick={handleAdd}
           className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md flex items-center gap-2"
         >
           <Plus size={18} />
@@ -78,7 +97,7 @@ export default function EnvironmentsPage({ params }: PageProps) {
           <Globe size={40} className="mx-auto mb-4 text-gray-400" />
           <p>No environments created for this project yet.</p>
           <button
-            onClick={() => setCreateOpen(true)}
+            onClick={handleAdd}
             className="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md"
           >
             Create Environment
@@ -91,25 +110,20 @@ export default function EnvironmentsPage({ params }: PageProps) {
               key={env.id}
               env={env}
               refresh={loadEnvironments}
-              onEdit={handleEdit}
+              onEdit={() => handleEdit(env)}
             />
           ))}
         </div>
       )}
 
-      {/* MODALS */}
-      <NewEnvironmentModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
+      {/* UNIFIED MODAL */}
+      <EnvironmentModal
+        open={modalOpen}
+        mode={mode}
         projectId={project_id}
-        refresh={loadEnvironments}
-      />
-
-      <EditEnvironmentModal
-        open={editOpen}
-        onClose={() => setEditOpen(false)}
         env={selectedEnv}
-        refresh={loadEnvironments}
+        onClose={handleCloseModal}
+        onSaved={handleSaved}
       />
     </div>
   );

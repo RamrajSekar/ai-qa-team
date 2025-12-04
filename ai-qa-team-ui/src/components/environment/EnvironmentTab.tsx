@@ -1,82 +1,49 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { apiFetch } from "@/utils/api";
-import { Environment } from "@/types/environment";
 import EnvironmentList from "./EnvironmentList";
 import EnvironmentModal from "./EnvironmentModal";
+import { useState } from "react";
+import { Plus } from "lucide-react";
+import type { Environment } from "@/types/environment";
 
 interface Props {
   projectId: string;
+  environments: Environment[];
+  refresh: () => void;
 }
 
-export default function EnvironmentTab({ projectId }: Props) {
-  const [environments, setEnvironments] = useState<Environment[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
-  const [selectedEnv, setSelectedEnv] = useState<Environment | null>(null);
-
-  async function refresh() {
-    setLoading(true);
-    const res = await apiFetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/environments?project_id=${projectId}`
-    );
-
-    if (res.ok) {
-      const data = (await res.data) as Environment[];
-      setEnvironments(data);
-    }
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    refresh();
-  }, [projectId]);
+export default function EnvironmentTab({ projectId, environments, refresh }: Props) {
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Environment | null>(null);
 
   return (
-    <div className="p-6 space-y-6">
-      {/* HEADER */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-xl font-bold">Environments</h2>
-          <p className="text-gray-500 text-sm">
-            Each environment stores URLs, credentials, and variables.
-          </p>
-        </div>
-        <button
-          onClick={() => {
-            setSelectedEnv(null);
-            setModalMode("create");
-            setModalOpen(true);
-          }}
-          className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700"
-        >
-          + Add Environment
-        </button>
-      </div>
+    <div className="space-y-4">
+      <button
+        onClick={() => {
+          setEditing(null);
+          setOpen(true);
+        }}
+        className="bg-purple-600 text-white px-3 py-2 rounded-md flex items-center gap-1"
+      >
+        <Plus size={18} /> Add Environment
+      </button>
 
-      {/* LIST */}
       <EnvironmentList
         environments={environments}
-        loading={loading}
+        refresh={refresh}
         onEdit={(env) => {
-          setSelectedEnv(env);
-          setModalMode("edit");
-          setModalOpen(true);
+          setEditing(env);
+          setOpen(true);
         }}
-        refresh={refresh}   // ✅ FIX: REQUIRED PROP PASSED HERE
       />
 
-      {/* MODAL */}
       <EnvironmentModal
-        open={modalOpen}
-        mode={modalMode}
+        open={open}
+        mode={editing ? "edit" : "create"}
         projectId={projectId}
-        env={selectedEnv}
-        onClose={() => setModalOpen(false)}
+        env={editing}
         onSaved={refresh}
+        onClose={() => setOpen(false)}
       />
     </div>
   );

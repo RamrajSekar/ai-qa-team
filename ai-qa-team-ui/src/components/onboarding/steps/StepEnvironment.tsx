@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import StepFooter from "../StepFooter";
+import { useProjects } from "@/hooks/useProjects";
+import EnvironmentModal from "@/components/environment/EnvironmentModal";
 import { apiFetch } from "@/utils/api";
 import { User } from "@/types/user";
-import EnvironmentModal from "@/components/environment/EnvironmentModal";
 
 interface StepEnvironmentProps {
   user: User;
@@ -19,30 +20,28 @@ export default function StepEnvironment({
   next,
   back,
 }: StepEnvironmentProps) {
-  const [projectId, setProjectId] = useState<string | null>(null);
   const [openEnvModal, setOpenEnvModal] = useState(false);
-  const [name] = useState("");
-  useEffect(() => {
-    async function fetchProject() {
-      
-      // const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL}/projects`);
-      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL}/projects`, {
-      method: "GET",
-      body: JSON.stringify({
-        name,
-        created_by: user.email,
-      }),
-    });
-      if (res.ok) {
-        const list = await res.data;
-        if (list.length > 0) setProjectId(list[0].project_id);
-      }
-    }
-    fetchProject();
-  }, []);
+  const [projectId, setProjectId] = useState<string | null>(null);
 
+  const { projects, loading: loadingProjects, reload } = useProjects();
+
+  // --------------------------------------------
+  // 1. Auto-select project for onboarding
+  // --------------------------------------------
+  useEffect(() => {
+    if (projects.length > 0) {
+      // Best UX: select most recently created project
+      const last = projects[projects.length - 1];
+      setProjectId(last.project_id);
+    }
+  }, [projects]);
+
+  // --------------------------------------------
+  // 2. Handle environment creation → mark onboarding step
+  // --------------------------------------------
   async function handleEnvSaved() {
-    await apiFetch(`${process.env.NEXT_PUBLIC_API_URL}/onboarding/progress`, {
+    // Update onboarding progress
+    await apiFetch("/onboarding/progress", {
       method: "PUT",
       body: JSON.stringify({
         step_key: "environment",
@@ -54,22 +53,38 @@ export default function StepEnvironment({
     next();
   }
 
+  // --------------------------------------------
+  // Render UI
+  // --------------------------------------------
   return (
     <div className="p-6">
-      <h2 className="font-bold text-xl mb-4">Create Environment</h2>
+      <h2 className="font-bold text-xl mb-4">Create Your First Environment</h2>
 
       <p className="text-gray-500 mb-4">
-        Add at least one environment (QA, Staging, Production).
+        Environments help control URLs, credentials, auth tokens & variables for
+        each deployment stage (QA, Staging, Production).
       </p>
 
+      {/* Loading projects */}
+      {loadingProjects && (
+        <p className="text-gray-400 text-sm mb-4">Loading projects...</p>
+      )}
+
+      {!projectId && !loadingProjects && (
+        <p className="text-red-500 text-sm mb-4">
+          No project found — go back and create one first.
+        </p>
+      )}
+
       <button
-        className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+        className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
         onClick={() => setOpenEnvModal(true)}
         disabled={!projectId}
       >
         + Add Environment
       </button>
 
+      {/* ENVIRONMENT MODAL */}
       <EnvironmentModal
         open={openEnvModal}
         mode="create"
@@ -79,6 +94,7 @@ export default function StepEnvironment({
         onSaved={handleEnvSaved}
       />
 
+      {/* FOOTER NAVIGATION */}
       <StepFooter onNext={next} onBack={back} />
     </div>
   );
