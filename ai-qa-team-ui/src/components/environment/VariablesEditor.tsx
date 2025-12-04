@@ -18,50 +18,57 @@ export default function VariablesEditor({
 
   function addVariable() {
     const newVars = { ...variables };
-    let newKey = "NEW_VAR";
+    let key = "NEW_VAR";
+    let i = 1;
 
-    // Avoid duplicates
-    let suffix = 1;
-    while (newVars[newKey]) {
-      newKey = `NEW_VAR_${suffix++}`;
+    while (newVars[key]) {
+      key = `NEW_VAR_${i++}`;
     }
 
-    newVars[newKey] = "";
+    newVars[key] = "";
     setVariables(newVars);
   }
 
   function updateKey(oldKey: string, newKey: string) {
+    setError("");
+
     if (!newKey.trim()) {
-      setError("Variable key cannot be empty");
+      setError("Key cannot be empty");
       return;
     }
 
     if (oldKey !== newKey && variables[newKey]) {
-      setError("Duplicate variable key");
+      setError("Duplicate key");
       return;
     }
 
-    setError("");
-    const updated = { ...variables };
-    updated[newKey] = updated[oldKey];
-    delete updated[oldKey];
-    setVariables(updated);
+    setVariables((prev) => {
+      const updated = { ...prev };
+      const value = updated[oldKey];
+      delete updated[oldKey];
+      updated[newKey] = value;
+      return updated;
+    });
   }
 
   function updateValue(key: string, value: string) {
-    const updated = { ...variables };
-    updated[key] = value;
-    setVariables(updated);
+    setVariables((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
   }
 
   function removeVariable(key: string) {
-    const updated = { ...variables };
-    delete updated[key];
-    setVariables(updated);
+    setVariables((prev) => {
+      const updated = { ...prev };
+      delete updated[key];
+      return updated;
+    });
   }
 
   return (
     <div className="space-y-4">
+
       <button
         onClick={addVariable}
         className="bg-purple-600 text-white px-3 py-1 rounded text-sm"
@@ -69,9 +76,7 @@ export default function VariablesEditor({
         + Add Variable
       </button>
 
-      {error && (
-        <p className="text-sm text-red-500 font-medium">{error}</p>
-      )}
+      {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
 
       {Object.entries(variables).length === 0 && (
         <p className="text-sm text-gray-500">No variables added yet.</p>
@@ -82,6 +87,7 @@ export default function VariablesEditor({
           key={key}
           className="flex items-center gap-4 border rounded p-4 bg-gray-50"
         >
+          {/* Controlled KEY input */}
           <input
             className="border p-2 rounded w-1/3"
             value={key}
@@ -89,11 +95,12 @@ export default function VariablesEditor({
             placeholder="KEY"
           />
 
+          {/* Controlled VALUE input */}
           <input
             className="border p-2 rounded w-1/3"
             value={value}
             onChange={(e) => updateValue(key, e.target.value)}
-            placeholder="value"
+            placeholder="Value"
           />
 
           <button
