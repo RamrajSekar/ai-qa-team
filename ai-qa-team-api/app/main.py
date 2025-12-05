@@ -4,7 +4,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.connection import db
 from app.utils.redis_client import check_redis_connection
-from app.routes import story_routes,auth_routes, subscription_routes, test_execution_routes,scenario_routes, testcase_routes, project_routes, recorder_routes, environment_routes,health_routes, user_routes
+from app.routes import story_routes,auth_routes, subscription_routes, test_execution_routes,scenario_routes, testcase_routes, project_routes, recorder_routes, environment_routes,health_routes, user_routes, integration_routes
 from app.utils.logger import logger
 from app.middleware.error_handler import jwt_exception_handler
 from app.config import settings
@@ -78,6 +78,7 @@ app.include_router(recorder_routes.router)
 app.include_router(scenario_routes.router)
 app.include_router(test_execution_routes.router)
 app.include_router(testcase_routes.router)
+app.include_router(integration_routes.router)
 
 # === Base Routes ===
 @app.get("/")

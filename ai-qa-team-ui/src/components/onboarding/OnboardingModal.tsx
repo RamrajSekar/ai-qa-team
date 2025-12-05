@@ -30,8 +30,12 @@ export default function OnboardingModal({
 
   const next = () =>
     setStep((prev) => (Math.min(maxStep, prev + 1) as OnboardingStep));
+
   const back = () =>
     setStep((prev) => (Math.max(1, prev - 1) as OnboardingStep));
+
+  // Get project ID from onboarding context
+  const projectId = user?.onboarding?.context?.project_id || null;
 
   const steps: Record<OnboardingStep, React.ReactNode> = {
     1: (
@@ -41,6 +45,7 @@ export default function OnboardingModal({
         next={next}
       />
     ),
+
     2: (
       <StepEnvironment
         user={user}
@@ -49,12 +54,14 @@ export default function OnboardingModal({
         back={back}
       />
     ),
+
     3: (
       <StepTestImport
         next={next}
-        back={back}
+        projectId={projectId}
       />
     ),
+
     4: (
       <StepFinish
         user={user}
@@ -69,7 +76,7 @@ export default function OnboardingModal({
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
       <div className="bg-white w-full max-w-2xl rounded-lg p-6 shadow-xl relative">
-       
+
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -83,7 +90,7 @@ export default function OnboardingModal({
           <div
             className="h-full bg-purple-600 rounded transition-all"
             style={{ width: `${(step / maxStep) * 100}%` }}
-          ></div>
+          />
         </div>
 
         {steps[step]}

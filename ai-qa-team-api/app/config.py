@@ -20,6 +20,18 @@ class Settings(BaseSettings):
     google_client_secret: str | None = None
     google_redirect_uri: str | None = None
     frontend_url: str | None = None
+
+    github_client_id: str | None = None
+    github_client_secret: str | None = None
+    github_redirect_uri: str | None = None
+    
+    gitlab_client_id: str | None = None
+    gitlab_client_secret: str | None = None
+    gitlab_redirect_uri: str | None = None
+
+    bitbucket_client_id: str | None = None
+    bitbucket_client_secret: str | None = None
+    bitbucket_redirect_uri: str | None = None
     class Config:
         env_file = ".env"
         extra = "ignore"

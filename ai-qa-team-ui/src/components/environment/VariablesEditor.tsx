@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Trash } from "lucide-react";
 
-interface VariablesMap {
+export interface VariablesMap {
   [key: string]: string;
 }
 
@@ -12,35 +12,37 @@ export default function VariablesEditor({
   setVariables,
 }: {
   variables: VariablesMap;
-  setVariables: (x: VariablesMap) => void;
+  setVariables: React.Dispatch<React.SetStateAction<VariablesMap>>;   // ✅ FIXED
 }) {
   const [error, setError] = useState("");
 
   function addVariable() {
-    const newVars = { ...variables };
-    let key = "NEW_VAR";
-    let i = 1;
+    setVariables((prev) => {
+      const updated = { ...prev };
+      let newKey = "NEW_VAR";
+      let count = 1;
 
-    while (newVars[key]) {
-      key = `NEW_VAR_${i++}`;
-    }
+      while (updated[newKey]) {
+        newKey = `NEW_VAR_${count++}`;
+      }
 
-    newVars[key] = "";
-    setVariables(newVars);
+      updated[newKey] = "";
+      return updated;
+    });
   }
 
   function updateKey(oldKey: string, newKey: string) {
-    setError("");
-
     if (!newKey.trim()) {
-      setError("Key cannot be empty");
+      setError("Variable key cannot be empty");
       return;
     }
 
     if (oldKey !== newKey && variables[newKey]) {
-      setError("Duplicate key");
+      setError("Duplicate variable key");
       return;
     }
+
+    setError("");
 
     setVariables((prev) => {
       const updated = { ...prev };
@@ -68,7 +70,6 @@ export default function VariablesEditor({
 
   return (
     <div className="space-y-4">
-
       <button
         onClick={addVariable}
         className="bg-purple-600 text-white px-3 py-1 rounded text-sm"
@@ -87,7 +88,6 @@ export default function VariablesEditor({
           key={key}
           className="flex items-center gap-4 border rounded p-4 bg-gray-50"
         >
-          {/* Controlled KEY input */}
           <input
             className="border p-2 rounded w-1/3"
             value={key}
@@ -95,12 +95,11 @@ export default function VariablesEditor({
             placeholder="KEY"
           />
 
-          {/* Controlled VALUE input */}
           <input
             className="border p-2 rounded w-1/3"
             value={value}
             onChange={(e) => updateValue(key, e.target.value)}
-            placeholder="Value"
+            placeholder="value"
           />
 
           <button

@@ -40,17 +40,6 @@ def to_json_safe(obj):
         return obj.isoformat()
     return obj
 
-# @router.post("/signup")
-# async def signup(user: User):
-#     existing = await db["users"].find_one({"email": user.email})
-#     if existing:
-#         raise HTTPException(status_code=400, detail="Email already registered")
-
-#     hashed_pw = pwd_context.hash(user.password)
-#     user.password = hashed_pw
-#     await db["users"].insert_one(user.model_dump(exclude={"id"}))
-#     return {"message": "Signup successful"}
-
 @router.post("/signup")
 async def signup(user: User):
     try:
@@ -140,16 +129,6 @@ async def login(credentials: dict):
 
     return response
 
-# @router.get("/{provider}/login")
-# async def oauth_login(request: Request, provider: str):
-#     client = oauth.create_client(provider)
-#     if client is None:
-#         raise HTTPException(status_code=404, detail="Unsupported provider")
-
-#     redirect_uri = request.url_for("oauth_callback", provider=provider)
-#     return await oauth.create_client(provider).authorize_redirect(request, redirect_uri)
-#     # return await client.authorize_redirect(request, settings.re)
-
 @router.get("/{provider}/login")
 async def oauth_login(request: Request, provider: str, callback: str | None = None):
     client = oauth.create_client(provider)
@@ -195,9 +174,11 @@ async def oauth_callback(request: Request, provider: str):
         if not email:
             raise HTTPException(status_code=400, detail="Email not provided by provider")
 
-        # ---- upsert user ----
+        # ---- UPSERT USER ----
         existing = await db["users"].find_one({"email": email})
+
         if not existing:
+            # brand new user
             new_user = User(
                 _id=user_info.get("id"),
                 name=name,
@@ -205,8 +186,34 @@ async def oauth_callback(request: Request, provider: str):
                 provider=provider,
                 role="tester",
             )
-            await db["users"].insert_one(
-                new_user.model_dump(by_alias=True, exclude_none=True)
+
+            user_doc = new_user.model_dump(by_alias=True, exclude_none=True)
+
+            # 🔥 Save test import access token
+            user_doc["integrations"] = {
+                provider: {
+                    "access_token": token.get("access_token"),
+                    "token_type": token.get("token_type"),
+                    "scope": token.get("scope"),
+                    "raw": token,
+                }
+            }
+
+            await db["users"].insert_one(user_doc)
+
+        else:
+            # existing user → update integrations
+            await db["users"].update_one(
+                {"email": email},
+                {
+                    "$set": {
+                        "provider": provider,
+                        f"integrations.{provider}.access_token": token.get("access_token"),
+                        f"integrations.{provider}.token_type": token.get("token_type"),
+                        f"integrations.{provider}.scope": token.get("scope"),
+                        f"integrations.{provider}.raw": token,
+                    }
+                }
             )
 
         # ---- issue tokens ----

@@ -1,16 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import StepFooter from "../StepFooter";
-import { Github, Gitlab, GitBranch, ArrowRight } from "lucide-react";
+import RepoImportModal from "@/components/integrations/RepoImportModal";
+import { Github, Gitlab, GitBranch } from "lucide-react";
 
 interface StepTestImportProps {
   next: () => void;
-  back: () => void;
+  projectId: string | null;
 }
 
-export default function StepTestImport({ next, back }: StepTestImportProps) {
+export default function StepTestImport({ next, projectId }: StepTestImportProps) {
   const [provider, setProvider] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const providers = [
     { id: "github", name: "GitHub", icon: <Github size={20} /> },
@@ -18,62 +19,86 @@ export default function StepTestImport({ next, back }: StepTestImportProps) {
     { id: "bitbucket", name: "Bitbucket", icon: <GitBranch size={20} /> },
   ];
 
-  const handleConnect = () => {
+  // ---------------------------------------------
+  // If user reached this step without a project
+  // ---------------------------------------------
+  if (!projectId) {
+    return (
+      <div className="p-6 space-y-4">
+        <h2 className="text-xl font-semibold">Import Tests</h2>
+
+        <p className="text-gray-500 text-sm">
+          A project must be created before importing test cases.
+        </p>
+
+        <button
+          onClick={next}
+          className="mt-4 w-full py-3 rounded bg-purple-600 text-white hover:bg-purple-700"
+        >
+          Continue →
+        </button>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------
+  // OAuth redirect
+  // ---------------------------------------------
+  function startOAuth() {
     if (!provider) return;
 
-    // Placeholder until OAuth is added
-    alert(`OAuth redirect for: ${provider.toUpperCase()}`);
-
-    // Skip now — import is optional
-    next();
-  };
+    window.location.href =
+      `${process.env.NEXT_PUBLIC_API_URL}/auth/${provider}/login` +
+      `?callback=${window.location.origin}/oauth/callback`;
+  }
 
   return (
     <div className="p-6 space-y-6">
-      <h2 className="font-bold text-xl mb-2">Import Existing Tests (Optional)</h2>
+      <h2 className="font-bold text-xl">Import Tests (Optional)</h2>
+
       <p className="text-gray-500 text-sm">
-        Connect your GitHub, GitLab, or Bitbucket repository to automatically import testcases, scenarios, and automation files.
+        Connect your Git provider to import Playwright test cases.
       </p>
 
-      {/* Provider Selection */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+      {/* Provider List */}
+      <div className="grid grid-cols-3 gap-4">
         {providers.map((p) => (
           <button
             key={p.id}
             onClick={() => setProvider(p.id)}
-            className={`
-              flex flex-col items-center gap-2 border p-4 rounded-lg cursor-pointer
-              ${provider === p.id ? "border-purple-600 bg-purple-50" : "border-gray-300 hover:bg-gray-100"}
-            `}
+            className={`p-4 border rounded-lg flex flex-col items-center gap-2 ${
+              provider === p.id ? "border-purple-600 bg-purple-50" : "border-gray-300"
+            }`}
           >
             {p.icon}
-            <span className="font-medium">{p.name}</span>
+            <span>{p.name}</span>
           </button>
         ))}
       </div>
 
-      <div className="mt-6">
-        <button
-          disabled={!provider}
-          onClick={handleConnect}
-          className={`
-            w-full py-3 rounded-md flex items-center justify-center gap-2 text-white
-            ${provider ? "bg-purple-600 hover:bg-purple-700" : "bg-gray-300 cursor-not-allowed"}
-          `}
-        >
-          Connect {provider ? provider.toUpperCase() : ""} Repo
-          <ArrowRight size={18} />
-        </button>
+      {/* OAuth Button */}
+      <button
+        disabled={!provider}
+        onClick={startOAuth}
+        className={`w-full py-3 rounded text-white ${
+          provider ? "bg-purple-600 hover:bg-purple-700" : "bg-gray-300 cursor-not-allowed"
+        }`}
+      >
+        Connect {provider?.toUpperCase()} Account
+      </button>
 
-        <button
-          onClick={next}
-          className="mt-4 w-full text-sm text-gray-500 hover:text-gray-700"
-        >
-          Skip This Step →
-        </button>
-      </div>
+      {/* Repo Import Modal (opens after OAuth) */}
+      <RepoImportModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        provider={provider ?? ""}
+        projectId={projectId}
+      />
 
-      <StepFooter onNext={next} onBack={back} />
+      {/* Skip Option */}
+      <button onClick={next} className="text-gray-500 text-sm underline">
+        Skip this step →
+      </button>
     </div>
   );
 }

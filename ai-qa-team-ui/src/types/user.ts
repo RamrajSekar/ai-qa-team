@@ -40,6 +40,11 @@ export interface OnboardingInfo {
     test_import: boolean;
     finish: boolean;
   };
+
+  context: {
+    project_id: string | null;
+    environment_id: string | null;
+  };
 }
 
 export interface User {
