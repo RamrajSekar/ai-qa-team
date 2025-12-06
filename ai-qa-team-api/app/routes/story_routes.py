@@ -3,6 +3,7 @@ from app.db.connection import db
 from app.models.story_model import StoryCreate, StoryResponse, StoryUpdate
 from app.utils.auth_dependency import get_current_user
 from app.utils.subscription_dependency import subscription_required
+from app.services.subscription_services import get_subscription, increment_usage
 from app.services.story_service import get_next_sequence
 from datetime import datetime, timezone
 from typing import List
@@ -18,6 +19,7 @@ async def create_story(
     _: None = Depends(subscription_required("stories"))
 ):
     try:
+        user_email = current_user["email"]
         # 0️⃣ Validate the incoming project_id (business ID, not ObjectId)
         project = await db["projects"].find_one({
             "project_id": story.project_id,
@@ -40,6 +42,8 @@ async def create_story(
             "project_ref": str(project["_id"]),               # Actual ObjectId (string)
             "title": story.title,
             "description": story.description,
+            "acceptance_criteria": story.acceptance_criteria,
+            "out_of_scope": story.out_of_scope,
             "status": story.status,
             "tags": story.tags or [],
             "scenarios": [],
@@ -49,7 +53,10 @@ async def create_story(
 
         # 3️⃣ Insert into Mongo
         result = await db["stories"].insert_one(story_data)
+        print(f"Debug Create story: {result}")
         story_data["id"] = str(result.inserted_id)
+        # Update usage counter (important!)
+        await increment_usage(user_email, "stories_used")
 
         return StoryResponse(**story_data)
 
@@ -67,56 +74,52 @@ async def create_story(
 #     """Fetch all stories created by the logged-in user."""
 @router.get("/", response_model=list[StoryResponse])
 async def list_stories(
+    project_id: str,
     skip: int = 0,
     limit: int = 20,
     current_user=Depends(get_current_user)
 ):
-    """Fetch all stories created by the logged-in user."""
-    user_id = current_user.get("_id") or current_user.get("email")
+    """Fetch all stories for a specific project."""
+    user_id = current_user.get("email") or current_user.get("_id")
 
-    cursor = db["stories"].find({"created_by": user_id}).skip(skip).limit(limit)
-
+    query = {
+        "created_by": user_id,
+        "project_id": project_id
+    }
+    cursor = db["stories"].find(query).skip(skip).limit(limit)
     stories = []
     async for doc in cursor:
         doc["id"] = str(doc["_id"])
         doc.pop("_id", None)
-
         doc.setdefault("tags", [])
-        doc.setdefault("story_id", None)  # ← Prevent validation error
-
+        doc.setdefault("scenarios", [])
         stories.append(StoryResponse(**doc))
-
+    print(f'Debug from list Stories{stories}')
     return stories
 
-@router.get("/{story_id}", response_model=StoryResponse)
-async def get_story_by_id(story_id: str, current_user=Depends(get_current_user)):
-    """
-    Fetch a story using its sequential story_id (e.g., S001).
-    Ensures the story belongs to the logged-in user.
-    """
-    try:
-        user_id = current_user.get("_id") or current_user.get("id") or current_user.get("email")
 
-        # Find story by sequential story_id
+@router.get("/{story_id}", response_model=StoryResponse)
+async def get_story(
+    story_id: str,
+    project_id: str,                         
+    current_user=Depends(get_current_user)
+):
+    try:
+        user_email = current_user["email"]
+
         story = await db["stories"].find_one({
             "story_id": story_id,
-            "created_by": user_id
+            "project_id": project_id, 
+            "created_by": user_email
         })
 
         if not story:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Story not found or access denied."
-            )
+            raise HTTPException(404, "Story not found or access denied.")
 
-        # Convert Mongo _id → string id
         story["id"] = str(story["_id"])
         story.pop("_id", None)
-        story.setdefault("tags", [])
-        story.setdefault("scenarios", [])
 
         return StoryResponse(**story)
-
     except HTTPException:
         raise
     except Exception as e:
@@ -126,6 +129,7 @@ async def get_story_by_id(story_id: str, current_user=Depends(get_current_user))
 @router.patch("/{story_id}", response_model=StoryResponse)
 async def update_story(
     story_id: str,
+    project_id: str, 
     story_update: StoryUpdate,
     current_user=Depends(get_current_user)
 ):
@@ -139,6 +143,7 @@ async def update_story(
         # Find story by sequential ID
         existing = await db["stories"].find_one({
             "story_id": story_id,
+            "project_id": project_id, 
             "created_by": user_id
         })
 
@@ -171,7 +176,7 @@ async def update_story(
 
     
 @router.delete("/{story_id}")
-async def delete_story(story_id: str, current_user=Depends(get_current_user)):
+async def delete_story(story_id: str,project_id: str, current_user=Depends(get_current_user)):
     """
     Delete a story using its sequential story_id (e.g., S001).
     Ensures ownership.
@@ -181,6 +186,7 @@ async def delete_story(story_id: str, current_user=Depends(get_current_user)):
 
         result = await db["stories"].delete_one({
             "story_id": story_id,
+            "project_id": project_id, 
             "created_by": user_id
         })
 

@@ -19,6 +19,7 @@ import {
   Layers,
   Info,
 } from "lucide-react";
+import { FileText } from "lucide-react";
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
@@ -44,13 +45,35 @@ export default function Sidebar() {
   ];
 
   const projectMenu = currentProjectId
-    ? [
-        { name: "Overview", icon: <Layers size={18} />, href: `/projects/${currentProjectId}` },
-        { name: "Environments", icon: <FolderOpen size={18} />, href: `/projects/${currentProjectId}/environments` },
-        { name: "Scenarios", icon: <Puzzle size={18} />, href: `/projects/${currentProjectId}/scenarios` },
-        { name: "Executions", icon: <Zap size={18} />, href: `/projects/${currentProjectId}/executions` },
-      ]
-    : [];
+  ? [
+      {
+        name: "Overview",
+        icon: <Layers size={18} />,
+        href: `/projects/${currentProjectId}`,
+      },
+      {
+        name: "Stories",
+        icon: <FileText size={18} />,
+        href: `/projects/${currentProjectId}/stories`,
+      },
+      {
+        name: "Environments",
+        icon: <FolderOpen size={18} />,
+        href: `/projects/${currentProjectId}/environments`,
+      },
+      {
+        name: "Scenarios",
+        icon: <Puzzle size={18} />,
+        href: `/projects/${currentProjectId}/scenarios`,
+      },
+      {
+        name: "Executions",
+        icon: <Zap size={18} />,
+        href: `/projects/${currentProjectId}/executions`,
+      },
+    ]
+  : [];
+
 
   const isActiveGlobal = (href: string) => pathname === href;
   const isActiveProject = (href: string) => pathname === href || pathname.startsWith(href + "/");
