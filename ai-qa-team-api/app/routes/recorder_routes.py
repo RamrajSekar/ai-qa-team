@@ -22,6 +22,21 @@ async def save_recording(
 ):
     return await create_recording(payload, current_user["email"])
 
+
+@router.get("/by-project/{project_id}")
+async def recordings_for_project(project_id: str, current_user=Depends(get_current_user)):
+    user_email = current_user["email"]
+
+    recs = await db["recordings"].find(
+        {"project_id": project_id, "created_by": user_email}
+    ).to_list(None)
+
+    for r in recs:
+        r["id"] = str(r["_id"])
+        r.pop("_id", None)
+
+    return recs
+
 # 2) List all recordings for story
 @router.get("/by-story/{story_id}", response_model=List[RecordingResponse])
 async def recordings_for_story(

@@ -1,118 +1,110 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Save } from "lucide-react";
 
-export default function RecorderOverlay({
+interface RecorderOverlayProps {
+  url: string;         // AUT URL
+  storyId: string;
+  projectId: string;
+  onClose: () => void;
+}
+
+export default function RecordingOverlay({
   url,
   storyId,
   projectId,
   onClose,
-}: {
-  url: string;
-  storyId: string;
-  projectId: string;
-  onClose: () => void;
-}) {
+}: RecorderOverlayProps) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [steps, setSteps] = useState<any[]>([]);
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   // -------------------------------
-  // Load recorder script + bind events
+  // Inject script + register listeners
   // -------------------------------
   const handleIframeLoad = () => {
     const iframe = iframeRef.current;
-    const win = iframe?.contentWindow;
+    if (!iframe) return;
+
+    const win = iframe.contentWindow;
     const doc = win?.document;
+    if (!win || !doc) return;
 
-    if (!iframe || !win || !doc) return;
+    console.log("[Recorder] Iframe Loaded ✓");
 
-    console.log("[Recorder] Iframe loaded, injecting recorder.js");
-
-    // 1️⃣ Inject recorder.js into iframe HEAD
+    // Inject recorder.js
     const script = doc.createElement("script");
-    script.src = "/recorder.js"; // MUST exist in public/
-    script.type = "text/javascript";
-
-    script.onload = () => {
-      console.log("[Recorder] recorder.js injected");
-    };
-
+    script.src = "/recorder.js"; // must be inside public/
+    script.onload = () => console.log("[Recorder] recorder.js injected ✓");
     doc.head.appendChild(script);
 
-    // 2️⃣ CLICK events
-    doc.addEventListener("click", (e: any) => {
+    // CLICK events
+    doc.addEventListener("click", (e) => {
       const target = e.target as HTMLElement;
       const selector = getSelector(target);
 
-      const step = {
-        order: steps.length + 1,
-        action: `Click: ${selector}`,
-        selector,
-        url: win.location.href,
-        meta: {},
-      };
-
-      setSteps((prev) => [...prev, step]);
+      setSteps((prev) => [
+        ...prev,
+        {
+          order: prev.length + 1,
+          action: "click",
+          selector,
+          url: win.location.href,
+          meta: {},
+        },
+      ]);
     });
 
-    // 3️⃣ INPUT events
-    doc.addEventListener("input", (e: any) => {
+    // INPUT events
+    doc.addEventListener("input", (e) => {
       const target = e.target as HTMLInputElement;
       const selector = getSelector(target);
-      const value = target.value;
 
-      const step = {
-        order: steps.length + 1,
-        action: `Input: ${selector}`,
-        selector,
-        input_value: value,
-        url: win.location.href,
-        meta: {},
-      };
-
-      setSteps((prev) => [...prev, step]);
+      setSteps((prev) => [
+        ...prev,
+        {
+          order: prev.length + 1,
+          action: "input",
+          selector,
+          input_value: target.value,
+          url: win.location.href,
+          meta: {},
+        },
+      ]);
     });
 
-    // 4️⃣ Navigation events from recorder.js inside iframe
+    // NAVIGATION events (from recorder.js)
     win.addEventListener("message", (event) => {
       if (event.data?.type === "recorder:navigation") {
-        console.log("[Recorder] Navigation recorded:", event.data);
-
         setSteps((prev) => [
           ...prev,
           {
             order: prev.length + 1,
-            action: `Navigate: ${event.data.url}`,
+            action: "navigate",
             selector: null,
-            input_value: null,
             url: event.data.url,
             meta: {},
           },
         ]);
       }
     });
-
-    console.log("[Recorder] Event listeners attached");
   };
 
   // -------------------------------
-  // Generate CSS selector (MVP)
+  // Generate CSS selector
   // -------------------------------
-  function getSelector(el: HTMLElement | null): string {
+  const getSelector = (el: HTMLElement | null): string => {
     if (!el) return "unknown";
-
     if (el.id) return `#${el.id}`;
     if (el.className) {
       const classes = el.className.toString().trim().replace(/\s+/g, ".");
       return `${el.tagName.toLowerCase()}.${classes}`;
     }
-
     return el.tagName.toLowerCase();
-  }
+  };
 
   // -------------------------------
-  // Save to backend
+  // Save recording to backend
   // -------------------------------
   async function saveRecording() {
     const payload = {
@@ -132,37 +124,39 @@ export default function RecorderOverlay({
     );
 
     if (res.ok) {
-      alert("Recording saved successfully!");
+      alert("Recording saved ✔");
       onClose();
     } else {
       const err = await res.json().catch(() => ({}));
-      alert(`Failed to save recording: ${err?.detail || "Unknown error"}`);
+      alert(`Failed: ${err?.detail || "Unknown error"}`);
     }
   }
 
   // -------------------------------
-  // UI Rendering
+  // UI
   // -------------------------------
   return (
-    <div className="fixed inset-0 bg-black/70 z-[9999] flex flex-col">
+    <div className="fixed inset-0 z-[9999] bg-black/70 flex flex-col">
       {/* HEADER */}
       <div className="bg-gray-900 text-white p-3 flex justify-between items-center">
         <div>
           <h2 className="font-semibold">Recording Mode</h2>
-          <p className="text-xs opacity-80">Every interaction is being captured.</p>
+          <p className="text-xs opacity-60">Every interaction is captured</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <button
-            className="flex items-center gap-1 bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm"
             onClick={saveRecording}
+            className="flex items-center gap-2 bg-green-600 px-3 py-1 rounded hover:bg-green-700"
           >
-            <Save size={16} />
-            Save Recording
+            <Save size={16} /> Save
           </button>
 
-          <button className="text-white hover:text-red-400" onClick={onClose}>
-            <X size={28} />
+          <button
+            onClick={onClose}
+            className="text-white hover:text-red-400"
+          >
+            <X size={26} />
           </button>
         </div>
       </div>
@@ -170,7 +164,6 @@ export default function RecorderOverlay({
       {/* IFRAME */}
       <iframe
         ref={iframeRef}
-        id="recorder-iframe"
         src={url}
         className="flex-1 bg-white"
         onLoad={handleIframeLoad}

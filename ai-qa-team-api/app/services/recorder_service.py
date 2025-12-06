@@ -49,20 +49,40 @@ async def create_recording(payload: RecordingCreate, user_email: str):
 # ---------------------------------------------------------
 # LIST RECORDINGS FOR STORY
 # ---------------------------------------------------------
+# async def list_recordings_for_story(story_id: str, user_email: str):
+#     cursor = db["recordings"].find(
+#         {"story_id": story_id, "created_by": user_email},
+#         sort=[("created_at", -1)]
+#     )
+#     output = []
+#     async for doc in cursor:
+#         doc["id"] = str(doc["_id"])
+#         doc.pop("_id", None)
+#         output.append(RecordingResponse(**doc))
+#     print(f" From list_recordings_for_story: {output}")
+#     return output
+
 async def list_recordings_for_story(story_id: str, user_email: str):
-    cursor = db["recordings"].find(
-        {"story_id": story_id, "created_by": user_email},
-        sort=[("created_at", -1)]
-    )
+    print("DEBUG list_recordings_for_story: story_id=", story_id)
 
-    output = []
-    async for doc in cursor:
-        doc["id"] = str(doc["_id"])
-        doc.pop("_id", None)
-        output.append(RecordingResponse(**doc))
+    cursor = db["recordings"].find({
+        "story_id": story_id,
+        "created_by": user_email
+    })
 
-    return output
+    results = await cursor.to_list(length=200)
+    print("DEBUG recordings found:", results)
 
+    safe = []
+    for rec in results:
+        try:
+            rec["id"] = str(rec["_id"])
+            rec.pop("_id", None)
+            safe.append(RecordingResponse(**rec))
+        except Exception as e:
+            print("ERROR processing recording:", e, rec)
+
+    return safe
 
 # ---------------------------------------------------------
 # SINGLE RECORDING
