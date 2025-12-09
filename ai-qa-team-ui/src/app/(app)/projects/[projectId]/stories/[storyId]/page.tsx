@@ -98,6 +98,7 @@ export default function StoryDetailPage() {
       {/* VIEWER MODAL */}
       {viewRecording && (
         <RecordingViewer
+          open={true}
           recording={viewRecording}
           onClose={() => setViewRecording(null)}
         />

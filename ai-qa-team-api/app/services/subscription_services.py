@@ -113,3 +113,16 @@ async def increment_usage(user_identifier: str, field: str):
         logger.info(f"Incremented {field} for {user_identifier}")
     else:
         logger.warning(f"Failed to increment {field} for {user_identifier}")
+
+
+async def decrement_usage(user_email: str, field: str):
+    await db["users"].update_one(
+        {"email": user_email},
+        {"$inc": {f"subscription.usage.{field}": -1}}
+    )
+
+    # Ensure it does not go negative
+    await db["users"].update_one(
+        {"email": user_email, f"subscription.usage.{field}": {"$lt": 0}},
+        {"$set": {f"subscription.usage.{field}": 0}}
+    )

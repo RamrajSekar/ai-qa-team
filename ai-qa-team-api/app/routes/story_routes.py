@@ -3,7 +3,7 @@ from app.db.connection import db
 from app.models.story_model import StoryCreate, StoryResponse, StoryUpdate
 from app.utils.auth_dependency import get_current_user
 from app.utils.subscription_dependency import subscription_required
-from app.services.subscription_services import get_subscription, increment_usage
+from app.services.subscription_services import get_subscription, increment_usage, decrement_usage
 from app.services.story_service import get_next_sequence
 from datetime import datetime, timezone
 from typing import List
@@ -130,7 +130,7 @@ async def get_story(
 async def update_story(
     story_id: str,
     project_id: str, 
-    story_update: StoryUpdate,
+    payload: StoryUpdate,
     current_user=Depends(get_current_user)
 ):
     """
@@ -138,64 +138,58 @@ async def update_story(
     Ensures ownership.
     """
     try:
-        user_id = current_user.get("_id") or current_user.get("id") or current_user.get("email")
+        # user_id = current_user.get("_id") or current_user.get("id") or current_user.get("email")
+        user_email = current_user["email"]
 
         # Find story by sequential ID
-        existing = await db["stories"].find_one({
-            "story_id": story_id,
-            "project_id": project_id, 
-            "created_by": user_id
-        })
-
-        if not existing:
-            raise HTTPException(status_code=404, detail="Story not found or access denied.")
-
-        update_data = {
-            k: v for k, v in story_update.model_dump().items()
-            if v is not None
-        }
-
-        await db["stories"].update_one(
-            {"story_id": story_id},
+        update_data = {k: v for k, v in payload.model_dump().items() if v is not None}
+        print(f"Story to update {update_data}")
+        result = await db["stories"].update_one(
+            {
+                "story_id": story_id,
+                "project_id": project_id,
+                "created_by": user_email
+            },
             {"$set": update_data}
         )
 
-        updated = await db["stories"].find_one({"story_id": story_id})
+        if result.matched_count == 0:
+            raise HTTPException(404, "Story not found or access denied")
+
+        updated = await db["stories"].find_one(
+            {
+                "story_id": story_id,
+                "project_id": project_id,
+                "created_by": user_email
+            }
+        )
+
         updated["id"] = str(updated["_id"])
         updated.pop("_id", None)
 
-        updated.setdefault("tags", [])
-        updated.setdefault("scenarios", [])
-
         return StoryResponse(**updated)
-
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update story: {str(e)}")
 
     
 @router.delete("/{story_id}")
-async def delete_story(story_id: str,project_id: str, current_user=Depends(get_current_user)):
-    """
-    Delete a story using its sequential story_id (e.g., S001).
-    Ensures ownership.
-    """
-    try:
-        user_id = current_user.get("_id") or current_user.get("id") or current_user.get("email")
+async def delete_story(
+    story_id: str,
+    project_id: str,
+    current_user=Depends(get_current_user)
+):
+    user_email = current_user["email"]
 
-        result = await db["stories"].delete_one({
-            "story_id": story_id,
-            "project_id": project_id, 
-            "created_by": user_id
-        })
+    deleted = await db["stories"].delete_one({
+        "story_id": story_id,
+        "project_id": project_id,
+        "created_by": user_email
+    })
 
-        if result.deleted_count == 0:
-            raise HTTPException(status_code=404, detail="Story not found or access denied.")
+    if deleted.deleted_count == 0:
+        raise HTTPException(404, "Story not found or access denied.")
 
-        return {"message": "Story deleted successfully."}
+    # NEW: decrement story usage
+    await decrement_usage(user_email, "stories_used")
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete story: {str(e)}")
+    return {"message": "Story deleted"}

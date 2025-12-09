@@ -18,6 +18,8 @@ export default function StoriesPage() {
   const [editStory, setEditStory] = useState<Story | null>(null);
   const [openRecorder, setOpenRecorder] = useState(false);
   const [recordStoryId, setRecordStoryId] = useState<string | null>(null);
+  const [deleteStory, setDeleteStory] = useState<Story | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function loadStories() {
     try {
@@ -27,6 +29,27 @@ export default function StoriesPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleDelete() {
+    if (!deleteStory) return;
+
+    setDeleting(true);
+
+    const res = await apiFetch(
+      `/stories/${deleteStory.story_id}?project_id=${projectId}`,
+      { method: "DELETE" }
+    );
+
+    setDeleting(false);
+
+    if (!res.ok) {
+      console.error("Failed to delete story");
+      return;
+    }
+
+    setDeleteStory(null);
+    await loadStories();
   }
 
   useEffect(() => {
@@ -113,6 +136,14 @@ export default function StoriesPage() {
                     >
                       <Edit size={14} /> Edit
                     </button>
+                    
+                    {/* DELETE */}
+                    <button
+                      onClick={() => setDeleteStory(story)}
+                      className="px-3 py-1 text-xs border border-red-500 text-red-600 rounded hover:bg-red-50"
+                    >
+                      🗑 Delete
+                    </button>
 
                     {/* RECORD */}
                     <button
@@ -148,6 +179,37 @@ export default function StoriesPage() {
           onClose={() => setOpenRecorder(false)}
         />
       )}
+
+      {deleteStory && (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div className="bg-white w-full max-w-md p-6 rounded shadow-lg">
+          <h3 className="text-lg font-semibold mb-2">
+            Delete Story {deleteStory.story_id}?
+          </h3>
+
+          <p className="text-gray-600">
+            Are you sure you want to delete this story? This action cannot be undone.
+          </p>
+
+          <div className="flex justify-end mt-6 gap-3">
+            <button
+              className="px-4 py-2 border rounded"
+              onClick={() => setDeleteStory(null)}
+            >
+              Cancel
+            </button>
+
+            <button
+              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              disabled={deleting}
+              onClick={handleDelete}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   );
 }

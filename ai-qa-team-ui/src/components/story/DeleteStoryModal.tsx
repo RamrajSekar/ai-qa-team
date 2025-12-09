@@ -1,81 +1,49 @@
 "use client";
 
-import { apiFetch } from "@/utils/api";
-import { X } from "lucide-react";
-import { useState } from "react";
+import { X, Trash2 } from "lucide-react";
 
-interface DeleteStoryModalProps {
+interface ConfirmDeleteModalProps {
   open: boolean;
-  onClose: () => void;
-  storyId: string;
-  projectId: string;
-  onDeleted: () => Promise<void>;
+  title?: string;
+  message?: string;
+  onCancel: () => void;
+  onConfirm: () => Promise<void>;
 }
 
 export default function DeleteStoryModal({
   open,
-  onClose,
-  storyId,
-  projectId,
-  onDeleted,
-}: DeleteStoryModalProps) {
-  const [loading, setLoading] = useState(false);
-
+  title = "Delete Story",
+  message = "Are you sure you want to delete this story? This action cannot be undone.",
+  onCancel,
+  onConfirm,
+}: ConfirmDeleteModalProps) {
   if (!open) return null;
-
-  async function handleDelete() {
-    setLoading(true);
-
-    const res = await apiFetch(`/stories/${storyId}&project_id=${projectId}`, {
-      method: "DELETE",
-    });
-
-    setLoading(false);
-
-    if (!res.ok) {
-      console.error("Failed to delete story", res);
-      return;
-    }
-
-    await onDeleted(); // refresh list
-    onClose();         // close modal AFTER refresh
-  }
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl relative">
+      <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg relative">
 
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 text-gray-500 hover:text-black"
-        >
+        <button onClick={onCancel} className="absolute right-4 top-4 text-gray-500">
           <X size={20} />
         </button>
 
-        <h2 className="text-xl font-semibold mb-4">Delete Story?</h2>
+        <div className="flex items-center gap-3 mb-4">
+          <Trash2 size={22} className="text-red-600" />
+          <h2 className="text-lg font-semibold">{title}</h2>
+        </div>
 
-        <p className="text-gray-600 mb-6">
-          This action cannot be undone. This will permanently remove the story
-          and its associated scenarios and testcases.
-        </p>
+        <p className="text-gray-600 mb-6">{message}</p>
 
         <div className="flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 border rounded"
-          >
+          <button onClick={onCancel} className="px-4 py-2 border rounded">
             Cancel
           </button>
 
           <button
-            onClick={handleDelete}
-            disabled={loading}
-            className={`px-4 py-2 rounded text-white ${
-              loading ? "bg-gray-400" : "bg-red-600 hover:bg-red-700"
-            }`}
+            onClick={onConfirm}
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
           >
-            {loading ? "Deleting..." : "Delete"}
+            Delete
           </button>
         </div>
 

@@ -4,21 +4,14 @@ import { useState, useEffect } from "react";
 import { apiFetch } from "@/utils/api";
 import { X } from "lucide-react";
 
-// Strong typing
-interface Story {
-  story_id: string;
-  title: string;
-  description?: string;
-  acceptance_criteria?: string;
-  out_of_scope?: string;
-}
+import type { Story } from "@/types/story";
 
 interface StoryModalProps {
   open: boolean;
   onClose: () => void;
   onSaved: () => Promise<void>;
   projectId: string;
-  story?: Story; // FIXED: not any
+  story?: Story | null;
 }
 
 export default function StoryModal({
@@ -34,10 +27,9 @@ export default function StoryModal({
   const [description, setDescription] = useState("");
   const [acceptanceCriteria, setAcceptanceCriteria] = useState("");
   const [outOfScope, setOutOfScope] = useState("");
-
   const [saving, setSaving] = useState(false);
 
-  // Load existing Story data when editing
+  // Load values in edit mode
   useEffect(() => {
     if (story) {
       setTitle(story.title || "");
@@ -67,18 +59,26 @@ export default function StoryModal({
       out_of_scope: outOfScope,
     };
 
-    const url = isEdit ? `/stories/${story?.story_id}` : `/stories`;
-    const method = isEdit ? "PUT" : "POST";
+    let res;
 
-    const res = await apiFetch(url, {
-      method,
-      body: JSON.stringify(payload),
-    });
+    if (isEdit) {
+      // Backend requires project_id in the query!
+      res = await apiFetch(`/stories/${story!.story_id}?project_id=${projectId}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+    } else {
+      res = await apiFetch(`/stories`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+    }
 
     setSaving(false);
 
     if (!res.ok) {
       console.error("Story save failed", res);
+      alert(res.data?.detail || "Failed to save story");
       return;
     }
 
@@ -89,8 +89,8 @@ export default function StoryModal({
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
       <div className="bg-white rounded-lg w-full max-w-2xl p-6 shadow-xl relative">
-        
-        {/* Close button */}
+
+        {/* Close */}
         <button
           onClick={onClose}
           className="absolute right-4 top-4 text-gray-500 hover:text-black"
@@ -98,12 +98,14 @@ export default function StoryModal({
           <X size={20} />
         </button>
 
+        {/* Title */}
         <h2 className="text-xl font-semibold mb-4">
-          {isEdit ? "Edit Story" : "Create Story"}
+          {isEdit ? "Edit Story" : "Create New Story"}
         </h2>
 
+        {/* Fields */}
         <div className="space-y-4">
-          {/* Title */}
+
           <div>
             <label className="font-medium text-sm">Title</label>
             <input
@@ -114,7 +116,6 @@ export default function StoryModal({
             />
           </div>
 
-          {/* Description */}
           <div>
             <label className="font-medium text-sm">Description</label>
             <textarea
@@ -125,7 +126,6 @@ export default function StoryModal({
             />
           </div>
 
-          {/* Acceptance Criteria */}
           <div>
             <label className="font-medium text-sm">Acceptance Criteria</label>
             <textarea
@@ -136,7 +136,6 @@ export default function StoryModal({
             />
           </div>
 
-          {/* Out of Scope */}
           <div>
             <label className="font-medium text-sm">Out of Scope</label>
             <textarea
@@ -148,6 +147,7 @@ export default function StoryModal({
           </div>
         </div>
 
+        {/* Footer */}
         <div className="flex justify-end mt-6 gap-3">
           <button onClick={onClose} className="px-4 py-2 border rounded">
             Cancel
@@ -162,9 +162,10 @@ export default function StoryModal({
                 : "bg-purple-600 hover:bg-purple-700"
             }`}
           >
-            {saving ? "Saving..." : "Save Story"}
+            {saving ? "Saving…" : isEdit ? "Update Story" : "Create Story"}
           </button>
         </div>
+
       </div>
     </div>
   );

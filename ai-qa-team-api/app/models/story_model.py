@@ -16,6 +16,7 @@ class StoryCreate(BaseModel):
         from_attributes = True
 
 class StoryResponse(BaseModel):
+    id: Optional[str] = None
     project_id: str
     story_id: str
     title: str
