@@ -18,22 +18,20 @@ import {
   LogOut,
   Layers,
   Info,
+  FileText,
 } from "lucide-react";
-import { FileText } from "lucide-react";
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
 
+  const [collapsed, setCollapsed] = useState(false);
   const { projects, reload } = useProjects();
 
-  /** Refresh sidebar project list when route changes */
   useEffect(() => {
     reload();
   }, [pathname]);
 
-  /** Detect active project */
   const match = pathname.match(/^\/projects\/([^/]+)/);
   const currentProjectId = match ? match[1] : null;
 
@@ -45,49 +43,27 @@ export default function Sidebar() {
   ];
 
   const projectMenu = currentProjectId
-  ? [
-      {
-        name: "Overview",
-        icon: <Layers size={18} />,
-        href: `/projects/${currentProjectId}`,
-      },
-      {
-        name: "Stories",
-        icon: <FileText size={18} />,
-        href: `/projects/${currentProjectId}/stories`,
-      },
-      {
-        name: "Environments",
-        icon: <FolderOpen size={18} />,
-        href: `/projects/${currentProjectId}/environments`,
-      },
-      {
-        name: "Scenarios",
-        icon: <Puzzle size={18} />,
-        href: `/projects/${currentProjectId}/scenarios`,
-      },
-      {
-        name: "Executions",
-        icon: <Zap size={18} />,
-        href: `/projects/${currentProjectId}/executions`,
-      },
-    ]
-  : [];
+    ? [
+        { name: "Overview", icon: <Layers size={18} />, href: `/projects/${currentProjectId}` },
+        { name: "Stories", icon: <FileText size={18} />, href: `/projects/${currentProjectId}/stories` },
+        { name: "Environments", icon: <FolderOpen size={18} />, href: `/projects/${currentProjectId}/environments` },
+        { name: "Scenarios", icon: <Puzzle size={18} />, href: `/projects/${currentProjectId}/scenarios` },
+        { name: "Executions", icon: <Zap size={18} />, href: `/projects/${currentProjectId}/executions` },
+      ]
+    : [];
 
-
-  const isActiveGlobal = (href: string) => pathname === href;
-  const isActiveProject = (href: string) => pathname === href || pathname.startsWith(href + "/");
+  const isActive = (href: string) =>
+    pathname === href || pathname.startsWith(href + "/");
 
   const recent = projects.slice(0, 4);
 
   return (
     <aside
-      className={`h-screen flex flex-col bg-gray-900 text-white transition-all duration-300 ${
-        collapsed ? "w-16" : "w-64"
-      } shadow-xl`}
+      className={`h-screen flex flex-col bg-gray-900 text-white shadow-xl transition-all duration-300 
+      ${collapsed ? "w-16" : "w-64"}`}
     >
       {/* HEADER */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-gray-700">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 rounded-lg bg-purple-600 flex items-center justify-center font-bold">
             QA
@@ -104,7 +80,7 @@ export default function Sidebar() {
       </div>
 
       {/* USER */}
-      <div className="px-4 py-3 text-gray-300 text-sm border-b border-gray-700">
+      <div className="px-4 py-3 text-gray-300 text-sm border-b border-gray-800">
         {!collapsed ? (
           <>
             <p className="text-xs opacity-60">Logged in as</p>
@@ -117,32 +93,35 @@ export default function Sidebar() {
         )}
       </div>
 
-      {/* NAVIGATION */}
-      <nav className="flex-1 px-2 py-4 space-y-1 relative">
+      {/* NAV */}
+      <nav className="flex-1 px-2 py-4 space-y-1">
 
+        {/* GLOBAL */}
         {!collapsed && (
-          <p className="text-xs uppercase text-gray-500 px-3 flex items-center gap-2 mb-1">
+          <p className="text-xs uppercase text-gray-500 px-3 mb-1 flex items-center gap-2">
             <Info size={12} /> Global
           </p>
         )}
 
         {globalMenu.map((item) => {
-          const active = isActiveGlobal(item.href);
+          const active = isActive(item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`group relative flex items-center gap-3 px-3 py-2 rounded-md transition 
-                font-medium cursor-pointer ${
-                  active ? "bg-purple-600 text-white" : "hover:bg-gray-800 text-gray-300"
-                } ${collapsed ? "justify-center" : ""}`}
+              className={`group relative flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer
+                transition font-medium 
+                ${active ? "bg-purple-600 text-white" : "hover:bg-gray-800 text-gray-300"}
+                ${collapsed ? "justify-center" : ""}`}
             >
-              {active && <span className="absolute left-0 top-0 h-full w-1 bg-purple-400"></span>}
+              {active && <span className="absolute left-0 top-0 h-full w-[3px] bg-purple-400"></span>}
               {item.icon}
+
               {!collapsed && <span>{item.name}</span>}
 
               {collapsed && (
-                <span className="absolute left-14 opacity-0 group-hover:opacity-100 text-xs px-2 py-1 bg-black/80 rounded whitespace-nowrap">
+                <span className="absolute left-16 opacity-0 group-hover:opacity-100 text-xs px-2 py-1 
+                bg-black/80 rounded whitespace-nowrap transition">
                   {item.name}
                 </span>
               )}
@@ -150,6 +129,7 @@ export default function Sidebar() {
           );
         })}
 
+        {/* PROJECT MENU */}
         {currentProjectId && (
           <>
             {!collapsed && (
@@ -159,22 +139,24 @@ export default function Sidebar() {
             )}
 
             {projectMenu.map((item) => {
-              const active = isActiveProject(item.href);
+              const active = isActive(item.href);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`group relative flex items-center gap-3 px-3 py-2 rounded-md transition 
-                    font-medium cursor-pointer ${
-                      active ? "bg-purple-600 text-white" : "hover:bg-gray-800 text-gray-300"
-                    } ${collapsed ? "justify-center" : ""}`}
+                  className={`group relative flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer 
+                    transition font-medium 
+                    ${active ? "bg-purple-600 text-white" : "hover:bg-gray-800 text-gray-300"}
+                    ${collapsed ? "justify-center" : ""}`}
                 >
-                  {active && <span className="absolute left-0 top-0 h-full w-1 bg-purple-400"></span>}
+                  {active && <span className="absolute left-0 top-0 h-full w-[3px] bg-purple-400"></span>}
                   {item.icon}
+
                   {!collapsed && <span>{item.name}</span>}
 
                   {collapsed && (
-                    <span className="absolute left-14 opacity-0 group-hover:opacity-100 text-xs px-2 py-1 bg-black/70 rounded-md">
+                    <span className="absolute left-16 opacity-0 group-hover:opacity-100 text-xs px-2 py-1 
+                    bg-black/75 rounded transition">
                       {item.name}
                     </span>
                   )}
@@ -186,18 +168,18 @@ export default function Sidebar() {
 
         {/* RECENT PROJECTS */}
         {!collapsed && recent.length > 0 && (
-          <div className="mt-6 pt-4 border-t border-gray-700">
+          <div className="mt-6 pt-4 border-t border-gray-800">
             <p className="text-xs uppercase text-gray-500 px-3 mb-2">Recent Projects</p>
 
             {recent.map((p) => (
               <Link
                 key={p.project_id}
                 href={`/projects/${p.project_id}`}
-                className={`block text-sm py-1.5 rounded px-3 mb-1 transition ${
-                  pathname.includes(p.project_id)
+                className={`block text-sm py-1.5 rounded px-3 mb-1 transition
+                  ${pathname.includes(p.project_id)
                     ? "bg-purple-700 text-white"
                     : "hover:bg-gray-800 text-gray-300"
-                }`}
+                  }`}
               >
                 {p.name}
               </Link>
@@ -206,15 +188,15 @@ export default function Sidebar() {
         )}
 
         {collapsed && recent.length > 0 && (
-          <div className="px-2 mt-4 border-t border-gray-700 flex flex-col items-center gap-3 pt-4">
+          <div className="px-2 mt-4 border-t border-gray-800 flex flex-col items-center gap-3 pt-4">
             {recent.map((p) => (
               <Link
                 key={p.project_id}
                 href={`/projects/${p.project_id}`}
-                className={`w-10 h-10 flex items-center justify-center rounded-md text-xs ${
-                  pathname.includes(p.project_id)
-                    ? "bg-purple-600"
-                    : "bg-gray-800 hover:bg-gray-700"
+                className={`w-10 h-10 flex items-center justify-center rounded-md text-xs
+                ${pathname.includes(p.project_id)
+                  ? "bg-purple-600 text-white"
+                  : "bg-gray-800 hover:bg-gray-700 text-gray-300"
                 }`}
               >
                 {p.name[0]}
@@ -230,7 +212,6 @@ export default function Sidebar() {
           <>
             <p className="text-xs">Your Plan</p>
             <p className="text-lg font-semibold">{user?.subscription?.plan || "FREE"}</p>
-
             <Link
               href="/pricing"
               className="mt-2 inline-block bg-purple-500 text-white px-4 py-2 text-xs rounded-md hover:bg-purple-600"
@@ -239,17 +220,18 @@ export default function Sidebar() {
             </Link>
           </>
         ) : (
-          <p className="text-xs font-semibold">{(user?.subscription?.plan || "F")[0]}</p>
+          <p className="text-xs font-semibold">
+            {(user?.subscription?.plan || "F")[0]}
+          </p>
         )}
       </div>
 
       {/* LOGOUT */}
-      <div className="border-t border-gray-800 p-4">
+      <div className="p-4 border-t border-gray-800">
         <button
           onClick={logout}
-          className={`flex items-center gap-3 w-full text-left px-3 py-2 rounded-md text-red-400 hover:bg-red-900/30 transition ${
-            collapsed ? "justify-center" : ""
-          }`}
+          className={`flex items-center gap-3 w-full px-3 py-2 rounded-md text-red-400 
+          hover:bg-red-900/30 transition ${collapsed ? "justify-center" : ""}`}
         >
           <LogOut size={18} />
           {!collapsed && <span>Logout</span>}

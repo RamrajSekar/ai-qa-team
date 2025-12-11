@@ -3,7 +3,7 @@ import './globals.css';
 import RootProviders from '@/components/providers/RootProviders';
 
 export const metadata: Metadata = {
-  title: 'QA Squad – AI QA Team',
+  title: 'QA Squad',
   description: 'AI-powered test-automation companion',
 };
 

@@ -16,6 +16,8 @@ from app.utils.jwt_handler import create_access_token, decode_token, create_refr
 from datetime import datetime, timezone
 import urllib.parse
 from app.models.subscription import Subscription
+from app.services.sync_usage import sync_usage
+
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -189,7 +191,18 @@ async def oauth_callback(request: Request, provider: str):
 
             user_doc = new_user.model_dump(by_alias=True, exclude_none=True)
 
-            # 🔥 Save test import access token
+            # 🔥 ADD SUBSCRIPTION + LIMITS
+            subscription = Subscription(plan="free")
+            subscription.apply_plan_defaults()
+            user_doc["subscription"] = subscription.model_dump()
+
+            # 🔥 ADD ONBOARDING STRUCTURE
+            user_doc["onboarding"] = OnboardingModel().model_dump()
+
+            # 🔥 ADD REQUIRED METADATA
+            user_doc["created_at"] = datetime.utcnow()
+
+            # 🔥 OAuth Integration Details
             user_doc["integrations"] = {
                 provider: {
                     "access_token": token.get("access_token"),
@@ -212,6 +225,9 @@ async def oauth_callback(request: Request, provider: str):
                         f"integrations.{provider}.token_type": token.get("token_type"),
                         f"integrations.{provider}.scope": token.get("scope"),
                         f"integrations.{provider}.raw": token,
+                        # 🔥 Ensure subscription exists (self-heal)
+                        "subscription": existing.get("subscription") or Subscription(plan="free").model_dump(),
+                        "onboarding": existing.get("onboarding") or OnboardingModel().model_dump(),
                     }
                 }
             )
@@ -366,14 +382,24 @@ async def get_my_profile(request: Request):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    user_data = serialize_doc(user)
+    # ----------------------------------------
+    # 🔥 Automatically recalculate all usage
+    # ----------------------------------------
+    usage = await sync_usage(user_email)
+
+    # Reload user after usage update
+    refreshed_user = await db["users"].find_one({"email": user_email})
+    user_data = serialize_doc(refreshed_user)
+
     user_data["token_issued_to"] = user_email
     user_data["token_checked_at"] = datetime.utcnow().isoformat()
-    print("STEP 5: /auth/me called")
-    # print("Received cookies:", request.cookies)
     user_data.pop("password", None)
-    print("Decoded user:", user_data)
-    return { "ok": True, "user": user_data }
+
+    print("STEP 5: /auth/me called")
+    print("Synced usage:", usage)
+
+    return {"ok": True, "user": user_data}
+
 
 # @router.post("/logout")
 # async def logout(current_user=Depends(get_current_user)):

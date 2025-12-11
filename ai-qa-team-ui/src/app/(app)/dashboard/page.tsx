@@ -13,6 +13,7 @@ export default function DashboardPage() {
   const { user, setUser } = useAuth();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [openProjectModal, setOpenProjectModal] = useState(false);
   const [openOnboarding, setOpenOnboarding] = useState(false);
 
@@ -41,26 +42,25 @@ export default function DashboardPage() {
     if (!loading && projects.length === 0) {
       setOpenOnboarding(true);
     }
-    refreshUser(); // Also refresh usage counts
+    refreshUser();
   }, [projects]);
 
-  /** Initial onboarding based on user settings */
+  /** Open onboarding if new user */
   useEffect(() => {
     if (!user) return;
 
-    const status = user.onboarding?.onboarding_status;
-    if (status !== "completed") {
+    if (user.onboarding?.onboarding_status !== "completed") {
       setOpenOnboarding(true);
     }
   }, [user]);
 
-  if (!user) return <p className="p-6">Loading...</p>;
+  if (!user) return <p className="p-8">Loading...</p>;
 
   const usage = user.subscription?.usage || {};
   const limits = user.subscription?.limits || {};
 
   return (
-    <div className="relative p-6 space-y-10">
+    <div className="px-6 py-8 md:px-10 lg:px-14 space-y-10 max-w-[1400px]">
 
       {/* ONBOARDING MODAL */}
       {openOnboarding && (
@@ -74,26 +74,28 @@ export default function DashboardPage() {
 
       {/* HEADER */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Dashboard</h2>
+        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
 
         <button
           onClick={() => setOpenProjectModal(true)}
-          className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700"
+          className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition"
         >
           + Create Project
         </button>
       </div>
 
       {/* KPI CARDS */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 pt-2">
         <KPI title="Projects" used={usage.projects_used} max={limits.projects_limit} />
+        <KPI title="Stories" used={usage.stories_used} max={limits.stories_limit} />
+        <KPI title="Scenarios" used={usage.scenarios_used} max={limits.scenarios_limit} />
         <KPI title="Executions" used={usage.executions_used} max={limits.executions_limit} />
         <KPI title="AI Generations" used={usage.ai_gen_used} max={limits.ai_gen_limit} />
         <KPI title="Team Members" used={usage.team_members_used} max={limits.team_members_limit} />
       </div>
 
-      {/* CHARTS */}
-      <div className="grid grid-cols-2 gap-4 mb-10">
+      {/* CHARTS SECTION */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <ExecutionTrendChart
           data={[
             { date: "Mon", total: 5, passed: 4, failed: 1 },
@@ -107,31 +109,31 @@ export default function DashboardPage() {
       </div>
 
       {/* PROJECT LIST */}
-      <div className="space-y-4">
-        <h3 className="text-xl font-semibold">Your Projects</h3>
+      <div className="pt-2 max-w-[1200px]">
+        <h3 className="text-xl font-semibold mb-4">Your Projects</h3>
 
         {loading ? (
           <p>Loading...</p>
         ) : projects.length === 0 ? (
-          <div className="border rounded-md p-8 text-center text-gray-500">
+          <div className="border rounded-md p-10 text-center text-gray-500 bg-white shadow-sm">
             <p>No projects created yet.</p>
             <button
               onClick={() => setOpenProjectModal(true)}
-              className="mt-4 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700"
+              className="mt-4 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition"
             >
               Create your first project
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {projects.map((p: any) => (
               <Link
                 key={p.project_id}
                 href={`/projects/${p.project_id}`}
-                className="p-5 border rounded-lg shadow-sm hover:shadow-md bg-white transition"
+                className="p-5 border rounded-lg bg-white shadow hover:shadow-md transition"
               >
                 <h4 className="font-semibold text-lg">{p.name}</h4>
-                <p className="text-xs text-gray-500">ID: {p.project_id}</p>
+                <p className="text-xs text-gray-500 mt-1">ID: {p.project_id}</p>
               </Link>
             ))}
           </div>
@@ -151,9 +153,9 @@ export default function DashboardPage() {
 
 function KPI({ title, used, max }: { title: string; used: any; max: any }) {
   return (
-    <div className="bg-white p-4 rounded-lg shadow border">
-      <p className="text-sm text-gray-500">{title}</p>
-      <p className="text-2xl font-bold">
+    <div className="bg-white border rounded-lg p-5 shadow-sm hover:shadow transition">
+      <p className="text-sm text-gray-600">{title}</p>
+      <p className="text-2xl font-bold mt-1">
         {used ?? 0}/{max ?? 0}
       </p>
     </div>

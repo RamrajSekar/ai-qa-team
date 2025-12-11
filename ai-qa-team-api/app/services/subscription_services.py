@@ -54,7 +54,7 @@ async def get_subscription(user_identifier: str):
         "scenarios_used": 0,
         "executions_used": 0,
         "team_members_used": 0,
-        "ai_gen_used": 0,   # NEW FIELD
+        "ai_gen_used": 0,
     }
 
     if "usage" not in sub or not isinstance(sub["usage"], dict):
