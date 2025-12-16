@@ -2,47 +2,90 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { apiFetch } from "@/utils/api";
-import type { Story } from "@/types/story";
-import type { Recording } from "@/types/recorder";
-import RecordingsTable from "@/components/recorder/RecordingsTable";
-import RecordingViewer from "@/components/recorder/RecordingViewer";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
-export default function StoryDetailPage() {
+import { apiFetch } from "@/utils/api";
+
+import type { Story } from "@/types/story";
+import type { Recording } from "@/types/recorder";
+
+import RecordingsTable from "@/components/recorder/RecordingsTable";
+import RecordingViewer from "@/components/recorder/RecordingViewer";
+import RecorderOverlay from "@/components/recorder/RecorderOverlay";
+
+import type { Scenario } from "@/types/scenario";
+import ScenarioTable from "@/components/scenarios/ScenarioTable";
+import ScenarioModal from "@/components/scenarios/ScenarioModal";
+import ScenarioViewer from "@/components/scenarios/ScenarioViewer";
+
+export default function StoryDetailsPage() {
   const params = useParams() as { projectId: string; storyId: string };
   const { projectId, storyId } = params;
 
   const [story, setStory] = useState<Story | null>(null);
-  const [recordings, setRecordings] = useState<Recording[]>([]);
-  const [viewRecording, setViewRecording] = useState<Recording | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Recorder
+  const [recordings, setRecordings] = useState<Recording[]>([]);
+  const [viewRecording, setViewRecording] = useState<Recording | null>(null);
+  const [openRecorder, setOpenRecorder] = useState(false);
+
+  // Scenarios
+  const [scenarios, setScenarios] = useState<Scenario[]>([]);
+  const [scenarioModalOpen, setScenarioModalOpen] = useState(false);
+  const [editingScenario, setEditingScenario] = useState<Scenario | undefined>();
+  const [viewScenario, setViewScenario] = useState<Scenario | null>(null);
+
+  // -----------------------------
+  // LOAD STORY
+  // -----------------------------
   async function loadStory() {
     try {
       const res = await apiFetch(`/stories/${storyId}?project_id=${projectId}`);
-      setStory(res.data);
-    } catch (e) {
-      console.error("Failed to load story:", e);
+      if (res.ok) setStory(res.data);
+    } catch (err) {
+      console.error("Failed to load story:", err);
     }
   }
 
+  // -----------------------------
+  // LOAD RECORDINGS
+  // -----------------------------
   async function loadRecordings() {
     try {
       const res = await apiFetch(`/recorder/by-story/${storyId}`);
       setRecordings(res.data || []);
-    } catch (e) {
-      console.error("Failed to load recordings:", e);
-      setRecordings([]); // prevent map crash
+    } catch (err) {
+      console.error("Failed to load recordings:", err);
+      setRecordings([]);
     }
   }
 
+  // -----------------------------
+  // LOAD SCENARIOS
+  // -----------------------------
+  async function loadScenarios() {
+    try {
+      const res = await apiFetch(
+        `/scenarios?story_id=${storyId}&project_id=${projectId}`
+      );
+      setScenarios(res.data || []);
+    } catch (err) {
+      console.error("Failed to load scenarios:", err);
+      setScenarios([]);
+    }
+  }
+
+  // -----------------------------
+  // INITIAL LOAD
+  // -----------------------------
   useEffect(() => {
     if (!storyId) return;
+
     setLoading(true);
 
-    Promise.all([loadStory(), loadRecordings()]).finally(() =>
+    Promise.all([loadStory(), loadRecordings(), loadScenarios()]).finally(() =>
       setLoading(false)
     );
   }, [storyId]);
@@ -55,52 +98,130 @@ export default function StoryDetailPage() {
     );
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-6 space-y-10">
+
       {/* BACK BUTTON */}
-        <div className="mb-4">
-        <Link
-            href={`/projects/${projectId}/stories`}
-            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition"
-        >
-            <ArrowLeft size={16} />
-            Back to Stories
-        </Link>
-        </div>
+      <Link
+        href={`/projects/${projectId}/stories`}
+        className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+      >
+        <ArrowLeft size={16} />
+        Back to Stories
+      </Link>
 
       {/* STORY HEADER */}
       <div className="border rounded-lg p-5 bg-white shadow-sm">
-        <h1 className="text-2xl font-semibold mb-2">{story.title}</h1>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">{story.title}</h1>
 
-        <p className="text-gray-600 mb-2">
-          <strong>Description:</strong> {story.description || "—"}
-        </p>
+            {story.description && (
+              <p className="text-gray-700 mt-1">{story.description}</p>
+            )}
 
-        <p className="text-gray-600 mb-2">
-          <strong>Acceptance Criteria:</strong>{" "}
-          {story.acceptance_criteria || "—"}
-        </p>
+            <div className="mt-3 space-y-1 text-gray-600">
+              <p>
+                <strong>Acceptance Criteria:</strong>{" "}
+                {story.acceptance_criteria || "—"}
+              </p>
+              <p>
+                <strong>Out of Scope:</strong> {story.out_of_scope || "—"}
+              </p>
 
-        <p className="text-gray-600 mb-2">
-          <strong>Out of Scope:</strong> {story.out_of_scope || "—"}
-        </p>
+              <p className="text-sm text-gray-500">
+                Created At: {new Date(story.created_at).toLocaleString()}
+              </p>
+            </div>
+          </div>
 
-        <p className="text-gray-500 text-sm">
-          Created At: {new Date(story.created_at).toLocaleString()}
-        </p>
+          {/* RECORD BUTTON */}
+          <button
+            onClick={() => setOpenRecorder(true)}
+            className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+          >
+            Record Steps
+          </button>
+        </div>
       </div>
 
-      {/* RECORDINGS TABLE */}
-      <RecordingsTable
-        recordings={recordings}
-        onView={(rec) => setViewRecording(rec)}
-      />
+      {/* SCENARIOS SECTION */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Scenarios</h2>
 
-      {/* VIEWER MODAL */}
+          <button
+            onClick={() => {
+              setEditingScenario(undefined);
+              setScenarioModalOpen(true);
+            }}
+            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+          >
+            + Add Scenario
+          </button>
+        </div>
+
+        <ScenarioTable
+          scenarios={scenarios}
+          onView={(s) => setViewScenario(s)}
+          onEdit={(s) => {
+            setEditingScenario(s);
+            setScenarioModalOpen(true);
+          }}
+          onDelete={async (s) => {
+            if (!confirm(`Delete scenario "${s.title}"?`)) return;
+            await apiFetch(`/scenarios/${s.scenario_id}?project_id=${projectId}`, {
+              method: "DELETE",
+            });
+            loadScenarios();
+          }}
+        />
+      </div>
+
+      {/* RECORDINGS SECTION */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">Recordings</h2>
+
+        <RecordingsTable
+          recordings={recordings}
+          onView={(rec) => setViewRecording(rec)}
+        />
+      </div>
+
+      {/* VIEW RECORDING MODAL */}
       {viewRecording && (
         <RecordingViewer
           open={true}
           recording={viewRecording}
           onClose={() => setViewRecording(null)}
+        />
+      )}
+
+      {/* VIEW SCENARIO MODAL */}
+      {viewScenario && (
+        <ScenarioViewer
+          open={true}
+          scenario={viewScenario}
+          onClose={() => setViewScenario(null)}
+        />
+      )}
+
+      {/* CREATE / EDIT SCENARIO MODAL */}
+      <ScenarioModal
+        open={scenarioModalOpen}
+        onClose={() => setScenarioModalOpen(false)}
+        onSaved={loadScenarios}
+        projectId={projectId}
+        storyId={storyId}
+        scenario={editingScenario}
+      />
+
+      {/* RECORDER OVERLAY */}
+      {openRecorder && (
+        <RecorderOverlay
+          url="/" // TODO: Replace when environment URL selection is added
+          storyId={storyId}
+          projectId={projectId}
+          onClose={() => setOpenRecorder(false)}
         />
       )}
     </div>

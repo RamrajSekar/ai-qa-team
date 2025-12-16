@@ -21,6 +21,7 @@ from app.ai.scenario_prompts import (
 )
 
 from app.services.ai.scenario_generator import generate_scenarios_from_prompt
+from app.services.subscription_services import decrement_usage
 
 # ------------------------------------------------------
 # Router Setup
@@ -183,7 +184,7 @@ async def get_scenario(
 # -------------------------------------------------------------------
 # 4. UPDATE SCENARIO (includes approval + step normalization)
 # -------------------------------------------------------------------
-@router.put("/{scenario_id}", response_model=ScenarioResponse)
+@router.patch("/{scenario_id}", response_model=ScenarioResponse)
 async def update_scenario(
     scenario_id: str,
     update: ScenarioUpdate,
@@ -229,18 +230,38 @@ async def update_scenario(
 # -------------------------------------------------------------------
 # 5. DELETE SCENARIO
 # -------------------------------------------------------------------
+# @router.delete("/{scenario_id}")
+# async def delete_scenario(
+#     scenario_id: str,
+#     current_user=Depends(get_current_user),
+#     _: None = Depends(subscription_required("scenarios")),
+# ):
+#     res = await db["scenarios"].delete_one(
+#         {"scenario_id": scenario_id, "created_by": current_user["email"]}
+#     )
+#     if res.deleted_count == 0:
+#         raise HTTPException(404, "Scenario not found.")
+#     return {"message": "Scenario deleted"}
+
+
+
+
 @router.delete("/{scenario_id}")
-async def delete_scenario(
-    scenario_id: str,
-    current_user=Depends(get_current_user),
-    _: None = Depends(subscription_required("scenarios")),
-):
-    res = await db["scenarios"].delete_one(
-        {"scenario_id": scenario_id, "created_by": current_user["email"]}
-    )
-    if res.deleted_count == 0:
-        raise HTTPException(404, "Scenario not found.")
-    return {"message": "Scenario deleted"}
+async def delete_scenario(scenario_id: str, current_user=Depends(get_current_user)):
+    user_email = current_user["email"]
+
+    result = await db["scenarios"].delete_one({
+        "scenario_id": scenario_id,
+        "created_by": user_email
+    })
+
+    if result.deleted_count == 0:
+        raise HTTPException(404, "Scenario not found or access denied")
+
+    # FIX: decrement usage
+    await decrement_usage(user_email, "scenarios_used")
+
+    return {"ok": True, "message": "Scenario deleted"}
 
 
 # -------------------------------------------------------------------

@@ -18,8 +18,6 @@ class ScenarioCreate(BaseModel):
     approved: bool = False
     
 class ScenarioUpdate(BaseModel):
-    scenario_id: str
-    story_id: str
     title: Optional[str] = None
     description: Optional[str] = None
     steps: Optional[List[dict]] = None
