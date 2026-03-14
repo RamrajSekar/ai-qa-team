@@ -16,6 +16,7 @@ class Settings(BaseSettings):
 
     session_secret_key: str
     jwt_secret_key: str
+    cors_origins: str | None = None
     google_client_id: str | None = None
     google_client_secret: str | None = None
     google_redirect_uri: str | None = None

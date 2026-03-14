@@ -90,7 +90,7 @@ async def signup(user: User):
 
 @router.post("/login")
 async def login(credentials: dict):
-    print("LOGIN REQ =", credentials["email"], credentials["password"])
+    # print("LOGIN REQ =", credentials["email"], credentials["password"])
     user = await db["users"].find_one({"email": credentials["email"]})
     if not user:
         raise HTTPException(401, "Invalid credentials")

@@ -45,7 +45,8 @@ origins = [
     "http://127.0.0.1:8000",  # Swagger docs
     "http://localhost:8000",
     "http://127.0.0.1:3000",  # React frontend (if applicable)
-    "http://localhost:3000",
+    "http://localhost:3002",
+    "http://172.20.10.6:3002",
     "https://ai-qa-team.vercel.app/"
 ]
 
