@@ -1,84 +1,79 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { apiFetch } from "@/utils/api";
-import { useRouter } from "next/navigation";
 
 export default function LoginForm() {
   const router = useRouter();
   const { closeAuth, setUser } = useAuth();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleLogin(event: React.FormEvent) {
+    event.preventDefault();
     setLoading(true);
     setError("");
 
     try {
-      const res = await apiFetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
-          method: "POST",
-          body: JSON.stringify({ email, password }),
-        });
+      const response = await apiFetch("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
 
-        if (!res.ok) {
-          setError("Invalid login credentials");
-          setLoading(false);
-          return;
-        }
+      if (!response.ok) {
+        setError("The email or password you entered is incorrect.");
+        return;
+      }
 
-      const data = res.data;
-
-      // 1️⃣ Save user to global store
-      setUser(data.user);
-
-      // 2️⃣ Close the modal
+      setUser(response.data.user);
       closeAuth();
-
-      // 3️⃣ Force hydration through /auth/me
-      await apiFetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`);
-
-      // 4️⃣ Redirect to dashboard
+      await apiFetch("/auth/me");
       router.push("/dashboard");
-    } catch (err) {
-      setError("Something went wrong");
+    } catch {
+      setError("We couldn’t sign you in. Please try again.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   return (
-    <form onSubmit={handleLogin} className="space-y-4">
+    <form onSubmit={handleLogin} className="auth-form">
       {error && (
-        <p className="text-red-600 text-sm text-center">{error}</p>
+        <p className="auth-error" role="alert">
+          {error}
+        </p>
       )}
 
+      <label htmlFor="login-email">Email</label>
       <input
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-        placeholder="Email"
+        id="login-email"
+        name="email"
         type="email"
+        autoComplete="email"
+        placeholder="you@company.com"
         value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        onChange={(event) => setEmail(event.target.value)}
+        required
       />
 
+      <label htmlFor="login-password">Password</label>
       <input
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-        placeholder="Password"
+        id="login-password"
+        name="password"
         type="password"
+        autoComplete="current-password"
+        placeholder="Enter your password"
         value={password}
-        onChange={(e) => setPassword(e.target.value)}
+        onChange={(event) => setPassword(event.target.value)}
+        required
       />
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition"
-      >
-        {loading ? "Logging in..." : "Log in"}
+      <button type="submit" className="auth-submit" disabled={loading}>
+        {loading ? "Signing in…" : "Sign in"}
       </button>
     </form>
   );

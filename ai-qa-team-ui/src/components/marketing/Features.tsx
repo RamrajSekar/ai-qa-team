@@ -1,41 +1,127 @@
-import { Bug, Check, Database, ScanSearch } from 'lucide-react';
+import { Bug, Database, ScanSearch } from 'lucide-react';
 
-const setup = ['Login','Create Contact','Search Tour','Select Package','Configure Room','Configure Protection Plan','Configure Bedding','Create Itinerary'];
-const strategies = [['Happy','2'],['Boundary','4'],['Negative','2'],['Cross-field','2']];
+const strategies = [
+  ['Happy', '2'],
+  ['Boundary', '4'],
+  ['Negative', '2'],
+  ['Cross-field', '2'],
+];
+
+const dataLayers = [
+  ['Schema', 'Types, required fields, formats, and bounds'],
+  ['Field intelligence', 'Valid, boundary, invalid, and synthetic values'],
+  ['Cross-field rules', 'Related values that stay logically consistent'],
+  ['Relational state', 'Data and application state across connected records'],
+];
+
 export default function Features() {
-  return <>
-    <section id="product" className="lp-section lp-tint"><div className="lp-container">
-      <p className="lp-eyebrow">Two entry points. The same foundation.</p><h2>One QA Control Plane.<br/>Two Powerful Workflows.</h2>
-      <p className="lp-intro">Designed to make the automation you already own easier to find, prepare, and use.</p>
-      <div className="lp-grid lp-two">
-        <article className="lp-card lp-workflow-card"><Bug aria-hidden="true"/><span className="lp-tag">Planned workflow</span><h3>Reproduce a Bug</h3><p>Paste a bug and its Steps to Reproduce. The planned workflow maps it to existing automation, resolves bug-specific data, and identifies how much can be automated.</p><ol className="lp-mini-flow">{['Paste a bug','Match existing automation','Resolve bug data','Prepare / run','Collect evidence'].map(x=><li key={x}>{x}</li>)}</ol><strong>Reuse existing automation instead of writing a one-off test for every bug.</strong><p className="lp-note">Start with pasted bugs. Jira integration is planned for later.</p></article>
-        <article className="lp-card lp-workflow-card"><ScanSearch aria-hidden="true"/><span className="lp-tag">Planned workflow</span><h3>Explore QA Coverage</h3><p>Describe what you want to test. We’re designing AI QA Team to match existing tests, propose a focused strategy, and generate the validated datasets needed to exercise it.</p><ol className="lp-mini-flow">{['QA prompt','Match existing test','Strategy matrix','Generate data','Preview / run'].map(x=><li key={x}>{x}</li>)}</ol><div className="lp-strategies">{strategies.map(([name,n])=><div key={name}><span>{name}</span><strong>{n}</strong></div>)}</div><p className="lp-note">Example: 10 validated datasets. The planner selects the cases; the data engine creates the rows.</p></article>
-      </div>
-    </div></section>
+  return (
+    <>
+      <section id="product" className="lp-section lp-tint">
+        <div className="lp-container">
+          <p className="lp-eyebrow">Two entry points. The same foundation.</p>
+          <h2>
+            One QA Control Plane.
+            <br />
+            Two Powerful Workflows.
+          </h2>
+          <p className="lp-intro">
+            Designed to make the automation you already own easier to find, prepare, and use.
+          </p>
 
-    <section id="bug-reproduction" className="lp-section lp-container"><p className="lp-eyebrow">01 / Bug reproduction · Product concept</p><h2>From Bug Report to Reproduction Plan</h2><p className="lp-intro">An illustrative Tour Search workflow—not a live analysis or inventory lookup.</p>
-      <div className="lp-grid lp-two lp-demo">
-        <article className="lp-card"><p className="lp-eyebrow">Bug report</p><h3>Tour Search fails for BA departures in November 2026.</h3><ol className="lp-numbered">{['Login to Salesforce QA','Create Contact','Open Tour Search','Tour Code = BA','Departure = November 2026','Search','Error is displayed'].map(x=><li key={x}>{x}</li>)}</ol></article>
-        <article className="lp-card"><div className="lp-card-top"><p className="lp-eyebrow">AI QA Team analysis · Example</p><span className="lp-tag lp-full">FULL coverage</span></div><h3>Matched automation: Search Tour</h3><p>Assuming the existing test already handles:</p><ul className="lp-checklist">{['Salesforce login','Contact data generation','Contact creation','Tour Search navigation','Search execution'].map(x=><li key={x}><Check aria-hidden="true" size={16}/>{x}</li>)}</ul><div className="lp-grid lp-two lp-inputs"><div><small>Tour Code · Locked</small><strong>BA</strong></div><div><small>Departure · Constraint</small><strong>November 2026</strong></div></div><div className="lp-callout"><small>Example resolved value</small><strong>Nov 12, 2026</strong><p>Only if a valid BA departure exists in QA inventory or existing test data.</p></div><p className="lp-tag">Illustrative outcome: Ready for Reproduction</p></article>
-      </div><p className="lp-banner">Existing automation keeps ownership of the setup and data it already handles—including first name, last name, and email.</p>
-    </section>
+          <div className="lp-grid lp-two">
+            <article id="bug-reproduction" className="lp-card lp-workflow-card">
+              <Bug aria-hidden="true" />
+              <span className="lp-tag">Planned workflow</span>
+              <h3>Reproduce a Bug</h3>
+              <p>
+                Paste a bug and its Steps to Reproduce. AI QA Team is designed to match it to
+                existing automation, resolve only the bug-specific data, and prepare the clearest
+                path to reproduction.
+              </p>
+              <ol className="lp-mini-flow">
+                {[
+                  'Paste a bug',
+                  'Match existing automation',
+                  'Resolve bug data',
+                  'Prepare / run',
+                  'Collect evidence',
+                ].map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+              <strong>
+                See whether coverage is full, partial, or missing—without inventing automation that
+                does not exist.
+              </strong>
+            </article>
 
-    <section className="lp-section lp-tint"><div className="lp-container"><p className="lp-eyebrow">Coverage with clear boundaries · Planned</p><h2>Not Every Bug Needs a New Automated Test</h2><p className="lp-intro">The goal is to identify what your automation can handle—and make the remaining work explicit.</p><div className="lp-grid lp-three">{[
-      ['FULL','Existing automation covers the reproduction workflow.','Resolve bug inputs → run existing automation → capture evidence → determine reproduction result.','lp-full'],
-      ['PARTIAL','Existing automation can prepare the application state, but some steps remain manual.','Run setup → create state → return record IDs → hand off remaining steps.','lp-partial'],
-      ['NONE','Existing automation cannot reliably prepare or reproduce the issue.','Identify the automation gap. Missing automation is not automatically generated in the MVP.','lp-none']
-    ].map(([name,description,outcome,tone])=><article className="lp-card" key={name}><span className={'lp-tag '+tone}>{name}</span><h3>{description}</h3><p>{outcome}</p></article>)}</div><p className="lp-banner">We show the gap instead of pretending the coverage exists.</p></div></section>
+            <article className="lp-card lp-workflow-card">
+              <ScanSearch aria-hidden="true" />
+              <span className="lp-tag">Planned workflow</span>
+              <h3>Explore QA Coverage</h3>
+              <p>
+                Describe what you want to test. AI QA Team is designed to match existing tests,
+                propose a focused strategy, and create the validated datasets needed to explore it.
+              </p>
+              <ol className="lp-mini-flow">
+                {[
+                  'Describe the goal',
+                  'Match an existing test',
+                  'Plan focused cases',
+                  'Generate data',
+                  'Preview / run',
+                ].map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+              <div className="lp-strategies" aria-label="Example test strategy">
+                {strategies.map(([name, count]) => (
+                  <div key={name}>
+                    <span>{name}</span>
+                    <strong>{count}</strong>
+                  </div>
+                ))}
+              </div>
+              <p className="lp-note">
+                Example: 10 data cases. The strategy selects what to test; the data engine creates
+                the rows.
+              </p>
+            </article>
+          </div>
 
-    <section className="lp-section lp-container"><p className="lp-eyebrow">State preparation · Illustrative Phase 2 workflow</p><h2>Even Partial Automation Can Save the Setup Work</h2><p className="lp-intro">Bug: “Modify Booking displays an error instead of modification options.”</p><div className="lp-grid lp-two"><article className="lp-card"><div className="lp-card-top"><h3>Create Itinerary</h3><span className="lp-tag lp-partial">PARTIAL</span></div><ul className="lp-checklist">{setup.map(x=><li key={x}><Check aria-hidden="true" size={16}/>{x}</li>)}</ul><p className="lp-divider">Existing automation ends here</p><ul className="lp-manual"><li>Manual: Click MODIFY BOOKING</li><li>Manual: Verify modification options</li></ul></article><article className="lp-card"><p className="lp-eyebrow">Example tester handoff · Not a live run</p><h3>The state needed to continue</h3><dl className="lp-facts"><div><dt>Environment</dt><dd>Salesforce QA</dd></div><div><dt>Tour / departure</dt><dd>BA / November 2026</dd></div><div><dt>Created state</dt><dd>Contact + Itinerary</dd></div><div><dt>Example itinerary ID</dt><dd>ITN-12345</dd></div><div><dt>Manual steps remaining</dt><dd>2</dd></div></dl><p className="lp-callout">A successful setup is valuable. It does not prove the complete bug was reproduced.</p></article></div><p className="lp-banner">Automate the setup. Hand the tester the exact state needed to finish reproduction.</p></section>
+          <p className="lp-banner">
+            Use the automation you already own. Resolve or generate only what the testing intent
+            requires.
+          </p>
+        </div>
+      </section>
 
-    <section className="lp-section lp-tint"><div className="lp-container"><p className="lp-eyebrow">Built for reuse</p><h2>Your Automation Already Knows a Lot.<br/>We Don’t Replace It.</h2><p className="lp-intro">If your existing test generates names, creates records, handles authentication, or performs setup, the planned workflow leaves that logic alone.</p><div className="lp-grid lp-two"><article className="lp-card"><h3>Existing Robot test</h3><ul className="lp-checklist">{['Login','Generate Contact','Create Contact','Navigate','Cleanup'].map(x=><li key={x}><Check aria-hidden="true" size={16}/>{x}</li>)}</ul></article><article className="lp-card"><h3>AI QA Team: intent-specific inputs</h3><p className="lp-big-value">Tour Code = BA</p><p className="lp-big-value">Departure = November 2026</p><p>Existing test + intent-specific data → reproduction workflow.</p></article></div>
-      <h3 className="lp-subheading">Generate What’s Missing. Preserve What Already Works.</h3><p>Designed to distinguish bug-supplied values, values that need resolution, and data your automation owns.</p><div className="lp-ownership">{[['Bug-specified','BA','Preserve exactly'],['Bug-constrained','November 2026','Resolve within constraint'],['Existing automation','First / last name','Leave untouched'],['Environment','Salesforce QA','Resolve from configuration'],['Credentials','Runtime dependency','Never generated by AI']].map(([title,value,action])=><article key={title}><h4>{title}</h4><p>{value}</p><strong>{action}</strong></article>)}</div><p className="lp-note">The planned resolver treats credentials as runtime inputs, never values for AI to invent.</p>
-    </div></section>
-
-    <section id="test-data" className="lp-section lp-container"><p className="lp-eyebrow">02 / QA exploration · Illustrative preview</p><h2>Go Beyond Reproduction. Explore the Edges.</h2><p className="lp-prompt">“Test customer registration around the minimum age boundary.”</p><div className="lp-grid lp-two"><article className="lp-card"><Database aria-hidden="true"/><h3>Matched automation: Customer Registration</h3><p>The planned Strategy Planner chooses what to test.</p><div className="lp-strategies">{strategies.map(([name,n])=><div key={name}><span>{name}</span><strong>{n}</strong></div>)}</div><p>The Data Engine would then generate <strong>10 validated data cases.</strong></p></article><article className="lp-card lp-table-card"><h3>Example dataset preview</h3><p className="lp-note">5 of 10 illustrative rows. Negative cases retain intentional invalid values.</p><div className="lp-table-wrap" role="region" aria-label="Example dataset" tabIndex={0}><table><caption className="lp-sr-only">Illustrative customer registration data</caption><thead><tr>{['Strategy','Age','Country','Guardian'].map(x=><th key={x} scope="col">{x}</th>)}</tr></thead><tbody>{[['Happy','25','US','—'],['Boundary','18','US','—'],['Boundary','17','US','Parent'],['Negative','-1','US','—'],['Cross-field','16','US','Parent']].map((row,i)=><tr key={i}>{row.map((x,j)=><td key={j}>{x}</td>)}</tr>)}</tbody></table></div><p className="lp-note">Planned actions—not available in this preview</p><div className="lp-actions">{['Preview Dataset','Export CSV','Export JSON'].map(x=><span className="lp-tag" key={x}>{x}</span>)}</div></article></div>
-      <h3 className="lp-subheading">Test Data That Understands More Than Field Types</h3><p>Building toward four layers of data generation and validation.</p><div className="lp-grid lp-four">{[['Schema','Types / Required / Enum / Regex / Bounds'],['Field intelligence','Valid / Boundary / Invalid / Synthetic'],['Cross-field rules','Age < 18 → Guardian required'],['Relational state','Contact → Itinerary → Reservation']].map(([title,copy],i)=><article className="lp-card" key={title}><span className="lp-eyebrow">Layer {i+1} · Planned</span><h4>{title}</h4><p>{copy}</p></article>)}</div><p className="lp-banner">Test data can be a field value, a dataset, or an application state created through existing automation.</p>
-    </section>
-
-    <section className="lp-section lp-tint"><div className="lp-container"><p className="lp-eyebrow">Two signals · Planned result model</p><h2>A Failed Test Can Mean a Successfully Reproduced Bug</h2><p className="lp-intro">Designed to distinguish runner status from reproduction evidence. Neither signal replaces the other.</p><div className="lp-grid lp-two"><div><dl className="lp-facts"><div><dt>Reported bug</dt><dd>Tour Search displays an unexpected error</dd></div><div><dt>Automation expects</dt><dd>Available tours</dd></div><div><dt>Observed in this example</dt><dd>Unexpected error matching the report</dd></div></dl></div><div className="lp-card lp-results"><div><p>Automation result</p><strong className="lp-tag lp-none">FAILED</strong></div><div><p>Bug reproduction</p><strong className="lp-tag lp-full">REPRODUCED</strong></div><p className="lp-note">Illustrative conclusion supported by matching evidence. Test failure alone is not proof.</p></div></div></div></section>
-  </>;
+      <section id="test-data" className="lp-section lp-container">
+        <div className="lp-compact-heading">
+          <div>
+            <p className="lp-eyebrow">Compact, context-aware test data</p>
+            <h2>Test Data That Understands More Than Field Types</h2>
+          </div>
+          <Database aria-hidden="true" size={30} />
+        </div>
+        <p className="lp-intro">
+          Building toward validated data that respects schemas, field behavior, business rules,
+          and related application state.
+        </p>
+        <div className="lp-grid lp-four">
+          {dataLayers.map(([title, description]) => (
+            <article className="lp-card lp-compact-card" key={title}>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+        <p className="lp-note">
+          Planned capability. Existing automation remains responsible for the setup and data it
+          already handles.
+        </p>
+      </section>
+    </>
+  );
 }

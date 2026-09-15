@@ -36,14 +36,14 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [authOpen, setAuthOpen] = useState(false);
-  const openAuth = (mode?: "login" | "signup") => {
-    if (mode) switchMode(mode);
-    setAuthOpen(true);
-  };
-  const closeAuth = () => setAuthOpen(false);
-
   const [mode, setMode] = useState<"login" | "signup">("login");
-  const switchMode = (m: "login" | "signup") => setMode(m);
+
+  const openAuth = useCallback((requestedMode?: "login" | "signup") => {
+    if (requestedMode) setMode(requestedMode);
+    setAuthOpen(true);
+  }, []);
+  const closeAuth = useCallback(() => setAuthOpen(false), []);
+  const switchMode = useCallback((nextMode: "login" | "signup") => setMode(nextMode), []);
 
   const [pendingPlan, setPendingPlan] = useState<string | null>(null);
 
