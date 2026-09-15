@@ -8,7 +8,8 @@ from app.utils.redis_client import store_refresh_token, get_refresh_token, delet
 from passlib.context import CryptContext
 from app.utils.oauth_client import oauth
 from pydantic import BaseModel, Field
-from app.utils.mongo_helper import serialize_doc, serialize_list
+from app.utils.mongo_helper import serialize_public_user
+from app.utils.auth_cookies import clear_auth_cookies, set_access_cookie, set_auth_cookies
 import jwt
 import json
 from app.utils.auth_dependency import get_current_user, role_required, extract_token
@@ -78,10 +79,10 @@ async def signup(user: User):
         # 6️⃣ Generate tokens
         access = create_access_token({"email": user.email, "role": "admin"})
         refresh = create_refresh_token({"email": user.email, "role": "admin"})
-        safe_user_doc = to_json_safe(user_doc)
+        store_refresh_token(user.email, refresh)
+        safe_user_doc = serialize_public_user(user_doc)
         response = JSONResponse({"user": safe_user_doc})
-        response.set_cookie("access_token", access, httponly=True, samesite="lax")
-        response.set_cookie("refresh_token", refresh, httponly=True, samesite="lax")
+        set_auth_cookies(response, access, refresh)
         return response
     except Exception as e:
         print(e)
@@ -98,7 +99,7 @@ async def login(credentials: dict):
     if not pwd_context.verify(credentials["password"], user["password"]):
         raise HTTPException(401, "Invalid credentials")
 
-    user_data = serialize_doc(user)
+    user_data = serialize_public_user(user)
 
     access = create_access_token({"email": user_data["email"], "role": user_data["role"]})
     refresh = create_refresh_token({"email": user_data["email"], "role": user_data["role"]})
@@ -111,23 +112,7 @@ async def login(credentials: dict):
         "status": "ok"
     })
 
-    response.set_cookie(
-        key="access_token",
-        value=access,
-        httponly=True,
-        secure=False, # true in production
-        samesite="lax",
-        path="/",
-    )
-
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh,
-        httponly=True,
-        secure=False, # true in production
-        samesite="lax",
-        path="/",
-    )
+    set_auth_cookies(response, access, refresh)
 
     return response
 
@@ -319,8 +304,8 @@ async def refresh_token(request: Request):
 
     # Issue NEW access token
     new_access = create_access_token({"email": email, "role": payload.get("role")})
-    response = JSONResponse({"access_token": new_access})
-    response.set_cookie("access_token", new_access, httponly=True)
+    response = JSONResponse({"status": "ok"})
+    set_access_cookie(response, new_access)
 
     return response
 
@@ -389,11 +374,10 @@ async def get_my_profile(request: Request):
 
     # Reload user after usage update
     refreshed_user = await db["users"].find_one({"email": user_email})
-    user_data = serialize_doc(refreshed_user)
+    user_data = serialize_public_user(refreshed_user)
 
     user_data["token_issued_to"] = user_email
     user_data["token_checked_at"] = datetime.utcnow().isoformat()
-    user_data.pop("password", None)
 
     print("STEP 5: /auth/me called")
     print("Synced usage:", usage)
@@ -414,20 +398,7 @@ async def logout(current_user=Depends(get_current_user)):
     # 2️⃣ Build response
     response = JSONResponse({"message": "Logged out successfully"})
 
-    # 3️⃣ Clear cookies (must match original cookie attributes)
-    response.delete_cookie(
-        key="access_token",
-        httponly=True,
-        secure=False,  # TRUE in production HTTPS
-        samesite="lax",
-        path="/"
-    )
-    response.delete_cookie(
-        key="refresh_token",
-        httponly=True,
-        secure=False,  # TRUE in production
-        samesite="lax",
-        path="/"
-    )
+    # 3️⃣ Clear cookies with the same shared attributes used when setting them
+    clear_auth_cookies(response)
 
     return response
