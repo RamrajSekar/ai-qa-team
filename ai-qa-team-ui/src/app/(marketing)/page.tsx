@@ -1,17 +1,19 @@
+import type { Metadata } from 'next';
+import '@/components/marketing/marketing.css';
 import Hero from '@/components/marketing/Hero';
 import Workflow from '@/components/marketing/Workflow';
 import Features from '@/components/marketing/Features';
-import Pricing from '@/components/marketing/Pricing';
 import Roadmap from '@/components/marketing/Roadmap';
 import Footer from '@/components/marketing/Footer';
 
+export const metadata: Metadata = { title: 'AI QA Team | Your Existing Automation, Easier to Use', description: 'Explore the AI QA Team product vision: bug reproduction and strategic QA data built around automation you already own. Robot Framework first.' };
+
 export default function MarketingPage() {
   return (
-    <main className="bg-[var(--qs-bg)] text-[var(--qs-text)]">
+    <main className="public-landing">
       <Hero />
-      <Workflow />
       <Features />
-      <Pricing />
+      <Workflow />
       <Roadmap />
       <Footer />
     </main>

@@ -8,6 +8,8 @@ from app.services.integration_service import (
     import_playwright_tests
 )
 from pydantic import BaseModel, Field
+from app.config import settings
+from app.utils.feature_flags import feature_required
 
 class ImportRequest(BaseModel):
     repo_url: str = Field(..., description="Git repo URL")
@@ -58,7 +60,19 @@ def ensure_list(value):
 # ------------------------------------------------------------
 # IMPORT PLAYWRIGHT TESTS
 # ------------------------------------------------------------
-@router.post("/{provider}/import")
+@router.post(
+    "/{provider}/import",
+    dependencies=[Depends(feature_required(
+        "playwright_repo_adapter", "story_management",
+        "scenario_generation", "test_generation",
+    ))],
+    include_in_schema=all((
+        settings.features.playwright_repo_adapter,
+        settings.features.story_management,
+        settings.features.scenario_generation,
+        settings.features.test_generation,
+    )),
+)
 async def import_playwright_route(
     provider: str,
     req: ImportRequest,

@@ -1,8 +1,12 @@
 'use client';
+import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { MoreHorizontal, Plus, ArrowUpRight, History, Globe } from 'lucide-react';
+import EnvironmentModal from '@/components/environment/EnvironmentModal';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { apiFetch } from '@/utils/api';
 import EditProjectModal from '@/components/projects/EditProjectModal';
 import AgentSettingsModal from '@/components/projects/AgentSettingsModal';
@@ -52,6 +56,8 @@ interface Env {
   env_type: string;
   created_at: string;
   url: string;
+  base_url?: string;
+  env_id?: string;
 }
 
 interface Execution {
@@ -66,6 +72,11 @@ interface Execution {
 // ---------------------- Page ----------------------
 
 export default function ProjectPage() {
+  const { enabled, ready } = useFeatures();
+  const storiesEnabled = enabled("story_management");
+  const scenariosEnabled = storiesEnabled && enabled("scenario_generation");
+  const testsEnabled = enabled("test_generation");
+  const agentsEnabled = enabled("recorder") || enabled("scenario_generation") || enabled("test_generation") || enabled("native_execution");
   const params = useParams();
   const router = useRouter();
   const projectId = params.projectId as string;
@@ -73,6 +84,7 @@ export default function ProjectPage() {
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<Project | null>(null);
 
+  const [openEnvironmentModal, setOpenEnvironmentModal] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openAgentModal, setOpenAgentModal] = useState(false);
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
@@ -82,10 +94,10 @@ export default function ProjectPage() {
   const [testcases, setTestcases] = useState<Testcase[]>([]);
   const [environments, setEnvironments] = useState<Env[]>([]);
   const [executions, setExecutions] = useState<Execution[]>([]);
-  console.log("Project from API:", project);
+
   useEffect(() => {
-    loadAll();
-  }, [projectId]);
+    if (ready) loadAll();
+  }, [projectId, ready, storiesEnabled, scenariosEnabled, testsEnabled]);
 
   async function loadAll() {
     try {
@@ -96,20 +108,20 @@ export default function ProjectPage() {
       const project = p.data;
 
       // 2. Stories
-      const s = await apiFetch(`/stories?skip=0&limit=100`);
+      const s = storiesEnabled ? await apiFetch(`/stories?project_id=${projectId}&skip=0&limit=100`) : { data: [] };
       const storyList: Story[] = Array.isArray(s.data) ? s.data : [];
       const projectStories = storyList.filter((x) => x.project_id === projectId);
 
       // 3. Scenarios
       const allSc: Scenario[] = [];
-      for (const story of projectStories) {
+      for (const story of (scenariosEnabled ? projectStories : [])) {
         const scRes = await apiFetch(`/scenarios?story_id=${story.story_id}`);
         const scList: Scenario[] = Array.isArray(scRes.data) ? scRes.data : [];
         allSc.push(...scList);
       }
 
       // 4. Testcases
-      const tcRes = await apiFetch(`/testcases/testcases?project_id=${projectId}`);
+      const tcRes = testsEnabled ? await apiFetch(`/testcases/testcases?project_id=${projectId}`) : { data: [] };
       const tcList: Testcase[] = Array.isArray(tcRes.data) ? tcRes.data : [];
 
       // 5. Environments
@@ -143,45 +155,51 @@ export default function ProjectPage() {
   }
 
   return (
-    <div className="p-6 space-y-8">
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center">
+    <div>
+      <div className="workspace-page-header">
         <div>
-          <h1 className="text-2xl font-semibold">{project.name}</h1>
-          <p className="text-gray-500 text-sm">{project.description}</p>
-          <p className="text-xs text-gray-400 mt-1">
-            {project.project_id} • Created {new Date(project.created_at).toLocaleString()} by{' '}
-            {project.created_by}
-          </p>
+          <p className="workspace-eyebrow">Project overview</p>
+          <h1>{project.name}</h1>
+          <p className="workspace-description">{project.description || "Manage your environments and review your execution history."}</p>
+          <p className="workspace-metadata">{project.project_id} · Created {new Date(project.created_at).toLocaleDateString()}</p>
+        </div>
+        <div className="workspace-actions">
+          <button onClick={() => setOpenEditModal(true)} className="workspace-button">Edit Project</button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild><button className="workspace-button" aria-label="Project actions"><MoreHorizontal size={18} /></button></DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {agentsEnabled && <DropdownMenuItem onSelect={() => setOpenAgentModal(true)}>Agent Settings</DropdownMenuItem>}
+              <DropdownMenuItem variant="destructive" onSelect={() => setOpenDeleteModal(true)}>Delete project</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
-
-      {/* Action Buttons */}
-      <div className="flex gap-3">
-        <button onClick={() => setOpenEditModal(true)} className="px-4 py-2 border rounded-md">
-          Edit Project
-        </button>
-
-        <button onClick={() => setOpenAgentModal(true)} className="px-4 py-2 border rounded-md">
-          Agent Settings
-        </button>
-
-        <button
-          onClick={() => setOpenDeleteModal(true)}
-          className="px-4 py-2 border border-red-500 text-red-500 rounded-md"
-        >
-          Delete
-        </button>
-      </div>
-
-      {/* KPI CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <KpiCard label="Stories" value={stories.length} />
-        <KpiCard label="Scenarios" value={scenarios.length} />
-        <KpiCard label="Testcases" value={testcases.length} />
+      <div className="workspace-metrics">
         <KpiCard label="Environments" value={environments.length} />
-        <KpiCard label="Executions" value={executions.length} />
+        <KpiCard label="Recorded executions" value={executions.length} />
+        {storiesEnabled && <KpiCard label="Stories" value={stories.length} />}
+        {scenariosEnabled && <KpiCard label="Scenarios" value={scenarios.length} />}
+        {testsEnabled && <KpiCard label="Testcases" value={testcases.length} />}
       </div>
+      <section className="workspace-panel" aria-labelledby="environment-title">
+        <div className="workspace-panel-header">
+          <h2 id="environment-title">Environments</h2>
+          <button className="workspace-button workspace-primary" onClick={() => setOpenEnvironmentModal(true)}><Plus size={15} />Add environment</button>
+        </div>
+        {environments.length ? <div className="workspace-panel-body">
+          {environments.map((env) => <Link className="workspace-row" key={env.env_id || env.id} href={`/projects/${projectId}/environments`}>
+            <div><div className="workspace-row-title">{env.name || env.env_type?.toUpperCase() || "Environment"}</div><div className="workspace-row-subtitle">{env.base_url || env.url || env.env_id}</div></div>
+            <span className="workspace-badge">{env.env_type}</span><ArrowUpRight size={16} aria-hidden="true" />
+          </Link>)}
+        </div> : <div className="workspace-empty"><Globe size={24} /><strong>No environments configured</strong>Add your first environment to keep project settings in one place.</div>}
+      </section>
+      <EnvironmentModal open={openEnvironmentModal} onClose={() => setOpenEnvironmentModal(false)} mode="create" projectId={projectId} onSaved={loadAll} />
+      <section id="execution-history" className="workspace-panel" aria-labelledby="history-title">
+        <div className="workspace-panel-header"><h2 id="history-title">Execution history</h2><span className="workspace-badge">{executions.length} recorded</span></div>
+        {executions.length ? <div className="workspace-panel-body">
+          {executions.map((execution) => <div key={execution.execution_id} className="workspace-row"><div><div className="workspace-row-title">Execution #{execution.execution_id}</div><div className="workspace-row-subtitle">{execution.started_at ? new Date(execution.started_at).toLocaleString() : "No start time recorded"}</div></div><span className="workspace-badge">{execution.status}</span></div>)}
+        </div> : <div className="workspace-empty"><History size={24} /><strong>No execution history yet</strong>Recorded results for this project will appear here.</div>}
+      </section>
 
       {/* --- Modals --- */}
 
@@ -192,13 +210,13 @@ export default function ProjectPage() {
         onUpdated={loadAll}
       />
 
-      <AgentSettingsModal
+      {agentsEnabled && <AgentSettingsModal
         open={openAgentModal}
         onClose={() => setOpenAgentModal(false)}
         projectId={project.project_id}
         initialAgents={project.agent_identities}
         onUpdated={loadAll}
-      />
+      />}
 
       <DeleteProjectModal
         open={openDeleteModal}
@@ -209,7 +227,7 @@ export default function ProjectPage() {
       />
 
       {/* SECTIONS */}
-      <Section
+      {storiesEnabled && <Section
         title="Recent Stories"
         viewAllHref="/stories"
         items={stories}
@@ -221,9 +239,9 @@ export default function ProjectPage() {
             onClick={() => router.push(`/stories/${s.story_id}`)}
           />
         )}
-      />
+      />}
 
-      <Section
+      {scenariosEnabled && <Section
         title="Recent Scenarios"
         viewAllHref="/scenarios"
         items={scenarios}
@@ -235,9 +253,9 @@ export default function ProjectPage() {
             onClick={() => router.push(`/scenarios/${s.scenario_id}`)}
           />
         )}
-      />
+      />}
 
-      <Section
+      {testsEnabled && <Section
         title="Recent Testcases"
         viewAllHref="/testcases"
         items={testcases}
@@ -249,35 +267,8 @@ export default function ProjectPage() {
             onClick={() => router.push(`/testcases/${t.testcase_id}`)}
           />
         )}
-      />
+      />}
 
-      <Section
-        title="Recent Executions"
-        viewAllHref="/executions"
-        items={executions}
-        maxItems={5}
-        renderItem={(ex: Execution) => (
-          <MiniCard
-            title={`Execution #${ex.execution_id}`}
-            subtitle={ex.status}
-            onClick={() => router.push(`/executions/${ex.execution_id}`)}
-          />
-        )}
-      />
-
-      <Section
-        title="Environments"
-        viewAllHref="/environments"
-        items={environments}
-        maxItems={5}
-        renderItem={(env: Env) => (
-          <MiniCard
-            title={env.name}
-            subtitle={env.env_type}
-            onClick={() => router.push(`/environments/${env.id}`)}
-          />
-        )}
-      />
     </div>
   );
 }
@@ -286,9 +277,9 @@ export default function ProjectPage() {
 
 function KpiCard({ label, value }: { label: string; value: any }) {
   return (
-    <div className="p-4 bg-white border rounded-xl shadow-sm">
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="text-2xl font-semibold mt-1">{value}</div>
+    <div className="workspace-metric">
+      <div className="workspace-metric-label">{label}</div>
+      <div className="workspace-metric-value">{value}</div>
     </div>
   );
 }

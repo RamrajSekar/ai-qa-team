@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-[var(--qs-bg)] text-[var(--qs-text)]">
         {/* ✅ All routes (marketing, app, auth) now share the same providers */}
         <RootProviders>{children}</RootProviders>

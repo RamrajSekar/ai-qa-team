@@ -1,4 +1,5 @@
 "use client";
+import { useFeatures, FeatureGate } from "@/components/providers/FeatureFlagsProvider";
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -9,6 +10,7 @@ import StoryModal from "@/components/story/StoryModal";
 import RecorderOverlay from "@/components/recorder/RecorderOverlay";
 
 export default function StoriesPage() {
+  const { enabled } = useFeatures();
   const params = useParams() as { projectId: string };
   const { projectId } = params;
 
@@ -146,12 +148,12 @@ export default function StoriesPage() {
                     </button>
 
                     {/* RECORD */}
-                    <button
+                    <FeatureGate names={["recorder"]}><button
                       onClick={() => handleRecord(story.story_id)}
                       className="px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 flex gap-1 items-center"
                     >
                       <Video size={14} /> Record
-                    </button>
+                    </button></FeatureGate>
 
                   </div>
                 </td>
@@ -171,7 +173,7 @@ export default function StoriesPage() {
       />
 
       {/* RECORDER */}
-      {openRecorder && recordStoryId && (
+      {enabled("recorder") && openRecorder && recordStoryId && (
         <RecorderOverlay
           url={`/projects/${projectId}/stories/${recordStoryId}`}
           storyId={recordStoryId}

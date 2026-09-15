@@ -15,6 +15,7 @@ from app.models.test_execution_model import (
 from app.services.subscription_services import get_subscription, increment_usage
 from app.services.story_service import get_next_sequence
 from app.utils.redis_client import redis_client
+from app.utils.feature_flags import require_features
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,7 @@ async def create_execution_record(
     Does NOT execute the test.
     """
 
+    require_features("native_execution")
     execution_id = await get_next_sequence('execution_id', 'EX')
 
     # Normalize dataset
@@ -188,6 +190,8 @@ async def queue_test_execution(
       2) Creates a TestExecution record
       3) Pushes a job into Redis for the worker
     """
+
+    require_features("native_execution")
 
     # Subscription check
     sub = await get_subscription(user_identifier)

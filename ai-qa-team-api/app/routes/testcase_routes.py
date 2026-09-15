@@ -13,11 +13,9 @@ from app.services.test_generator import generate_playwright_test
 from app.config import settings
 from app.services.step_mapper import StepMapper
 
-from openai import AsyncOpenAI
+from app.utils.feature_flags import feature_required
 
 router = APIRouter(prefix="/testcases", tags=["Test Cases"])
-
-client = AsyncOpenAI(api_key=settings.openai_api_key)
 
 
 def normalize_steps(raw_steps: list) -> list[TestStep]:
@@ -46,7 +44,11 @@ def normalize_steps(raw_steps: list) -> list[TestStep]:
 # ==========================================================
 # 1) Generate testcases from an APPROVED scenario
 # ==========================================================
-@router.post("/generate", response_model=List[TestCaseResponse])
+@router.post(
+    "/generate", response_model=List[TestCaseResponse],
+    dependencies=[Depends(feature_required("test_generation"))],
+    include_in_schema=settings.features.test_generation,
+)
 async def generate_testcases(
     scenario_id: str = Query(...),
     count: int = Query(1, ge=1, le=20),

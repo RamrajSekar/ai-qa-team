@@ -22,6 +22,7 @@ from app.ai.scenario_prompts import (
 
 from app.services.ai.scenario_generator import generate_scenarios_from_prompt
 from app.services.subscription_services import decrement_usage
+from app.utils.feature_flags import feature_required
 
 # ------------------------------------------------------
 # Router Setup
@@ -267,7 +268,10 @@ async def delete_scenario(scenario_id: str, current_user=Depends(get_current_use
 # -------------------------------------------------------------------
 # 6. AI SCENARIO GENERATION (Story only)
 # -------------------------------------------------------------------
-@router.post("/generate-from-story", response_model=ScenarioGenerationResponse)
+@router.post(
+    "/generate-from-story", response_model=ScenarioGenerationResponse,
+    dependencies=[Depends(feature_required("story_management"))],
+)
 async def generate_scenarios_from_story(
     story_id: str = Query(...),
     count: int = Query(3, ge=1, le=20),
@@ -368,7 +372,10 @@ async def generate_scenarios_from_story(
 # -------------------------------------------------------------------
 # 7. AI SCENARIO GENERATION (Recording + Story)
 # -------------------------------------------------------------------
-@router.post("/generate-from-recording", response_model=ScenarioGenerationResponse)
+@router.post(
+    "/generate-from-recording", response_model=ScenarioGenerationResponse,
+    dependencies=[Depends(feature_required("story_management", "recorder"))],
+)
 async def generate_from_recording(
     story_id: str = Query(...),
     recording_id: str = Query(...),

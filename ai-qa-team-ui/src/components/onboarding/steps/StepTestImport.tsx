@@ -1,4 +1,5 @@
 "use client";
+import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 
 import { useState } from "react";
 import RepoImportModal from "@/components/integrations/RepoImportModal";
@@ -10,6 +11,8 @@ interface StepTestImportProps {
 }
 
 export default function StepTestImport({ next, projectId }: StepTestImportProps) {
+  const { enabled, ready } = useFeatures();
+  const canImport = enabled("playwright_repo_adapter", "story_management", "scenario_generation", "test_generation");
   const [provider, setProvider] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -22,6 +25,14 @@ export default function StepTestImport({ next, projectId }: StepTestImportProps)
   // ---------------------------------------------
   // If user reached this step without a project
   // ---------------------------------------------
+  if (!ready) return <p role="status">Loading features...</p>;
+  if (!canImport) return (
+    <div className="p-6 space-y-4">
+      <p>Test import is currently disabled. You can continue setting up your project.</p>
+      <button onClick={next} className="underline">Continue</button>
+    </div>
+  );
+
   if (!projectId) {
     return (
       <div className="p-6 space-y-4">

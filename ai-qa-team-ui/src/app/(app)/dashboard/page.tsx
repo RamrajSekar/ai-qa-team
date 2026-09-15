@@ -1,4 +1,5 @@
 "use client";
+import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -10,6 +11,8 @@ import { apiFetch } from "@/utils/api";
 import Link from "next/link";
 
 export default function DashboardPage() {
+  const { enabled } = useFeatures();
+  const aiEnabled = enabled("scenario_generation") || enabled("test_generation");
   const { user, setUser } = useAuth();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -87,16 +90,16 @@ export default function DashboardPage() {
       {/* KPI CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 pt-2">
         <KPI title="Projects" used={usage.projects_used} max={limits.projects_limit} />
-        <KPI title="Stories" used={usage.stories_used} max={limits.stories_limit} />
-        <KPI title="Scenarios" used={usage.scenarios_used} max={limits.scenarios_limit} />
+        {enabled("story_management") && <KPI title="Stories" used={usage.stories_used} max={limits.stories_limit} />}
+        {enabled("scenario_generation") && <KPI title="Scenarios" used={usage.scenarios_used} max={limits.scenarios_limit} />}
         <KPI title="Executions" used={usage.executions_used} max={limits.executions_limit} />
-        <KPI title="AI Generations" used={usage.ai_gen_used} max={limits.ai_gen_limit} />
+        {aiEnabled && <KPI title="AI Generations" used={usage.ai_gen_used} max={limits.ai_gen_limit} />}
         <KPI title="Team Members" used={usage.team_members_used} max={limits.team_members_limit} />
       </div>
 
       {/* CHARTS SECTION */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <ExecutionTrendChart
+        {enabled("native_execution") && <ExecutionTrendChart
           data={[
             { date: "Mon", total: 5, passed: 4, failed: 1 },
             { date: "Tue", total: 7, passed: 6, failed: 1 },
@@ -104,8 +107,8 @@ export default function DashboardPage() {
             { date: "Thu", total: 6, passed: 4, failed: 2 },
             { date: "Fri", total: 9, passed: 7, failed: 2 },
           ]}
-        />
-        <AiUsageChart />
+        />}
+        {aiEnabled && <AiUsageChart />}
       </div>
 
       {/* PROJECT LIST */}

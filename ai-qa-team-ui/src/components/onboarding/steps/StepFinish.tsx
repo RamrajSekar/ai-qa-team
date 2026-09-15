@@ -38,7 +38,7 @@ export default function StepFinish({
 
       <p className="text-gray-600 mb-6">
         Your first project and environment are ready.  
-        You can now begin creating scenarios and automated tests.
+        You can manage them from your dashboard.
       </p>
 
       <div className="flex justify-center gap-3">

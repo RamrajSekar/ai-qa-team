@@ -1,4 +1,5 @@
 "use client";
+import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 
 import { useEffect, useState } from "react";
 import { X, Download } from "lucide-react";
@@ -17,6 +18,8 @@ export default function RepoImportModal({
   provider,
   projectId,
 }: RepoImportModalProps) {
+  const { enabled } = useFeatures();
+  const canImport = enabled("playwright_repo_adapter", "story_management", "scenario_generation", "test_generation");
   const [repos, setRepos] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
@@ -38,11 +41,11 @@ export default function RepoImportModal({
   }
 
   useEffect(() => {
-    if (open) loadRepos();
-  }, [open]);
+    if (open && canImport) loadRepos();
+  }, [open, canImport]);
 
   async function handleImport() {
-    if (!selectedRepo) return;
+    if (!canImport || !selectedRepo) return;
 
     setImporting(true);
 
@@ -66,7 +69,7 @@ export default function RepoImportModal({
     }
   }
 
-  if (!open) return null;
+  if (!open || !canImport) return null;
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-30">

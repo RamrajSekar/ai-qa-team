@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "export": "next export",
@@ -42,7 +42,6 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.22",
-    "baseline-browser-mapping": "^2.10.7",
     "eslint": "^9",
     "eslint-config-next": "^16.0.6",
     "tailwindcss": "^4.1.17",

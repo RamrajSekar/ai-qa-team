@@ -72,6 +72,10 @@ async def _mark_failed(job, error_message):
 
 
 async def worker_loop():
+    if not settings.features.native_execution:
+        logger.info("Execution disabled; worker will not consume queued jobs.")
+        return
+
     logger.info("🚀 Worker started. Listening for jobs...")
 
     while True:

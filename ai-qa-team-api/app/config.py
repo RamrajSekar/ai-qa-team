@@ -1,6 +1,26 @@
 from pydantic_settings import BaseSettings
+from pydantic import BaseModel, Field
+
+
+class FeatureFlags(BaseModel):
+    story_management: bool = False
+    scenario_generation: bool = False
+    test_generation: bool = False
+    recorder: bool = False
+    native_execution: bool = False
+    jira_trigger: bool = False
+    failure_diagnostics: bool = False
+    self_healing: bool = False
+    playwright_repo_adapter: bool = False
+    selenium_repo_adapter: bool = False
+
+    # Policy switches, not a declaration that these capabilities exist yet.
+    repository_discovery: bool = True
+    test_registry: bool = True
+    test_data_generation: bool = True
 
 class Settings(BaseSettings):
+    features: FeatureFlags = Field(default_factory=FeatureFlags)
     mongo_uri: str
     mongo_db: str
 
@@ -35,6 +55,7 @@ class Settings(BaseSettings):
     bitbucket_redirect_uri: str | None = None
     class Config:
         env_file = ".env"
+        env_nested_delimiter = "__"
         extra = "ignore"
 
 settings = Settings()

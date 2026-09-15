@@ -1,0 +1,72 @@
+"use client";
+
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { apiFetch } from "@/utils/api";
+
+export type FeatureName =
+  | "story_management" | "scenario_generation" | "test_generation" | "recorder"
+  | "native_execution" | "jira_trigger" | "failure_diagnostics" | "self_healing"
+  | "playwright_repo_adapter" | "selenium_repo_adapter"
+  | "repository_discovery" | "test_registry" | "test_data_generation";
+
+type FeatureState = {
+  flags: Partial<Record<FeatureName, boolean>>;
+  ready: boolean;
+  failed: boolean;
+};
+
+const FeatureContext = createContext<FeatureState>({ flags: {}, ready: false, failed: false });
+
+export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
+  const [state, setState] = useState<FeatureState>({ flags: {}, ready: false, failed: false });
+
+  useEffect(() => {
+    let active = true;
+    apiFetch("/features", { cache: "no-store", signal: AbortSignal.timeout(10000) }).then((response) => {
+      if (!response.ok || !response.data || Array.isArray(response.data) ||
+          typeof response.data !== "object" ||
+          !Object.values(response.data).every((value) => typeof value === "boolean")) {
+        throw new Error("Invalid feature map");
+      }
+      if (active) setState({ flags: response.data, ready: true, failed: false });
+    }).catch(() => {
+      if (active) setState({ flags: {}, ready: true, failed: true });
+    });
+    return () => { active = false; };
+  }, []);
+
+  return <FeatureContext.Provider value={state}>{children}</FeatureContext.Provider>;
+}
+
+export function useFeatures() {
+  const state = useContext(FeatureContext);
+  return {
+    ...state,
+    enabled: (...names: FeatureName[]) => names.every((name) => state.flags[name] === true),
+  };
+}
+
+export function FeatureGate({ names, children }: { names: FeatureName[]; children: ReactNode }) {
+  const { enabled } = useFeatures();
+  return enabled(...names) ? children : null;
+}
+
+// Stop disabled page trees mounting, rather than hiding them after their effects run.
+export function FeatureRouteGuard({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const { enabled, ready, failed } = useFeatures();
+  const segment = pathname.split("/")[1] === "projects"
+    ? pathname.split("/")[3]
+    : pathname.split("/")[1];
+  const required: Partial<Record<string, FeatureName>> = {
+    stories: "story_management", scenarios: "scenario_generation",
+    recorder: "recorder", ai: "test_generation",
+  };
+  const feature = required[segment];
+  if (!feature) return children;
+  if (!ready) return <p role="status">Loading features...</p>;
+  if (failed) return <p role="alert">Feature availability could not be loaded. Reload to try again.</p>;
+  if (!enabled(feature)) return <p role="status">This feature is disabled.</p>;
+  return children;
+}

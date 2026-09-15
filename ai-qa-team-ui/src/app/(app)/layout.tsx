@@ -2,19 +2,25 @@
 "use client";
 
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { FeatureFlagsProvider, FeatureRouteGuard } from "@/components/providers/FeatureFlagsProvider";
+import ThemeProvider from "@/components/ThemeProvider";
 import Sidebar from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <div className="flex min-h-screen bg-gradient-to-br from-[#f0e9ff] to-[#e8e9ff]">
+      <ThemeProvider>
+      <FeatureFlagsProvider>
+      <div className="workspace-shell">
         <Sidebar />
-        <div className="flex-1 flex flex-col">
+        <div className="workspace-body">
           <Topbar />
-          <main className="p-6">{children}</main>
+          <main className="workspace-main"><FeatureRouteGuard>{children}</FeatureRouteGuard></main>
         </div>
       </div>
+      </FeatureFlagsProvider>
+      </ThemeProvider>
     </AuthProvider>
   );
 }

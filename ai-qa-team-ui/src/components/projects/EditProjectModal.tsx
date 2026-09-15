@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { apiFetch } from "@/utils/api";
 
 interface EditProjectModalProps {
@@ -59,13 +60,14 @@ export default function EditProjectModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-xl shadow-lg w-[420px]">
-        <h2 className="text-lg font-semibold mb-4">Edit Project</h2>
+    <Dialog open={open} onOpenChange={(value) => { if (!value && !loading) onClose(); }}>
+      <DialogContent aria-describedby={undefined}>
+        <DialogTitle>Edit Project</DialogTitle>
 
         {/* Project Name */}
-        <label className="text-sm font-medium">Project Name</label>
+        <label htmlFor="edit-project-name" className="text-sm font-medium">Project Name</label>
         <input
+          id="edit-project-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="w-full border rounded-md p-2 mt-1 mb-4"
@@ -73,8 +75,9 @@ export default function EditProjectModal({
         />
 
         {/* Description */}
-        <label className="text-sm font-medium">Description</label>
+        <label htmlFor="edit-project-description" className="text-sm font-medium">Description</label>
         <textarea
+          id="edit-project-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           className="w-full border rounded-md p-2 mt-1"
@@ -99,7 +102,7 @@ export default function EditProjectModal({
             {loading ? "Saving..." : "Save Changes"}
           </button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

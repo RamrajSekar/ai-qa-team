@@ -1,4 +1,5 @@
 "use client";
+import { useFeatures, FeatureGate } from "@/components/providers/FeatureFlagsProvider";
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -20,6 +21,9 @@ import ScenarioModal from "@/components/scenarios/ScenarioModal";
 import ScenarioViewer from "@/components/scenarios/ScenarioViewer";
 
 export default function StoryDetailsPage() {
+  const { enabled } = useFeatures();
+  const recorderEnabled = enabled("recorder");
+  const scenariosEnabled = enabled("scenario_generation");
   const params = useParams() as { projectId: string; storyId: string };
   const { projectId, storyId } = params;
 
@@ -53,6 +57,7 @@ export default function StoryDetailsPage() {
   // LOAD RECORDINGS
   // -----------------------------
   async function loadRecordings() {
+    if (!recorderEnabled) return;
     try {
       const res = await apiFetch(`/recorder/by-story/${storyId}`);
       setRecordings(res.data || []);
@@ -66,6 +71,7 @@ export default function StoryDetailsPage() {
   // LOAD SCENARIOS
   // -----------------------------
   async function loadScenarios() {
+    if (!scenariosEnabled) return;
     try {
       const res = await apiFetch(
         `/scenarios?story_id=${storyId}&project_id=${projectId}`
@@ -88,7 +94,7 @@ export default function StoryDetailsPage() {
     Promise.all([loadStory(), loadRecordings(), loadScenarios()]).finally(() =>
       setLoading(false)
     );
-  }, [storyId]);
+  }, [storyId, recorderEnabled, scenariosEnabled]);
 
   if (loading) return <div className="p-6">Loading story…</div>;
 
@@ -135,17 +141,17 @@ export default function StoryDetailsPage() {
           </div>
 
           {/* RECORD BUTTON */}
-          <button
+          <FeatureGate names={["recorder"]}><button
             onClick={() => setOpenRecorder(true)}
             className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
           >
             Record Steps
-          </button>
+          </button></FeatureGate>
         </div>
       </div>
 
       {/* SCENARIOS SECTION */}
-      <div className="space-y-4">
+      <FeatureGate names={["scenario_generation"]}><div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Scenarios</h2>
 
@@ -177,7 +183,10 @@ export default function StoryDetailsPage() {
         />
       </div>
 
+      </FeatureGate>
+
       {/* RECORDINGS SECTION */}
+      <FeatureGate names={["recorder"]}>
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">Recordings</h2>
 
@@ -187,8 +196,10 @@ export default function StoryDetailsPage() {
         />
       </div>
 
+      </FeatureGate>
+
       {/* VIEW RECORDING MODAL */}
-      {viewRecording && (
+      {recorderEnabled && viewRecording && (
         <RecordingViewer
           open={true}
           recording={viewRecording}
@@ -197,7 +208,7 @@ export default function StoryDetailsPage() {
       )}
 
       {/* VIEW SCENARIO MODAL */}
-      {viewScenario && (
+      {scenariosEnabled && viewScenario && (
         <ScenarioViewer
           open={true}
           scenario={viewScenario}
@@ -206,17 +217,17 @@ export default function StoryDetailsPage() {
       )}
 
       {/* CREATE / EDIT SCENARIO MODAL */}
-      <ScenarioModal
+      <FeatureGate names={["scenario_generation"]}><ScenarioModal
         open={scenarioModalOpen}
         onClose={() => setScenarioModalOpen(false)}
         onSaved={loadScenarios}
         projectId={projectId}
         storyId={storyId}
         scenario={editingScenario}
-      />
+      /></FeatureGate>
 
       {/* RECORDER OVERLAY */}
-      {openRecorder && (
+      {recorderEnabled && openRecorder && (
         <RecorderOverlay
           url="/" // TODO: Replace when environment URL selection is added
           storyId={storyId}

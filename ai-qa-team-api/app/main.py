@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, Response
 from contextlib import asynccontextmanager
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +9,7 @@ from app.utils.logger import logger
 from app.middleware.error_handler import jwt_exception_handler
 from app.config import settings
 from app.db.init_indexes import init_indexes
+from app.utils.feature_flags import feature_required
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -74,14 +75,32 @@ app.include_router(user_routes.router)
 app.include_router(subscription_routes.router)
 app.include_router(project_routes.router)
 app.include_router(environment_routes.router)
-app.include_router(story_routes.router)
-app.include_router(recorder_routes.router)
-app.include_router(scenario_routes.router)
+app.include_router(
+    story_routes.router,
+    dependencies=[Depends(feature_required("story_management"))],
+    include_in_schema=settings.features.story_management,
+)
+app.include_router(
+    recorder_routes.router,
+    dependencies=[Depends(feature_required("recorder"))],
+    include_in_schema=settings.features.recorder,
+)
+app.include_router(
+    scenario_routes.router,
+    dependencies=[Depends(feature_required("scenario_generation"))],
+    include_in_schema=settings.features.scenario_generation,
+)
 app.include_router(test_execution_routes.router)
 app.include_router(testcase_routes.router)
 app.include_router(integration_routes.router)
 
 # === Base Routes ===
+@app.get("/features", response_model=dict[str, bool], tags=["Features"])
+async def get_features(response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    return settings.features.model_dump()
+
+
 @app.get("/")
 async def root():
     return {"message": "🚀 AI QA Team backend is running!"}
