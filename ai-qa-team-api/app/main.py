@@ -42,20 +42,25 @@ app = FastAPI(title="AI QA Team API", lifespan=lifespan)
 app.middleware("http")(jwt_exception_handler)
 
 # ✅ CORS Setup
-origins = [
+local_origins = [
     "http://127.0.0.1:8000",  # Swagger docs
     "http://localhost:8000",
     "http://127.0.0.1:3000",  # React frontend (if applicable)
     "http://localhost:3002",
     "http://172.20.10.6:3002",
-    "https://ai-qa-team.vercel.app/"
 ]
+
+configured_origins = [
+    origin.strip().rstrip("/")
+    for origin in (settings.cors_origins or "").split(",")
+    if origin.strip()
+]
+origins = list(dict.fromkeys([*local_origins, *configured_origins]))
 
 # ✅ Add session middleware (REQUIRED for OAuth)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,       # Or use ["*"] during development
-    # allow_origins=["https://ai-qa-team.vercel.app/"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
