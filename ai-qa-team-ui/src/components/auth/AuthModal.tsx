@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
 import {
   Dialog,
@@ -15,11 +16,19 @@ import OAuthButton from "./OAuthButton";
 import "./auth.css";
 
 export default function AuthModal() {
+  const pathname = usePathname();
+  const router = useRouter();
   const { authOpen, closeAuth, mode, switchMode } = useAuth();
   const isLogin = mode === "login";
 
+  function handleOpenChange(open: boolean) {
+    if (open) return;
+    closeAuth();
+    if (pathname === "/auth") router.replace("/");
+  }
+
   return (
-    <Dialog open={authOpen} onOpenChange={(open) => !open && closeAuth()}>
+    <Dialog open={authOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="auth-modal" showCloseButton={false}>
         <DialogClose className="auth-close" aria-label="Close authentication dialog">
           <X size={18} aria-hidden="true" />
