@@ -10,6 +10,7 @@ from app.middleware.error_handler import jwt_exception_handler
 from app.config import settings
 from app.db.init_indexes import init_indexes
 from app.utils.feature_flags import feature_required
+from app.utils.auth_cookies import session_cookie_options
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -69,7 +70,8 @@ app.add_middleware(
 # ✅ Session Middleware (for OAuth)
 app.add_middleware(
     SessionMiddleware,
-    secret_key=settings.jwt_secret_key
+    secret_key=settings.jwt_secret_key,
+    **session_cookie_options(),
 )
 
 

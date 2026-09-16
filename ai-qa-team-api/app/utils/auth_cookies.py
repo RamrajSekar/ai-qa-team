@@ -13,10 +13,21 @@ ACCESS_COOKIE_MAX_AGE = ACCESS_TOKEN_EXPIRE_MINUTES * 60
 REFRESH_COOKIE_MAX_AGE = REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
 
 
+def cookies_require_https() -> bool:
+    return settings.app_env.strip().lower() == "production"
+
+
+def session_cookie_options() -> dict:
+    return {
+        "https_only": cookies_require_https(),
+        "same_site": "lax",
+    }
+
+
 def _cookie_options(max_age: int) -> dict:
     return {
         "httponly": True,
-        "secure": settings.app_env.strip().lower() == "production",
+        "secure": cookies_require_https(),
         "samesite": "lax",
         "path": "/",
         "max_age": max_age,
@@ -48,7 +59,7 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str) 
 def clear_auth_cookies(response: Response) -> None:
     options = {
         "httponly": True,
-        "secure": settings.app_env.strip().lower() == "production",
+        "secure": cookies_require_https(),
         "samesite": "lax",
         "path": "/",
     }

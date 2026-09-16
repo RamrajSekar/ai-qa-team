@@ -1,21 +1,17 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import RedirectResponse,JSONResponse
-from authlib.integrations.starlette_client import OAuth
 from app.db.connection import db
 from app.models.user_model import User, OnboardingModel
 from app.config import settings
 from app.utils.redis_client import store_refresh_token, get_refresh_token, delete_refresh_token
 from passlib.context import CryptContext
 from app.utils.oauth_client import oauth
-from pydantic import BaseModel, Field
 from app.utils.mongo_helper import serialize_public_user
 from app.utils.auth_cookies import clear_auth_cookies, set_access_cookie, set_auth_cookies
 import jwt
-import json
 from app.utils.auth_dependency import get_current_user, role_required, extract_token
 from app.utils.jwt_handler import create_access_token, decode_token, create_refresh_token
 from datetime import datetime, timezone
-import urllib.parse
 from app.models.subscription import Subscription
 from app.services.sync_usage import sync_usage
 
@@ -23,17 +19,6 @@ from app.services.sync_usage import sync_usage
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth = OAuth()
-oauth.register(
-    name='google',
-    client_id=settings.google_client_id,
-    client_secret=settings.google_client_secret,
-    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-    client_kwargs={'scope': 'openid email profile'},
-)
-
-
-
 def to_json_safe(obj):
     if isinstance(obj, dict):
         return {k: to_json_safe(v) for k, v in obj.items()}
@@ -117,16 +102,14 @@ async def login(credentials: dict):
     return response
 
 @router.get("/{provider}/login")
-async def oauth_login(request: Request, provider: str, callback: str | None = None):
+async def oauth_login(request: Request, provider: str):
     client = oauth.create_client(provider)
     if client is None:
         raise HTTPException(404, "Unsupported provider")
 
-    # Allow frontend override
-    redirect_uri = request.url_for("oauth_callback", provider=provider)
-
-    if callback:
-        redirect_uri = callback
+    redirect_uri = getattr(settings, f"{provider}_redirect_uri", None)
+    if not redirect_uri:
+        raise HTTPException(500, f"{provider.upper()}_REDIRECT_URI is not configured")
     return await client.authorize_redirect(request, redirect_uri)
 
 
@@ -136,7 +119,7 @@ async def oauth_callback(request: Request, provider: str):
     OAuth callback:
     - Called by Google/GitHub after user grants access
     - Creates user (if new), issues access + refresh tokens
-    - REDIRECTS back to frontend with tokens in URL query
+    - Sets server-side auth cookies and redirects to the frontend dashboard
     """
 
     try:
@@ -164,6 +147,8 @@ async def oauth_callback(request: Request, provider: str):
         # ---- UPSERT USER ----
         existing = await db["users"].find_one({"email": email})
 
+        # TODO(security): replace raw provider-token persistence in both branches
+        # with encrypted, purpose-limited credential storage in a dedicated follow-up.
         if not existing:
             # brand new user
             new_user = User(
@@ -187,7 +172,6 @@ async def oauth_callback(request: Request, provider: str):
             # 🔥 ADD REQUIRED METADATA
             user_doc["created_at"] = datetime.utcnow()
 
-            # 🔥 OAuth Integration Details
             user_doc["integrations"] = {
                 provider: {
                     "access_token": token.get("access_token"),
@@ -198,6 +182,7 @@ async def oauth_callback(request: Request, provider: str):
             }
 
             await db["users"].insert_one(user_doc)
+            persisted_role = user_doc["role"]
 
         else:
             # existing user → update integrations
@@ -216,68 +201,21 @@ async def oauth_callback(request: Request, provider: str):
                     }
                 }
             )
+            persisted_role = existing.get("role", "tester")
 
-        # ---- issue tokens ----
-        access_token = create_access_token({"email": email, "role": "tester"})
-        refresh_token = create_refresh_token({"email": email, "role": "tester"})
+        # ---- issue tokens using the persisted application role ----
+        access_token = create_access_token({"email": email, "role": persisted_role})
+        refresh_token = create_refresh_token({"email": email, "role": persisted_role})
 
         # store refresh token in Redis
         store_refresh_token(email, refresh_token)
 
-        # ---- REDIRECT BACK TO FRONTEND ----
-        # FRONTEND_URL should be like: http://localhost:3000
-        frontend_base = settings.frontend_url.rstrip("/") if hasattr(settings, "frontend_url") else "http://localhost:3000"
-
-        # We’ll handle this URL in Next.js at /auth/callback
-        params = {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "provider": provider,
-            "user": {
-                "name": name,
-                "email": email,
-                "provider": provider,
-                "role": "tester"
-            }
-        }
-        # Convert to JSON string
-        payload = json.dumps(params)
-        query = urllib.parse.urlencode({"data": payload})
-        redirect_url = f"{frontend_base}/oauth/callback?{query}"
+        if not settings.frontend_url:
+            raise HTTPException(status_code=500, detail="FRONTEND_URL is not configured")
+        frontend_base = settings.frontend_url.rstrip("/")
+        redirect_url = f"{frontend_base}/dashboard"
         response = RedirectResponse(url=redirect_url)
-
-        print("STEP 1: Entered OAuth callback")
-        print("Provider:", provider)
-        # print("User info received from provider:", user_info)
-
-        print("STEP 2: Issued tokens:")
-        # print("Access token:", access_token)
-        # print("Refresh token:", refresh_token)
-
-        print("STEP 3: Redirecting user")
-
-        # Set secure httpOnly cookies
-        response.set_cookie(
-            key="access_token",
-            value=access_token,
-            httponly=True,
-            max_age=86400,
-            secure=False,  # set True on production (HTTPS)
-            samesite="lax",
-            path="/"
-        )
-
-        response.set_cookie(
-            key="refresh_token",
-            value=refresh_token,
-            httponly=True,
-            max_age=604800,
-            secure=False,  # True in prod
-            samesite="lax",
-            path="/"
-        )
-        print("STEP 4: Cookies set on response:")
-        # print("All response cookies:", response.headers.getlist("set-cookie"))
+        set_auth_cookies(response, access_token, refresh_token)
 
         return response
 
