@@ -25,6 +25,7 @@ TEST_ENV = {
 with patch.dict(os.environ, TEST_ENV):
     from app.routes import auth_routes
     from app.utils import auth_cookies, oauth_client
+    from app.utils.mongo_helper import serialize_public_user
 
 
 def request(path: str, query_string: bytes = b"") -> Request:
@@ -107,7 +108,16 @@ class GoogleOAuthTests(unittest.IsolatedAsyncioTestCase):
     async def test_callback_uses_persisted_role_redis_and_server_side_cookies(self):
         token = {
             "access_token": "google-provider-token",
-            "userinfo": {"email": "admin@example.com", "name": "Admin"},
+            "refresh_token": "google-provider-refresh-token",
+            "id_token": "google-id-token",
+            "authorization_code": "google-code",
+            "expires_at": 123456789,
+            "userinfo": {
+                "sub": "google-user-123",
+                "email": "admin@example.com",
+                "name": "Admin",
+                "picture": "https://example.com/avatar.png",
+            },
         }
         client = _OAuthClient(token)
         users = _Users(
@@ -117,6 +127,14 @@ class GoogleOAuthTests(unittest.IsolatedAsyncioTestCase):
                 "role": "admin",
                 "subscription": {"plan": "free"},
                 "onboarding": {"onboarding_status": "completed"},
+                "integrations": {
+                    "google": {
+                        "access_token": "legacy-access-token",
+                        "refresh_token": "legacy-refresh-token",
+                        "id_token": "legacy-id-token",
+                        "raw": {"access_token": "legacy-access-token"},
+                    }
+                },
             }
         )
         access = MagicMock(return_value="application-access-token")
@@ -147,21 +165,49 @@ class GoogleOAuthTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("application-access-token", response.headers["location"])
         self.assertNotIn("application-refresh-token", response.headers["location"])
         self.assertNotIn("admin@example.com", response.headers["location"])
+        self.assertNotIn("google-provider-token", response.headers["location"])
 
         cookies = response.headers.getlist("set-cookie")
         self.assertEqual(len(cookies), 2)
         self.assertTrue(all("HttpOnly" in cookie for cookie in cookies))
         self.assertTrue(all("; Secure" in cookie for cookie in cookies))
         self.assertTrue(all("SameSite=lax" in cookie for cookie in cookies))
+        self.assertTrue(all("google-provider-token" not in cookie for cookie in cookies))
+
+        integration = users.updated[1]["$set"]["integrations.google"]
+        self.assertEqual(
+            {key: integration[key] for key in ("provider", "provider_user_id", "email", "name", "picture")},
+            {
+                "provider": "google",
+                "provider_user_id": "google-user-123",
+                "email": "admin@example.com",
+                "name": "Admin",
+                "picture": "https://example.com/avatar.png",
+            },
+        )
+        self.assertIn("updated_at", integration)
+        for secret_field in (
+            "access_token",
+            "refresh_token",
+            "id_token",
+            "authorization_code",
+            "raw",
+            "token_type",
+            "expires_at",
+            "expires_in",
+            "scope",
+        ):
+            self.assertNotIn(secret_field, integration)
 
     async def test_new_google_user_keeps_existing_default_tester_role(self):
         client = _OAuthClient(
             {
                 "access_token": "google-provider-token",
                 "userinfo": {
-                    "id": "google-user-1",
+                    "sub": "google-user-1",
                     "email": "new-google@example.com",
                     "name": "New Google User",
+                    "picture": "https://example.com/new-avatar.png",
                 },
             }
         )
@@ -185,6 +231,30 @@ class GoogleOAuthTests(unittest.IsolatedAsyncioTestCase):
         access.assert_called_once_with(
             {"email": "new-google@example.com", "role": "tester"}
         )
+        integration = users.existing["integrations"]["google"]
+        self.assertEqual(integration["provider_user_id"], "google-user-1")
+        self.assertEqual(integration["email"], "new-google@example.com")
+        self.assertNotIn("access_token", integration)
+        self.assertNotIn("raw", integration)
+
+    def test_public_user_serialization_excludes_google_integration_credentials(self):
+        public_user = serialize_public_user(
+            {
+                "email": "admin@example.com",
+                "name": "Admin",
+                "provider": "google",
+                "role": "admin",
+                "integrations": {
+                    "google": {
+                        "provider_user_id": "google-user-123",
+                        "raw": {"access_token": "legacy-secret"},
+                    }
+                },
+            }
+        )
+
+        self.assertNotIn("integrations", public_user)
+        self.assertNotIn("legacy-secret", str(public_user))
 
     def test_routes_use_the_single_configured_oauth_registry(self):
         self.assertIs(auth_routes.oauth, oauth_client.oauth)

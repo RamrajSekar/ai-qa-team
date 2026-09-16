@@ -19,6 +19,21 @@ from app.services.sync_usage import sync_usage
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def google_identity_metadata(user_info: dict) -> dict:
+    """Return the non-secret Google identity fields retained by the application."""
+    metadata = {
+        "provider": "google",
+        "provider_user_id": user_info.get("sub") or user_info.get("id"),
+        "email": user_info.get("email"),
+        "name": user_info.get("name"),
+        "picture": user_info.get("picture"),
+        "updated_at": datetime.now(timezone.utc),
+    }
+    return {key: value for key, value in metadata.items() if value is not None}
+
+
 def to_json_safe(obj):
     if isinstance(obj, dict):
         return {k: to_json_safe(v) for k, v in obj.items()}
@@ -146,9 +161,18 @@ async def oauth_callback(request: Request, provider: str):
 
         # ---- UPSERT USER ----
         existing = await db["users"].find_one({"email": email})
+        if provider == "google":
+            integration_data = google_identity_metadata(user_info)
+        else:
+            # Repository-provider credentials remain outside this Google-only
+            # remediation and are still required by the legacy import flow.
+            integration_data = {
+                "access_token": token.get("access_token"),
+                "token_type": token.get("token_type"),
+                "scope": token.get("scope"),
+                "raw": token,
+            }
 
-        # TODO(security): replace raw provider-token persistence in both branches
-        # with encrypted, purpose-limited credential storage in a dedicated follow-up.
         if not existing:
             # brand new user
             new_user = User(
@@ -172,14 +196,7 @@ async def oauth_callback(request: Request, provider: str):
             # 🔥 ADD REQUIRED METADATA
             user_doc["created_at"] = datetime.utcnow()
 
-            user_doc["integrations"] = {
-                provider: {
-                    "access_token": token.get("access_token"),
-                    "token_type": token.get("token_type"),
-                    "scope": token.get("scope"),
-                    "raw": token,
-                }
-            }
+            user_doc["integrations"] = {provider: integration_data}
 
             await db["users"].insert_one(user_doc)
             persisted_role = user_doc["role"]
@@ -191,10 +208,9 @@ async def oauth_callback(request: Request, provider: str):
                 {
                     "$set": {
                         "provider": provider,
-                        f"integrations.{provider}.access_token": token.get("access_token"),
-                        f"integrations.{provider}.token_type": token.get("token_type"),
-                        f"integrations.{provider}.scope": token.get("scope"),
-                        f"integrations.{provider}.raw": token,
+                        # Replacing the complete Google integration object also
+                        # removes legacy raw/access/refresh/ID token fields.
+                        f"integrations.{provider}": integration_data,
                         # 🔥 Ensure subscription exists (self-heal)
                         "subscription": existing.get("subscription") or Subscription(plan="free").model_dump(),
                         "onboarding": existing.get("onboarding") or OnboardingModel().model_dump(),
