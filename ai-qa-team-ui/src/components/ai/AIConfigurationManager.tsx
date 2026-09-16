@@ -41,7 +41,20 @@ export default function AIConfigurationManager({ projectId }: { projectId: strin
     if (!data || typeof data !== "object" || !("detail" in data)) return fallback;
     const value = (data as { detail?: unknown }).detail;
     if (typeof value === "string") return value;
-    if (value && typeof value === "object" && "message" in value && typeof (value as { message?: unknown }).message === "string") return (value as { message: string }).message;
+    if (Array.isArray(value)) {
+      const issues = value.flatMap((issue) => {
+        if (!issue || typeof issue !== "object") return [];
+        const record = issue as { loc?: unknown; msg?: unknown };
+        if (typeof record.msg !== "string") return [];
+        const location = Array.isArray(record.loc) ? record.loc.filter((part) => part !== "body").join(".") : "configuration";
+        return [`${location || "configuration"}: ${record.msg}`];
+      });
+      return issues.length ? `Configuration error — ${issues.join("; ")}` : fallback;
+    }
+    if (value && typeof value === "object" && "message" in value && typeof (value as { message?: unknown }).message === "string") {
+      const record = value as { code?: unknown; message: string };
+      return typeof record.code === "string" ? `${record.code}: ${record.message}` : record.message;
+    }
     return fallback;
   }
   async function act(path: string, method: "POST" | "PUT", success: string) {

@@ -80,9 +80,33 @@ class AIConfigurationTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_managed_configuration_never_exposes_platform_key(self):
         payload = AIConfigurationInput(provider_id="managed", mode="MANAGED", model="gpt-4o-mini")
-        with patch.object(ai_configuration_service.provider_registry, "resolve", return_value=Provider()):
+        with (
+            patch.object(ai_configuration_service.provider_registry, "resolve", return_value=Provider()) as resolve,
+            patch.object(ai_configuration_service, "EncryptedMongoSecretStore", side_effect=AssertionError("Managed mode used SecretStore")),
+        ):
             response = await ai_configuration_service.activate_configuration("PRJ1", payload, "admin@example.com")
         self.assertNotIn("managed-test-key", str(response)); self.assertFalse(response["credential_configured"])
+        self.assertEqual(resolve.call_args.args[:2], ("openai", "managed-test-key"))
+
+    async def test_managed_frontend_payload_is_accepted_for_test_and_activation(self):
+        body = {"provider_id": "managed", "mode": "MANAGED", "model": "gpt-4o-mini", "configuration": {}}
+        payload = AIConfigurationInput.model_validate(body)
+        self.assertIsNone(payload.api_key)
+        with (
+            patch.object(ai_configuration_routes, "require_project_admin", new=AsyncMock()),
+            patch.object(ai_configuration_routes, "validate_configuration", new=AsyncMock()) as validate,
+        ):
+            result = await ai_configuration_routes.test_connection("PRJ1", payload, {"email": "admin@example.com"})
+        self.assertEqual(result, {"success": True, "code": "CONNECTED"}); validate.assert_awaited_once()
+        response = {"project_id": "PRJ1", "provider_id": "managed", "mode": "MANAGED", "model": "gpt-4o-mini",
+            "configuration": {}, "status": "ACTIVE", "credential_configured": False, "created_by": "admin@example.com",
+            "updated_by": "admin@example.com", "created_at": "now", "updated_at": "now"}
+        with (
+            patch.object(ai_configuration_routes, "require_project_admin", new=AsyncMock()),
+            patch.object(ai_configuration_routes, "activate_configuration", new=AsyncMock(return_value=response)) as activate,
+        ):
+            self.assertEqual((await ai_configuration_routes.save_and_activate("PRJ1", payload, {"email": "admin@example.com"}))["mode"], "MANAGED")
+        activate.assert_awaited_once()
 
     async def test_openai_and_azure_adapters_validate_with_minimal_requests(self):
         response = type("Completion", (), {"choices": [type("Choice", (), {"message": type("Message", (), {"content": "ok"})()})()]})()
@@ -133,6 +157,7 @@ class AIConfigurationTests(unittest.IsolatedAsyncioTestCase):
         error = type("AuthenticationError", (Exception,), {"status_code": 401})("secret must not leak")
         normalized = normalize_provider_error(error)
         self.assertEqual(normalized.code, "AUTHENTICATION_ERROR"); self.assertNotIn("secret", str(normalized))
+        self.assertEqual(ai_configuration_service.public_error(normalized).status_code, 400)
 
     def test_configuration_rejects_secret_inside_generic_configuration(self):
         with self.assertRaises(ValueError): AIConfigurationInput(provider_id="openai", mode="BYOK", model="gpt", configuration={"access_token": "bad"}, api_key="good")

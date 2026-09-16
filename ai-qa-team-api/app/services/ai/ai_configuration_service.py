@@ -88,7 +88,16 @@ async def remove_configuration(project_id: str) -> None:
 
 
 def public_error(exc: Exception) -> HTTPException:
-    if isinstance(exc, LLMProviderError): return HTTPException(422, {"code": exc.code, "message": str(exc)})
+    if isinstance(exc, LLMProviderError):
+        status_by_code = {
+            "AUTHENTICATION_ERROR": 400,
+            "MODEL_NOT_AVAILABLE": 400,
+            "INVALID_CONFIGURATION": 400,
+            "RATE_LIMITED": 429,
+            "PROVIDER_UNAVAILABLE": 503,
+            "TIMEOUT": 504,
+        }
+        return HTTPException(status_by_code.get(exc.code, 502), {"code": exc.code, "message": str(exc)})
     if isinstance(exc, SecretStoreConfigurationError): return HTTPException(503, str(exc))
     if isinstance(exc, HTTPException): return exc
-    return HTTPException(422, {"code": "INVALID_CONFIGURATION", "message": "The provider connection could not be validated."})
+    return HTTPException(500, {"code": "PROVIDER_VALIDATION_FAILED", "message": "The provider connection could not be validated."})
