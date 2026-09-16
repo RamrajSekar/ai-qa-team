@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useProjects } from "@/hooks/useProjects";
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
-import { LayoutGrid, FolderOpen, Puzzle, Zap, Bot, ChevronLeft, ChevronRight, Layers, FileText, GitBranch } from "lucide-react";
+import { LayoutGrid, FolderOpen, Puzzle, Zap, Bot, ChevronLeft, ChevronRight, Layers, FileText, GitBranch, Users, BrainCircuit } from "lucide-react";
 
 export default function Sidebar() {
   const { enabled } = useFeatures();
@@ -24,6 +24,8 @@ export default function Sidebar() {
     ...(enabled("story_management") ? [{ name: "Stories", icon: FileText, href: `/projects/${projectId}/stories` }] : []),
     { name: "Environments", icon: FolderOpen, href: `/projects/${projectId}/environments` },
     ...(enabled("repository_discovery", "test_registry") ? [{ name: "Repositories", icon: GitBranch, href: `/projects/${projectId}/repositories` }] : []),
+    ...(project?.current_user_role === "ADMIN" ? [{ name: "Team", icon: Users, href: `/projects/${projectId}/settings/team` }] : []),
+    ...(project?.current_user_role === "ADMIN" ? [{ name: "AI Configuration", icon: BrainCircuit, href: `/projects/${projectId}/settings/ai` }] : []),
     ...(enabled("scenario_generation") ? [{ name: "Scenarios", icon: Puzzle, href: `/projects/${projectId}/scenarios` }] : []),
     // Execution history is shown on the overview; there is no separate execution page yet.
   ] : [];

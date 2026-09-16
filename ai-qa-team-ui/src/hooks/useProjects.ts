@@ -8,6 +8,7 @@ export interface Project {
   project_id: string;
   name: string;
   created_at: string;
+  current_user_role?: "ADMIN" | "TESTER";
 }
 
 export function useProjects() {

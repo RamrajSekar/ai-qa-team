@@ -31,6 +31,7 @@ class Settings(BaseSettings):
 
     ai_provider: str = "openai"
     openai_api_key: str | None = None
+    llm_secret_master_key: str | None = None
     app_env: str = "development"
     app_port: int = 8000
     enable_local_repositories: bool = False

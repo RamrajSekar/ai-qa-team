@@ -117,6 +117,7 @@ class GoogleOAuthTests(unittest.IsolatedAsyncioTestCase):
                 "email": "admin@example.com",
                 "name": "Admin",
                 "picture": "https://example.com/avatar.png",
+                "email_verified": True,
             },
         }
         client = _OAuthClient(token)
@@ -146,6 +147,7 @@ class GoogleOAuthTests(unittest.IsolatedAsyncioTestCase):
             patch.object(auth_routes, "create_access_token", access),
             patch.object(auth_routes, "create_refresh_token", refresh),
             patch.object(auth_routes, "store_refresh_token") as store_refresh,
+            patch.object(auth_routes, "activate_pending_memberships", return_value=0) as activate_memberships,
             patch.object(auth_routes.settings, "frontend_url", "https://ai-qa-team.vercel.app/"),
             patch.object(auth_routes.settings, "app_env", "production"),
         ):
@@ -159,6 +161,7 @@ class GoogleOAuthTests(unittest.IsolatedAsyncioTestCase):
         store_refresh.assert_called_once_with(
             "admin@example.com", "application-refresh-token"
         )
+        activate_memberships.assert_awaited_once()
         self.assertEqual(
             response.headers["location"], "https://ai-qa-team.vercel.app/dashboard"
         )
@@ -224,6 +227,7 @@ class GoogleOAuthTests(unittest.IsolatedAsyncioTestCase):
                 return_value="application-refresh-token",
             ),
             patch.object(auth_routes, "store_refresh_token"),
+            patch.object(auth_routes, "activate_pending_memberships", return_value=0) as activate_memberships,
             patch.object(auth_routes.settings, "frontend_url", "http://localhost:3002"),
         ):
             await auth_routes.oauth_callback(request("/auth/google/callback"), "google")
@@ -231,6 +235,7 @@ class GoogleOAuthTests(unittest.IsolatedAsyncioTestCase):
         access.assert_called_once_with(
             {"email": "new-google@example.com", "role": "tester"}
         )
+        activate_memberships.assert_not_awaited()
         integration = users.existing["integrations"]["google"]
         self.assertEqual(integration["provider_user_id"], "google-user-1")
         self.assertEqual(integration["email"], "new-google@example.com")

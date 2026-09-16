@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Dict
+from typing import Optional, Dict, Literal
 
 class AgentIdentities(BaseModel):
     recorder: str = "Recorder Agent"
@@ -17,6 +17,8 @@ class ProjectResponse(BaseModel):
     id: Optional[str]
     project_id: str
     name: str
+    description: Optional[str] = None
     agent_identities: Dict
     created_by: str
     created_at: str
+    current_user_role: Optional[Literal["ADMIN", "TESTER"]] = None

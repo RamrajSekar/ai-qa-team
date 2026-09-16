@@ -318,7 +318,7 @@ async def generate_scenarios_from_story(
         )
 
         prompt = build_scenario_prompt_from_story(agent, story, allowed, complexity)
-        ai_list = await generate_scenarios_from_prompt(prompt)
+        ai_list = await generate_scenarios_from_prompt(story["project_id"], prompt)
         ai_list = ai_list[:allowed]
 
         created = []
@@ -431,7 +431,7 @@ async def generate_from_recording(
         prompt = build_scenario_prompt_from_recording(
             agent_name, story, recording, allowed, complexity
         )
-        ai_result = await generate_scenarios_from_prompt(prompt)
+        ai_result = await generate_scenarios_from_prompt(story["project_id"], prompt)
 
         created_docs = []
         ai_result = ai_result[:allowed]

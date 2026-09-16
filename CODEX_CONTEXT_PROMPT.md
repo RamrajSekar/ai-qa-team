@@ -731,3 +731,14 @@ Remaining follow-up
 ```
 
 The immediate goal is **not** to implement the entire architecture. It is to safely turn the existing repository toward this architecture while preserving working code.
+## Project membership and authorization
+
+Authorization is project-scoped through `project_memberships`. Roles are `ADMIN` and `TESTER`, with `INVITED` or `ACTIVE` status. Creation assigns the creator as ADMIN; legacy `projects.created_by` remains the billing/compatibility owner and supports safe lazy backfill. Optional onboarding team setup and Project Settings → Team share the same membership APIs. Centralized `require_project_member` and `require_project_admin` checks protect project-level LLM/BYOK configuration.
+
+## Project-level LLM configuration
+
+The implemented provider-neutral path is `AI feature → LLMGateway → ProviderRegistry → LLMProvider`. MVP adapters are OpenAI and Azure OpenAI. A shared provider catalog describes safe configuration fields and lightweight capability metadata for the API and reusable project Settings UI.
+
+Project ADMIN members manage one active/default `AIConfiguration`; TESTER members receive safe provider/status metadata without management controls. Managed mode resolves the server-managed `OPENAI_API_KEY`. BYOK mode stores only a `credential_ref` in `ai_configurations`. Actual keys are held by `EncryptedMongoSecretStore` using AES-256-GCM and the server-only `LLM_SECRET_MASTER_KEY` (URL-safe base64 encoding of exactly 32 random bytes). The master key must remain stable across deployments and must not be stored in Mongo.
+
+Test Connection returns normalized provider errors without raw responses or credentials. Switching validates the proposed provider before persisting it, retains the current active provider on validation failure, and deletes the old encrypted credential only after successful activation. Disabled legacy generation remains disabled; its compatibility factory is not the preferred path for new AI features.

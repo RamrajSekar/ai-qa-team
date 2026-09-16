@@ -17,6 +17,7 @@ export default function EnvironmentsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [mode, setMode] = useState<"create" | "edit">("create");
   const [selectedEnv, setSelectedEnv] = useState<Environment | null>(null);
+  const [canManage, setCanManage] = useState(false);
 
   async function loadEnvironments() {
     setLoading(true);
@@ -40,6 +41,9 @@ export default function EnvironmentsPage() {
   useEffect(() => {
     if (project_id) {
       loadEnvironments();
+      apiFetch(`/projects/${project_id}`).then((response) => {
+        if (response.ok) setCanManage(response.data.current_user_role === "ADMIN");
+      });
     }
   }, [project_id]);
 
@@ -75,13 +79,13 @@ export default function EnvironmentsPage() {
           </p>
         </div>
 
-        <button
+        {canManage && <button
           onClick={handleAdd}
           className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md flex items-center gap-2"
         >
           <Plus size={18} />
           Add Environment
-        </button>
+        </button>}
       </div>
 
       {loading ? (
@@ -90,12 +94,12 @@ export default function EnvironmentsPage() {
         <div className="border rounded-md p-10 text-center text-gray-500">
           <Globe size={40} className="mx-auto mb-4 text-gray-400" />
           <p>No environments created for this project yet.</p>
-          <button
+          {canManage && <button
             onClick={handleAdd}
             className="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md"
           >
             Create Environment
-          </button>
+          </button>}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
@@ -105,19 +109,20 @@ export default function EnvironmentsPage() {
               env={env}
               refresh={loadEnvironments}
               onEdit={() => handleEdit(env)}
+              canManage={canManage}
             />
           ))}
         </div>
       )}
 
-      <EnvironmentModal
+      {canManage && <EnvironmentModal
         open={modalOpen}
         mode={mode}
         projectId={project_id}
         env={selectedEnv}
         onClose={handleCloseModal}
         onSaved={handleSaved}
-      />
+      />}
     </div>
   );
 }

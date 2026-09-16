@@ -10,9 +10,10 @@ type Props = {
   onboarding?: boolean;
   onContinue?: () => void;
   onSkip?: () => void;
+  readOnly?: boolean;
 };
 
-export default function RepositoryManager({ projectId, onboarding = false, onContinue, onSkip }: Props) {
+export default function RepositoryManager({ projectId, onboarding = false, onContinue, onSkip, readOnly = false }: Props) {
   const [repositories, setRepositories] = useState<RepositoryRecord[]>([]);
   const [selected, setSelected] = useState<RepositoryRecord | null>(null);
   const [tests, setTests] = useState<DiscoveredTest[]>([]);
@@ -95,7 +96,7 @@ export default function RepositoryManager({ projectId, onboarding = false, onCon
 
   return (
     <div className="repository-manager">
-      {!selected || selected.scan_status === "failed" ? (
+      {!selected && readOnly ? <div className="workspace-empty"><FolderGit2 size={24} /><strong>No repository connected</strong>A Project Admin can connect the project&apos;s automation repository.</div> : !selected || selected.scan_status === "failed" ? (
         <section className="repository-connect-card">
           <div className="repository-source-grid">
             <button type="button" className={sourceType === "GITHUB_PUBLIC" ? "is-selected" : ""} onClick={() => setSourceType("GITHUB_PUBLIC")}>
@@ -117,14 +118,14 @@ export default function RepositoryManager({ projectId, onboarding = false, onCon
           {selected?.scan_status === "failed" && <p role="alert" className="repository-error"><TriangleAlert size={16} />{selected.scan_error}</p>}
           <div className="repository-actions">
             {onSkip && <button className="workspace-button" onClick={onSkip}>Skip for now</button>}
-            {selected?.scan_status === "failed" && (
+            {selected?.scan_status === "failed" && !readOnly && (
               <button className="workspace-button" onClick={() => rescan(selected)} disabled={scanning}>
                 <RefreshCw size={15} />{scanning ? "Scanning…" : "Retry Scan"}
               </button>
             )}
-            <button className="workspace-button workspace-primary" onClick={connect} disabled={scanning || (sourceType === "LOCAL" ? !localPath.trim() : !repositoryUrl.trim())}>
+            {!readOnly && <button className="workspace-button workspace-primary" onClick={connect} disabled={scanning || (sourceType === "LOCAL" ? !localPath.trim() : !repositoryUrl.trim())}>
               {scanning ? <RefreshCw size={15} className="animate-spin" /> : <Github size={15} />}Connect & Scan
-            </button>
+            </button>}
           </div>
         </section>
       ) : (
@@ -144,7 +145,7 @@ export default function RepositoryManager({ projectId, onboarding = false, onCon
           </div>
           {error && <p role="alert" className="repository-error">{error}</p>}
           <div className="repository-actions">
-            <button className="workspace-button" onClick={() => rescan(selected)} disabled={scanning}><RefreshCw size={15} />{scanning ? "Scanning…" : "Rescan"}</button>
+            {!readOnly && <button className="workspace-button" onClick={() => rescan(selected)} disabled={scanning}><RefreshCw size={15} />{scanning ? "Scanning…" : "Rescan"}</button>}
             {onContinue && <button className="workspace-button workspace-primary" onClick={onContinue}>Continue</button>}
           </div>
         </section>

@@ -10,6 +10,8 @@ async def init_indexes():
     await db["executions"].create_index("execution_id", unique=True)
     await db["repositories"].create_index("repository_id", unique=True)
     await db["discovered_tests"].create_index("test_id", unique=True)
+    await db["project_memberships"].create_index("membership_id", unique=True)
+    await db["project_memberships"].create_index([("project_id", 1), ("email", 1)], unique=True)
 
     # Common filters
     await db["scenarios"].create_index([("story_id", 1), ("created_by", 1)])
@@ -21,3 +23,8 @@ async def init_indexes():
     await db["discovered_tests"].create_index([
         ("project_id", 1), ("repository_id", 1), ("source_commit_sha", 1)
     ])
+    await db["project_memberships"].create_index([("email", 1), ("status", 1)])
+    await db["project_memberships"].create_index([("billing_owner", 1), ("counts_toward_limit", 1)])
+    await db["ai_configurations"].create_index("project_id", unique=True)
+    await db["encrypted_secrets"].create_index("credential_ref", unique=True)
+    await db["encrypted_secrets"].create_index([("project_id", 1), ("credential_ref", 1)])

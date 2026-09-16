@@ -5,11 +5,12 @@ import StepProject from "./steps/StepProject";
 import StepEnvironment from "./steps/StepEnvironment";
 import StepTestImport from "./steps/StepTestImport";
 import StepFinish from "./steps/StepFinish";
+import StepTeam from "./steps/StepTeam";
 import { X } from "lucide-react";
 import { User } from "@/types/user";
 import { OnboardingStep } from "../onboarding/types";
 
-const STEP_LABELS = ["Project", "Application", "Automation", "Ready"];
+const STEP_LABELS = ["Project", "Application", "Team", "Automation", "Ready"];
 
 interface OnboardingModalProps {
   user: User;
@@ -24,7 +25,7 @@ export default function OnboardingModal({
   onProjectsReload,
   onClose,
 }: OnboardingModalProps) {
-  const maxStep = 4;
+  const maxStep = 5;
 
   const [step, setStep] = useState<OnboardingStep>(
     (user?.onboarding?.current_step as OnboardingStep) || 1
@@ -58,13 +59,17 @@ export default function OnboardingModal({
     ),
 
     3: (
+      <StepTeam projectId={projectId} next={next} back={back} />
+    ),
+
+    4: (
       <StepTestImport
         next={next}
         projectId={projectId}
       />
     ),
 
-    4: (
+    5: (
       <StepFinish
         user={user}
         onProjectsReload={onProjectsReload}

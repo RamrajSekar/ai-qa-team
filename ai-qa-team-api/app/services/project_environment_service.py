@@ -5,11 +5,13 @@ from app.models.environment_model import (
     ProjectEnvironmentResponse,
 )
 from app.services.story_service import get_next_sequence
+from app.utils.project_authorization import require_project_admin, require_project_member
 
 # -------------------------------------------------------
 # CREATE ENVIRONMENT
 # -------------------------------------------------------
 async def create_environment(env: ProjectEnvironment, current_user):
+    await require_project_admin(env.project_id, current_user)
     # Generate sequential environment ID like ENV001
     new_env_id = await get_next_sequence("env_id", "ENV")
 
@@ -61,39 +63,28 @@ async def create_environment(env: ProjectEnvironment, current_user):
 #     ]
 
 async def list_environments(project_id: str | None, current_user):
-    print("DEBUG: list_environments called")
-    print("DEBUG: project_id =", project_id)
-    print("DEBUG: current_user =", current_user["email"])
-
-    query = {"created_by": current_user["email"]}
-
     if project_id:
-        query["project_id"] = project_id
-
-    print("DEBUG: MongoDB Query =", query)
-
+        await require_project_member(project_id, current_user)
+        query = {"project_id": project_id}
+    else:
+        memberships = await db["project_memberships"].find({
+            "email": current_user["email"].lower(), "status": "ACTIVE",
+        }).to_list(500)
+        query = {"project_id": {"$in": [item["project_id"] for item in memberships]}}
     cursor = db["environments"].find(query)
     results = await cursor.to_list(100)
-
-    print("DEBUG: RAW RESULTS FROM DB =", results)
-
     parsed = [{**doc, "id": str(doc["_id"])} for doc in results]
-
-    print("DEBUG: PARSED ENVIRONMENTS RETURNED =", parsed)
-
     return parsed
 
 # -------------------------------------------------------
 # GET SINGLE ENVIRONMENT
 # -------------------------------------------------------
 async def get_environment(env_id: str, current_user):
-    doc = await db["environments"].find_one({
-        "env_id": env_id,
-        "created_by": current_user["email"]
-    })
+    doc = await db["environments"].find_one({"env_id": env_id})
 
     if not doc:
         raise HTTPException(404, "Environment not found")
+    await require_project_member(doc["project_id"], current_user)
 
     doc["id"] = str(doc["_id"])
     return ProjectEnvironmentResponse(**doc)
@@ -102,13 +93,17 @@ async def get_environment(env_id: str, current_user):
 # UPDATE ENVIRONMENT
 # -------------------------------------------------------
 async def update_environment(env_id: str, env: ProjectEnvironment, current_user):
+    existing = await db["environments"].find_one({"env_id": env_id})
+    if not existing:
+        raise HTTPException(404, "Environment not found")
+    await require_project_admin(existing["project_id"], current_user)
     # Do NOT allow env_id or project_id to be overwritten
     update_data = env.model_dump()
     update_data.pop("env_id", None)
     update_data.pop("project_id", None)
 
     updated = await db["environments"].update_one(
-        {"env_id": env_id, "created_by": current_user["email"]},
+        {"env_id": env_id},
         {"$set": update_data}
     )
 
@@ -121,10 +116,11 @@ async def update_environment(env_id: str, env: ProjectEnvironment, current_user)
 # DELETE ENVIRONMENT
 # -------------------------------------------------------
 async def delete_environment(env_id: str, current_user):
-    deleted = await db["environments"].delete_one({
-        "env_id": env_id,
-        "created_by": current_user["email"]
-    })
+    existing = await db["environments"].find_one({"env_id": env_id})
+    if not existing:
+        raise HTTPException(404, "Environment not found")
+    await require_project_admin(existing["project_id"], current_user)
+    deleted = await db["environments"].delete_one({"env_id": env_id})
 
     if deleted.deleted_count == 0:
         raise HTTPException(404, "Environment not found")

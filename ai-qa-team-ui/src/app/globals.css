@@ -210,3 +210,32 @@ html[data-workspace-theme] [data-slot="dialog-description"] { color: var(--ws-mu
 @media (prefers-reduced-motion: reduce) { .workspace-shell *, html[data-workspace-theme] [data-slot="dropdown-menu-content"] { transition: none !important; animation: none !important; } }
 html[data-workspace-theme] [data-slot="dialog-content"] :is(.bg-purple-600,.bg-indigo-600) { background: #7052c8; color: white; }
 html[data-workspace-theme] [data-slot="dialog-close"] { background: transparent; border: 0; padding: 4px; cursor: pointer; }
+
+.team-manager { display: grid; gap: 18px; }
+.team-list { display: grid; gap: 10px; }
+.team-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border: 1px solid var(--ws-border); border-radius: 12px; background: var(--ws-surface); }
+.team-identity, .team-controls, .team-invite > div, .team-invite-fields { display: flex; align-items: center; gap: 10px; }
+.team-identity > span { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; color: var(--ws-accent); background: var(--ws-accent-soft); }
+.team-identity div { display: grid; gap: 2px; }
+.team-identity small, .team-invite p { color: var(--ws-muted); font-size: 12px; margin: 0; }
+.team-controls select, .team-invite select, .team-invite input { border: 1px solid var(--ws-border); border-radius: 8px; background: var(--ws-surface); color: var(--ws-text); padding: 9px 10px; }
+.team-remove { border: 0; background: transparent; color: #dc2626; padding: 7px; border-radius: 7px; }
+.team-remove:hover { background: rgba(220, 38, 38, .1); }
+.team-invite { display: grid; gap: 13px; padding: 16px; border: 1px solid var(--ws-border); border-radius: 12px; background: var(--ws-surface); }
+.team-invite-fields input { flex: 1; min-width: 190px; }
+
+@media (max-width: 640px) {
+  .team-row, .team-controls, .team-invite-fields { align-items: stretch; flex-direction: column; }
+  .team-controls select, .team-invite-fields input, .team-invite-fields select { width: 100%; }
+}
+.ai-config-card { background: var(--ws-surface); border: 1px solid var(--ws-border); border-radius: 18px; padding: 24px; max-width: 820px; }
+.ai-config-summary { display: flex; align-items: center; gap: 14px; padding-bottom: 20px; border-bottom: 1px solid var(--ws-border); }
+.ai-config-summary > span:first-child { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; color: var(--ws-accent); background: var(--ws-accent-soft); }
+.ai-config-summary p, .ai-config-note { color: var(--ws-muted); margin: 4px 0 0; font-size: .86rem; }
+.ai-config-summary .workspace-badge { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; }
+.ai-config-form { display: grid; gap: 18px; padding-top: 22px; }
+.ai-config-form label { display: grid; gap: 7px; color: var(--ws-muted); font-size: .8rem; font-weight: 650; }
+.ai-config-form input, .ai-config-form select { width: 100%; border: 1px solid var(--ws-border); border-radius: 10px; padding: 11px 12px; color: var(--ws-text); background: var(--ws-soft); }
+.ai-config-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.ai-config-note { margin: -5px 0 0; }
+@media (max-width: 720px) { .ai-config-fields { grid-template-columns: 1fr; } .ai-config-summary { align-items: flex-start; flex-wrap: wrap; } .ai-config-summary .workspace-badge { margin-left: 56px; } }

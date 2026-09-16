@@ -7,6 +7,8 @@ from app.utils.auth_dependency import get_current_user
 from app.services.story_service import get_next_sequence
 from app.models.project_model import ProjectCreate, ProjectResponse, AgentIdentities
 from app.utils.subscription_dependency import subscription_required
+from app.services.project_team_service import create_creator_membership
+from app.utils.project_authorization import require_project_admin, require_project_member
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -34,9 +36,17 @@ async def create_project(
     else:
         data["agent_identities"] = {}
 
-    # Insert project
+    # Insert the project and its creator membership as one logical operation.
+    # Standalone Mongo installations may not support transactions, so compensate
+    # by removing the project if membership creation fails.
     result = await db["projects"].insert_one(data)
     data["id"] = str(result.inserted_id)
+    try:
+        await create_creator_membership(new_project_id, current_user)
+    except Exception:
+        await db["projects"].delete_one({"project_id": new_project_id})
+        raise
+    data["current_user_role"] = "ADMIN"
 
     # 🔥 Increment project usage (FIXES DASHBOARD & /projects)
     await db["users"].update_one(
@@ -66,14 +76,21 @@ async def create_project(
 # -------------------------------------------------------------------
 @router.get("", response_model=list[ProjectResponse])
 async def list_projects(current_user=Depends(get_current_user)):
-    email = current_user.get("email")
-
-    cursor = db["projects"].find({"created_by": email})
+    account_email = current_user.get("email", "")
+    email = account_email.lower()
+    # Backfill only projects whose legacy creator is unambiguous.
+    owned = await db["projects"].find({"created_by": account_email}).to_list(500)
+    for project in owned:
+        await require_project_member(project["project_id"], current_user)
+    memberships = await db["project_memberships"].find({"email": email, "status": "ACTIVE"}).to_list(500)
+    roles = {membership["project_id"]: membership["role"] for membership in memberships}
+    cursor = db["projects"].find({"project_id": {"$in": list(roles)}})
     projects = []
 
     async for doc in cursor:
         doc["id"] = str(doc["_id"])
         del doc["_id"]
+        doc["current_user_role"] = roles.get(doc["project_id"])
         projects.append(ProjectResponse(**doc))
 
     return projects
@@ -87,14 +104,11 @@ async def get_project(
     project_id: str,
     current_user=Depends(get_current_user)
 ):
-    email = current_user.get("email")
-
-    project = await db["projects"].find_one({"project_id": project_id, "created_by": email})
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project, membership = await require_project_member(project_id, current_user)
 
     project["id"] = str(project["_id"])
     del project["_id"]
+    project["current_user_role"] = membership["role"]
 
     return ProjectResponse(**project)
 
@@ -108,7 +122,7 @@ async def update_project(
     data: dict,
     current_user=Depends(get_current_user)
 ):
-    email = current_user.get("email")
+    await require_project_admin(project_id, current_user)
 
     update_data = {k: v for k, v in data.items() if v is not None}
     if "project_id" in update_data:
@@ -117,7 +131,7 @@ async def update_project(
             raise HTTPException(400, "Project ID already exists")
 
     result = await db["projects"].update_one(
-        {"project_id": project_id, "created_by": email},
+        {"project_id": project_id},
         {"$set": update_data}
     )
 
@@ -127,6 +141,7 @@ async def update_project(
     updated = await db["projects"].find_one({"project_id": project_id})
     updated["id"] = str(updated["_id"])
     del updated["_id"]
+    updated["current_user_role"] = "ADMIN"
 
     return ProjectResponse(**updated)
 
@@ -140,10 +155,10 @@ async def update_agent_identities(
     agents: AgentIdentities,
     current_user=Depends(get_current_user)
 ):
-    email = current_user.get("email")
+    await require_project_admin(project_id, current_user)
 
     result = await db["projects"].update_one(
-        {"project_id": project_id, "created_by": email},
+        {"project_id": project_id},
         {"$set": {"agent_identities": agents.model_dump()}}
     )
 
@@ -178,20 +193,32 @@ async def delete_project(
     project_id: str,
     current_user=Depends(get_current_user)
 ):
-    email = current_user.get("email")
+    project, _ = await require_project_admin(project_id, current_user)
+    email = project["created_by"]
 
     result = await db["projects"].delete_one(
-        {"project_id": project_id, "created_by": email}
+        {"project_id": project_id}
     )
     
 
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Project not found or access denied")
 
+    additional_members = await db["project_memberships"].count_documents({
+        "project_id": project_id,
+        "email": {"$ne": email.lower()},
+    })
+    await db["project_memberships"].delete_many({"project_id": project_id})
+    await db["ai_configurations"].delete_many({"project_id": project_id})
+    await db["encrypted_secrets"].delete_many({"project_id": project_id})
+
     # 🔥 Decrement usage count
     await db["users"].update_one(
         {"email": email},
-        {"$inc": {"subscription.usage.projects_used": -1}}
+        {"$inc": {
+            "subscription.usage.projects_used": -1,
+            "subscription.usage.team_members_used": -additional_members,
+        }}
     )
 
     # Check if 0 left

@@ -25,6 +25,7 @@ TEST_ENV = {
 
 with patch.dict(os.environ, TEST_ENV):
     from app.routes import repository_routes, user_routes
+    from app.utils import project_authorization
     from app.models.repository_model import RepositoryConnectRequest
     from app.services.repository_discovery_service import (
         discover_robot_tests,
@@ -185,20 +186,23 @@ class RepositoryDiscoveryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(fake_db["projects"].update_calls, [])
         self.assertEqual(fake_db["environments"].update_calls, [])
 
-    async def test_project_ownership_is_enforced(self):
+    async def test_project_membership_is_enforced(self):
         fake_db = _DB()
         fake_db["projects"].documents.append({"project_id": "PRJ001", "created_by": "owner@example.com"})
-        with patch.object(repository_routes, "db", fake_db):
-            await repository_routes.owned_project("PRJ001", "owner@example.com")
+        fake_db["project_memberships"].documents.append({"project_id": "PRJ001", "email": "owner@example.com", "role": "ADMIN", "status": "ACTIVE"})
+        with patch.object(project_authorization, "db", fake_db):
+            await project_authorization.require_project_member("PRJ001", {"email": "owner@example.com"})
             with self.assertRaises(HTTPException):
-                await repository_routes.owned_project("PRJ001", "other@example.com")
+                await project_authorization.require_project_member("PRJ001", {"email": "other@example.com"})
 
     async def test_local_connect_is_rejected_server_side_in_production(self):
         fake_db = _DB()
         fake_db["projects"].documents.append({"project_id": "PRJ001", "created_by": "owner@example.com"})
+        fake_db["project_memberships"].documents.append({"project_id": "PRJ001", "email": "owner@example.com", "role": "ADMIN", "status": "ACTIVE"})
         with tempfile.TemporaryDirectory() as directory:
             with (
                 patch.object(repository_routes, "db", fake_db),
+                patch.object(project_authorization, "db", fake_db),
                 patch.object(repository_routes.settings, "enable_local_repositories", True),
                 patch.object(repository_routes.settings, "app_env", "production"),
             ):

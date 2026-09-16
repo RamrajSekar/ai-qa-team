@@ -6,7 +6,9 @@ def get_ai_provider():
     provider_name = settings.ai_provider.lower()
 
     if provider_name == "openai":
-        return OpenAIProvider()
+        if not settings.openai_api_key:
+            raise RuntimeError("OpenAI is not configured")
+        return OpenAIProvider(settings.openai_api_key)
 
     # Add Groq, Anthropic, DeepSeek, etc.
     raise ValueError(f"Unknown AI provider: {provider_name}")

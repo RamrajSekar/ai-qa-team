@@ -8,9 +8,10 @@ interface Props {
   env: Environment;
   refresh: () => void;
   onEdit: (env: Environment) => void;
+  canManage?: boolean;
 }
 
-export default function EnvironmentCard({ env, refresh, onEdit }: Props) {
+export default function EnvironmentCard({ env, refresh, onEdit, canManage = true }: Props) {
   async function handleDelete() {
     if (!confirm(`Delete environment "${env.env_type}"?`)) return;
 
@@ -31,7 +32,7 @@ export default function EnvironmentCard({ env, refresh, onEdit }: Props) {
           <p className="text-xs text-gray-500">{env.base_url}</p>
         </div>
 
-        <div className="flex gap-2">
+        {canManage && <div className="flex gap-2">
           <button
             onClick={() => onEdit(env)}
             className="p-2 rounded-md hover:bg-gray-100"
@@ -44,7 +45,7 @@ export default function EnvironmentCard({ env, refresh, onEdit }: Props) {
           >
             <Trash2 size={16} />
           </button>
-        </div>
+        </div>}
       </div>
 
       {env.credentials.length > 0 && (

@@ -238,6 +238,10 @@ class FeatureFlagTests(unittest.TestCase):
             db[name].insert_one.return_value = MagicMock(inserted_id=ObjectId())
         project = self.client.post("/projects", json={"name": "Flag test", "created_by": self.email})
         self.assertEqual(project.status_code, 200, project.text)
+        db["projects"].find_one.return_value = {"project_id": "PRJ001", "created_by": self.email}
+        db["project_memberships"].find_one.return_value = {
+            "project_id": "PRJ001", "email": self.email, "role": "ADMIN", "status": "ACTIVE"
+        }
         environment = self.client.post("/environments", json={"project_id": "PRJ001", "base_url": "https://example.com"})
         self.assertEqual(environment.status_code, 200, environment.text)
         self.assertEqual(self.client.get("/auth/plans").status_code, 200)

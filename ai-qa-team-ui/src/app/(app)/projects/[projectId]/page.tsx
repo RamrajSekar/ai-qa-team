@@ -21,6 +21,7 @@ interface Project {
   created_by: string;
   created_at: string;
   agent_identities: Record<string, any>;
+  current_user_role?: "ADMIN" | "TESTER";
 }
 
 interface Story {
@@ -154,6 +155,7 @@ export default function ProjectPage() {
     );
   }
 
+  const canManage = project.current_user_role === "ADMIN";
   return (
     <div>
       <div className="workspace-page-header">
@@ -163,7 +165,7 @@ export default function ProjectPage() {
           <p className="workspace-description">{project.description || "Manage your environments and review your execution history."}</p>
           <p className="workspace-metadata">{project.project_id} · Created {new Date(project.created_at).toLocaleDateString()}</p>
         </div>
-        <div className="workspace-actions">
+        {canManage && <div className="workspace-actions">
           <button onClick={() => setOpenEditModal(true)} className="workspace-button">Edit Project</button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild><button className="workspace-button" aria-label="Project actions"><MoreHorizontal size={18} /></button></DropdownMenuTrigger>
@@ -172,7 +174,7 @@ export default function ProjectPage() {
               <DropdownMenuItem variant="destructive" onSelect={() => setOpenDeleteModal(true)}>Delete project</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
+        </div>}
       </div>
       <div className="workspace-metrics">
         <KpiCard label="Environments" value={environments.length} />
@@ -184,16 +186,16 @@ export default function ProjectPage() {
       <section className="workspace-panel" aria-labelledby="environment-title">
         <div className="workspace-panel-header">
           <h2 id="environment-title">Environments</h2>
-          <button className="workspace-button workspace-primary" onClick={() => setOpenEnvironmentModal(true)}><Plus size={15} />Add environment</button>
+          {canManage && <button className="workspace-button workspace-primary" onClick={() => setOpenEnvironmentModal(true)}><Plus size={15} />Add environment</button>}
         </div>
         {environments.length ? <div className="workspace-panel-body">
           {environments.map((env) => <Link className="workspace-row" key={env.env_id || env.id} href={`/projects/${projectId}/environments`}>
             <div><div className="workspace-row-title">{env.name || env.env_type?.toUpperCase() || "Environment"}</div><div className="workspace-row-subtitle">{env.base_url || env.url || env.env_id}</div></div>
             <span className="workspace-badge">{env.env_type}</span><ArrowUpRight size={16} aria-hidden="true" />
           </Link>)}
-        </div> : <div className="workspace-empty"><Globe size={24} /><strong>No environments configured</strong>Add your first environment to keep project settings in one place.</div>}
+        </div> : <div className="workspace-empty"><Globe size={24} /><strong>No environments configured</strong>{canManage ? "Add your first environment to keep project settings in one place." : "A Project Admin can add an environment."}</div>}
       </section>
-      <EnvironmentModal open={openEnvironmentModal} onClose={() => setOpenEnvironmentModal(false)} mode="create" projectId={projectId} onSaved={loadAll} />
+      {canManage && <EnvironmentModal open={openEnvironmentModal} onClose={() => setOpenEnvironmentModal(false)} mode="create" projectId={projectId} onSaved={loadAll} />}
       <section id="execution-history" className="workspace-panel" aria-labelledby="history-title">
         <div className="workspace-panel-header"><h2 id="history-title">Execution history</h2><span className="workspace-badge">{executions.length} recorded</span></div>
         {executions.length ? <div className="workspace-panel-body">
@@ -203,14 +205,14 @@ export default function ProjectPage() {
 
       {/* --- Modals --- */}
 
-      <EditProjectModal
+      {canManage && <EditProjectModal
         open={openEditModal}
         onClose={() => setOpenEditModal(false)}
         project={project}
         onUpdated={loadAll}
-      />
+      />}
 
-      {agentsEnabled && <AgentSettingsModal
+      {canManage && agentsEnabled && <AgentSettingsModal
         open={openAgentModal}
         onClose={() => setOpenAgentModal(false)}
         projectId={project.project_id}
@@ -218,13 +220,13 @@ export default function ProjectPage() {
         onUpdated={loadAll}
       />}
 
-      <DeleteProjectModal
+      {canManage && <DeleteProjectModal
         open={openDeleteModal}
         onClose={() => setOpenDeleteModal(false)}
         projectId={project.project_id}
         projectName={project.name}
         onDeleted={() => router.push('/projects')}
-      />
+      />}
 
       {/* SECTIONS */}
       {storiesEnabled && <Section

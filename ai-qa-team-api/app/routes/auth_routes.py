@@ -14,6 +14,7 @@ from app.utils.jwt_handler import create_access_token, decode_token, create_refr
 from datetime import datetime, timezone
 from app.models.subscription import Subscription
 from app.services.sync_usage import sync_usage
+from app.services.project_team_service import activate_pending_memberships
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -218,6 +219,10 @@ async def oauth_callback(request: Request, provider: str):
                 }
             )
             persisted_role = existing.get("role", "tester")
+
+        persisted_user = await db["users"].find_one({"email": email})
+        if persisted_user and provider == "google" and user_info.get("email_verified") is True:
+            await activate_pending_memberships(persisted_user)
 
         # ---- issue tokens using the persisted application role ----
         access_token = create_access_token({"email": email, "role": persisted_role})

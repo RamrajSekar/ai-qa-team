@@ -14,7 +14,7 @@ export default function StepTestImport({ next, projectId }: StepTestImportProps)
   const canDiscover = enabled("repository_discovery", "test_registry");
 
   async function finishAutomationStep() {
-    await apiFetch("/onboarding/progress", { method: "PUT", body: JSON.stringify({ step_key: "test_import", current_step: 4 }) });
+    await apiFetch("/onboarding/progress", { method: "PUT", body: JSON.stringify({ step_key: "test_import", current_step: 5 }) });
     next();
   }
 

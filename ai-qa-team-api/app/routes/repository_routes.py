@@ -21,6 +21,7 @@ from app.services.repository_discovery_service import (
 from app.services.story_service import get_next_sequence
 from app.utils.auth_dependency import get_current_user
 from app.utils.feature_flags import feature_required
+from app.utils.project_authorization import require_project_admin, require_project_member
 
 
 router = APIRouter(
@@ -32,13 +33,6 @@ router = APIRouter(
 
 def local_repositories_enabled() -> bool:
     return settings.enable_local_repositories and settings.app_env.strip().lower() != "production"
-
-
-async def owned_project(project_id: str, email: str) -> dict:
-    project = await db["projects"].find_one({"project_id": project_id, "created_by": email})
-    if not project:
-        raise HTTPException(404, "Project not found or access denied")
-    return project
 
 
 def public_repository(doc: dict) -> dict:
@@ -126,7 +120,7 @@ async def connect_repository(
     current_user=Depends(get_current_user),
 ):
     email = current_user["email"]
-    await owned_project(request.project_id, email)
+    await require_project_admin(request.project_id, current_user)
     branch = validate_branch(request.branch)
     if request.source_type == "LOCAL":
         if not local_repositories_enabled():
@@ -168,22 +162,23 @@ async def connect_repository(
 
 @router.get("", response_model=list[RepositoryResponse])
 async def list_repositories(project_id: str, current_user=Depends(get_current_user)):
-    await owned_project(project_id, current_user["email"])
-    cursor = db["repositories"].find({"project_id": project_id, "created_by": current_user["email"]})
+    await require_project_member(project_id, current_user)
+    cursor = db["repositories"].find({"project_id": project_id})
     return [public_repository(doc) async for doc in cursor]
 
 
-async def owned_repository(repository_id: str, email: str) -> dict:
-    repository = await db["repositories"].find_one({"repository_id": repository_id, "created_by": email})
+async def accessible_repository(repository_id: str, current_user: dict, admin: bool = False) -> dict:
+    repository = await db["repositories"].find_one({"repository_id": repository_id})
     if not repository:
         raise HTTPException(404, "Repository not found or access denied")
-    await owned_project(repository["project_id"], email)
+    checker = require_project_admin if admin else require_project_member
+    await checker(repository["project_id"], current_user)
     return repository
 
 
 @router.post("/{repository_id}/rescan", response_model=RepositoryResponse)
 async def rescan_repository(repository_id: str, current_user=Depends(get_current_user)):
-    repository = await owned_repository(repository_id, current_user["email"])
+    repository = await accessible_repository(repository_id, current_user, admin=True)
     if repository["source_type"] == "LOCAL" and not local_repositories_enabled():
         raise HTTPException(403, "Local repositories are disabled in this environment")
     return public_repository(await scan_repository(repository))
@@ -191,7 +186,7 @@ async def rescan_repository(repository_id: str, current_user=Depends(get_current
 
 @router.get("/{repository_id}/tests", response_model=list[DiscoveredTestResponse])
 async def list_discovered_tests(repository_id: str, current_user=Depends(get_current_user)):
-    repository = await owned_repository(repository_id, current_user["email"])
+    repository = await accessible_repository(repository_id, current_user)
     commit_sha = repository.get("source_commit_sha")
     if not commit_sha:
         return []

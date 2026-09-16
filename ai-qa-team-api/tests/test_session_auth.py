@@ -57,6 +57,7 @@ class AuthSessionTests(unittest.IsolatedAsyncioTestCase):
             patch.object(auth_routes, "create_access_token", return_value="access-token"),
             patch.object(auth_routes, "create_refresh_token", return_value="refresh-token"),
             patch.object(auth_routes, "store_refresh_token") as store_refresh,
+            patch.object(auth_routes, "activate_pending_memberships", return_value=0),
         ):
             response = await auth_routes.signup(
                 User(name="New User", email="new@example.com", password="secret")
@@ -87,6 +88,7 @@ class AuthSessionTests(unittest.IsolatedAsyncioTestCase):
             patch.object(auth_routes, "create_access_token", return_value="access-token"),
             patch.object(auth_routes, "create_refresh_token", return_value="refresh-token"),
             patch.object(auth_routes, "store_refresh_token") as store_refresh,
+            patch.object(auth_routes, "activate_pending_memberships", return_value=0),
         ):
             response = await auth_routes.login(
                 {"email": "existing@example.com", "password": "secret"}

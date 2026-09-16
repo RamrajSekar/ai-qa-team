@@ -478,3 +478,14 @@ After core workflow validation:
 28. Human-approved self-healing / Max.
 
 This order is not authorization to implement all items at once or enable flags. Credential safety is unresolved follow-up, not a completed redesign. Application-state planning/preview belongs to Phase 1; actual state creation and ID capture require Phase 2 execution.
+## Project-scoped access
+
+Project access uses `ProjectMembership` records with `ADMIN` and `TESTER` roles. Project creators become active ADMIN members automatically. Existing projects retain `created_by` and receive a lazy ADMIN membership only when that creator accesses the project, so ownership is not guessed. Team setup is optional during onboarding and remains available under Project Settings → Team. Project administration, team changes, environment changes, repository configuration, and project AI configuration require Project ADMIN; active TESTER members can access safe project and AI status metadata.
+
+## Project AI control plane
+
+Project AI configuration uses `LLMGateway → ProviderRegistry → LLMProvider`. OpenAI and Azure OpenAI are the MVP adapters. Another provider should require a new adapter, catalog entry, registration, and tests rather than changes to AI features. The provider catalog supplies non-secret field metadata to one reusable Settings UI.
+
+Each project has at most one active `ai_configurations` document. ADMIN members can test, activate, replace, or remove configuration; TESTER members can read only safe status metadata. Managed mode uses the server's `OPENAI_API_KEY`. BYOK documents contain a `credential_ref`, harmless suffix, and non-secret provider configuration only.
+
+BYOK material is stored through the replaceable `SecretStore` contract. The MVP `EncryptedMongoSecretStore` uses AES-256-GCM with a fresh nonce and project/reference authenticated data. Its 32-byte URL-safe base64 master key comes only from server configuration as `LLM_SECRET_MASTER_KEY`; it is never stored in Mongo. Provider credentials are not returned, logged, placed in Redis, or exposed to prompts. Replacement validates before changing the active configuration, and the old encrypted secret is deleted only after the new configuration is active.
