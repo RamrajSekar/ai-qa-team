@@ -17,11 +17,11 @@ export default function StepFooter({
   disabled = false,
 }: StepFooterProps) {
   return (
-    <div className="flex justify-between mt-8">
+    <div className="onboarding-footer">
       {onBack ? (
         <button
           onClick={onBack}
-          className="px-4 py-2 rounded-md border hover:bg-gray-100"
+          className="workspace-button"
         >
           {backLabel}
         </button>
@@ -33,8 +33,7 @@ export default function StepFooter({
         <button
           onClick={onNext}
           disabled={disabled}
-          className={`px-4 py-2 rounded-md bg-purple-600 text-white 
-            hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed`}
+          className="workspace-button workspace-primary"
         >
           {nextLabel}
         </button>

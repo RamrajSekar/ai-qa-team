@@ -9,6 +9,8 @@ import { X } from "lucide-react";
 import { User } from "@/types/user";
 import { OnboardingStep } from "../onboarding/types";
 
+const STEP_LABELS = ["Project", "Application", "Automation", "Ready"];
+
 interface OnboardingModalProps {
   user: User;
   refreshUser: () => Promise<void>;
@@ -48,7 +50,7 @@ export default function OnboardingModal({
 
     2: (
       <StepEnvironment
-        user={user}
+        projectId={projectId}
         refreshUser={refreshUser}
         next={next}
         back={back}
@@ -75,7 +77,7 @@ export default function OnboardingModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-      <div className="bg-white w-full max-w-2xl rounded-lg p-6 shadow-xl relative">
+      <div className="onboarding-dialog relative">
 
         {/* Close Button */}
         <button
@@ -85,12 +87,8 @@ export default function OnboardingModal({
           <X size={24} />
         </button>
 
-        {/* Progress Bar */}
-        <div className="h-2 w-full bg-gray-200 rounded mb-6">
-          <div
-            className="h-full bg-purple-600 rounded transition-all"
-            style={{ width: `${(step / maxStep) * 100}%` }}
-          />
+        <div className="onboarding-stepper" aria-label={`Setup step ${step} of ${maxStep}`}>
+          {STEP_LABELS.map((label, index) => <div key={label} className={index + 1 <= step ? "is-active" : ""}><span>{index + 1}</span><small>{label}</small></div>)}
         </div>
 
         {steps[step]}

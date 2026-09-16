@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     app_env: str = "development"
     app_port: int = 8000
+    enable_local_repositories: bool = False
 
     session_secret_key: str
     jwt_secret_key: str
