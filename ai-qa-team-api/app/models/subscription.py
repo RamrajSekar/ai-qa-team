@@ -38,6 +38,8 @@ class Subscription(BaseModel):
     status: Literal["active", "expired", "cancelled"] = "active"
     provider: Optional[str] = "Manual"
     payment_id: Optional[str] = None
+    ai_usage_period_start: Optional[datetime] = None
+    ai_usage_period_end: Optional[datetime] = None
 
     usage: UsageModel = Field(default_factory=UsageModel)
     limits: LimitModel = Field(default_factory=LimitModel)

@@ -762,3 +762,33 @@ Project ADMIN / TESTER → Paste Bug → BugInterpreter
 → PromptRegistry.get_active("BUG_INTERPRETER")
 → LLMGateway → TestIntentV1 → Review
 ```
+
+## AI usage guard and metering foundation
+
+The provider-neutral path for every new production AI feature is:
+
+```text
+AI Feature
+  → AIUsageService
+  → LLMGateway
+  → ProviderRegistry
+  → OpenAIProvider / AzureOpenAIProvider
+```
+
+`AIUsageService` owns the operation policy, input and output bounds, project/user authorization, server-resolved Managed/BYOK mode, monthly credit reservation, Redis rate and concurrency limits, provider invocation, token telemetry, and usage finalization. Feature services must not implement those concerns or call the gateway directly.
+
+Credits represent operations, not tokens. The established `ai_gen_used`/`ai_gen_limit` subscription fields are reused as the canonical monthly customer allowance. Calendar-month metadata supports lazy atomic reset. Successful calls consume reserved credits. Safely identifiable pre-inference provider failures refund them; ambiguous timeout/provider failures consume them. Redis limiter keys are scoped by project, user, and operation and expire automatically.
+
+Provider adapters normalize actual input/output/total token counts. Unavailable usage remains null. `ai_usage_records` stores no prompt/body or credentials. Managed records are marked eligible for future cost calculation, while estimated cost stays null until reliable centralized pricing exists. No dollar ceiling is claimed yet. Commercial allowances and all initial `BUG_INTERPRETER` limits remain configurable.
+
+Phase C must use:
+
+```text
+BugInterpreter
+  → PromptRegistry.get_active("BUG_INTERPRETER")
+  → AIUsageService.execute(BUG_INTERPRETER, ...)
+  → LLMGateway
+  → TestIntentV1
+```
+
+The TestIntent model and BugInterpreter are not implemented by this foundation.

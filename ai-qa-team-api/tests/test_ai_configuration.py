@@ -109,11 +109,12 @@ class AIConfigurationTests(unittest.IsolatedAsyncioTestCase):
         activate.assert_awaited_once()
 
     async def test_openai_and_azure_adapters_validate_with_minimal_requests(self):
-        response = type("Completion", (), {"choices": [type("Choice", (), {"message": type("Message", (), {"content": "ok"})()})()]})()
+        usage = type("Usage", (), {"prompt_tokens": 3, "completion_tokens": 2, "total_tokens": 5})()
+        response = type("Completion", (), {"choices": [type("Choice", (), {"message": type("Message", (), {"content": "ok"})()})()], "usage": usage})()
         openai = OpenAIProvider("sk-test", "gpt-test")
         openai.client.chat.completions.create = AsyncMock(return_value=response)
         await openai.validate_connection(); generated = await openai.generate(LLMRequest(prompt="hello"))
-        self.assertEqual((generated.provider_id, generated.text), ("openai", "ok"))
+        self.assertEqual((generated.provider_id, generated.text, generated.total_tokens), ("openai", "ok", 5))
         azure = AzureOpenAIProvider("key", "https://sample.openai.azure.com", "deployment", "2024-10-21")
         azure.client.chat.completions.create = AsyncMock(return_value=response)
         await azure.validate_connection(); generated = await azure.generate(LLMRequest(prompt="hello"))

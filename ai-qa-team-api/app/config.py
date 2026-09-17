@@ -19,8 +19,19 @@ class FeatureFlags(BaseModel):
     test_registry: bool = True
     test_data_generation: bool = True
 
+
+class AIUsageSettings(BaseModel):
+    bug_interpreter_credit_cost: int = Field(default=1, ge=1)
+    bug_interpreter_max_input_chars: int = Field(default=20_000, ge=1)
+    bug_interpreter_max_output_tokens: int = Field(default=1_200, ge=1)
+    max_concurrent_requests: int = Field(default=1, ge=1)
+    rate_limit_requests: int = Field(default=10, ge=1)
+    rate_limit_window_seconds: int = Field(default=60, ge=1)
+    concurrency_ttl_seconds: int = Field(default=300, ge=1)
+
 class Settings(BaseSettings):
     features: FeatureFlags = Field(default_factory=FeatureFlags)
+    ai_usage: AIUsageSettings = Field(default_factory=AIUsageSettings)
     mongo_uri: str
     mongo_db: str
 

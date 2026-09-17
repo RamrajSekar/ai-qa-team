@@ -1,3 +1,6 @@
+import threading
+import time
+
 import redis
 
 from app.config import settings
@@ -14,18 +17,51 @@ redis_client = redis.Redis(
 
 
 class LocalCache(dict):
+    def __init__(self):
+        super().__init__()
+        self._expires = {}
+        self._lock = threading.Lock()
+
+    def _purge(self, key):
+        if self._expires.get(key, float("inf")) <= time.time():
+            super().pop(key, None)
+            self._expires.pop(key, None)
+
     def ping(self):
         return True
 
     def setex(self, key, _ttl, value):
         self[key] = value
+        self._expires[key] = time.time() + _ttl
 
     def get(self, key, default=None):
+        self._purge(key)
         return super().get(key, default)
 
     def delete(self, key):
         if key in self:
             del self[key]
+        self._expires.pop(key, None)
+
+    def incr(self, key):
+        with self._lock:
+            self._purge(key)
+            value = int(super().get(key, 0)) + 1
+            super().__setitem__(key, value)
+            return value
+
+    def decr(self, key):
+        with self._lock:
+            self._purge(key)
+            value = int(super().get(key, 0)) - 1
+            super().__setitem__(key, value)
+            return value
+
+    def expire(self, key, ttl):
+        if key in self:
+            self._expires[key] = time.time() + ttl
+            return True
+        return False
 
     def llen(self, _key):
         return 0

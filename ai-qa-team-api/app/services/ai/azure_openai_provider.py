@@ -1,6 +1,6 @@
 from openai import AsyncAzureOpenAI
 
-from app.services.ai.base_provider import BaseAIProvider, LLMRequest, LLMResponse
+from app.services.ai.base_provider import BaseAIProvider, LLMRequest, LLMResponse, normalized_token_usage
 from app.services.ai.provider_errors import normalize_provider_error
 
 
@@ -19,7 +19,11 @@ class AzureOpenAIProvider(BaseAIProvider):
                 temperature=request.temperature,
                 **({"max_tokens": request.max_tokens} if request.max_tokens else {}),
             )
-            return LLMResponse(text=response.choices[0].message.content or "", provider_id=self.provider_id, model=model)
+            input_tokens, output_tokens, total_tokens = normalized_token_usage(response)
+            return LLMResponse(
+                text=response.choices[0].message.content or "", provider_id=self.provider_id, model=model,
+                input_tokens=input_tokens, output_tokens=output_tokens, total_tokens=total_tokens,
+            )
         except Exception as exc:
             raise normalize_provider_error(exc) from None
 

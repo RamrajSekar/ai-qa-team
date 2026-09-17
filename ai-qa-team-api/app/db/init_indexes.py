@@ -29,3 +29,8 @@ async def init_indexes():
     await db["encrypted_secrets"].create_index("credential_ref", unique=True)
     await db["encrypted_secrets"].create_index([("project_id", 1), ("credential_ref", 1)])
     await db["prompt_definitions"].create_index("prompt_key", unique=True)
+    await db["ai_usage_records"].create_index("usage_id", unique=True)
+    await db["ai_usage_records"].create_index([
+        ("project_id", 1), ("user_id", 1), ("operation_type", 1), ("started_at", -1)
+    ])
+    await db["ai_usage_records"].create_index([("billing_owner", 1), ("billing_period_start", 1)])

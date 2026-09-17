@@ -497,3 +497,19 @@ Platform authorization is independent from customer project authorization. `user
 The current platform module is Prompt Management under `/platform-admin`. Future modules are Customers, Customer Onboarding, Subscriptions, Usage, Projects Overview, and Platform Settings; they are documentation targets only.
 
 `PromptRegistry` stores one atomic definition document per prompt key with embedded immutable versions. Only `DRAFT` content can change. Activation atomically marks one version `ACTIVE`, previous active versions `INACTIVE`, and updates `active_version`; reactivating history provides rollback. `BUG_INTERPRETER` is the sole current definition and declares `TestIntentV1` as metadata only. When no database version is active, resolution returns the canonical `CODE_DEFAULT_V1` code fallback. Prompts are platform-managed, contain no credentials or provider/model settings, and have no project overrides.
+
+## AI usage guard and metering
+
+New production AI features must use `AIUsageService` between the feature service and `LLMGateway`:
+
+```text
+AI Feature → AIUsageService → LLMGateway → ProviderRegistry → Provider
+```
+
+Customer-facing credits are bounded AI operations and are not tokens. The existing `subscription.usage.ai_gen_used` and `subscription.limits.ai_gen_limit` are the canonical used-credit counter and configurable plan allowance. A calendar-month period is stored with the subscription and reset lazily through an atomic Mongo update; no reset cron is required. Commercial allowances remain configurable and are not finalized.
+
+`BUG_INTERPRETER` is the first operation identifier, but no BugInterpreter exists yet. Its default policy costs one credit, permits 20,000 input characters, bounds output at 1,200 tokens, allows one concurrent request, and permits ten requests per 60 seconds. All values are configurable through nested `AI_USAGE__...` settings. The server selects the operation policy, project billing owner, provider mode, provider, model, and allowance.
+
+Mongo atomically reserves credits before provider invocation. Successful inference consumes the reservation. Authentication, configuration, model, and provider rate-limit failures refund it; timeouts, provider-unavailable responses, and unknown failures consume it conservatively because provider work may have occurred. Rejections before invocation consume no credit. Redis counters enforce per-project, per-user, per-operation rate and concurrency limits; concurrency keys have a bounded TTL and are released after success or failure.
+
+Usage records contain operation, project/user identity, Managed/BYOK mode, provider/model, credit outcome, character count, timestamps, and actual provider-reported token usage when available. Missing token usage remains null and does not fail the operation. Records never contain prompts, pasted bug text, API keys, decrypted credentials, or credential references. Managed cost remains null until a reliable centralized price mapping exists; `managed_cost_eligible` is the extension point for a future monthly cost ceiling. BYOK still consumes platform credits and limits, but is not marked as platform provider spend.

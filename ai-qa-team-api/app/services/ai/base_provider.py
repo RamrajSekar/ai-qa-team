@@ -16,7 +16,23 @@ class LLMResponse:
     text: str
     provider_id: str
     model: str
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    total_tokens: int | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+
+
+def normalized_token_usage(response: Any) -> tuple[int | None, int | None, int | None]:
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return None, None, None
+    def value(*names: str) -> int | None:
+        return next((item for name in names if (item := getattr(usage, name, None)) is not None), None)
+    return (
+        value("prompt_tokens", "input_tokens"),
+        value("completion_tokens", "output_tokens"),
+        value("total_tokens"),
+    )
 
 
 class LLMProviderError(Exception):
