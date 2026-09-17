@@ -93,6 +93,7 @@ def public_error(exc: Exception) -> HTTPException:
             "AUTHENTICATION_ERROR": 400,
             "MODEL_NOT_AVAILABLE": 400,
             "INVALID_CONFIGURATION": 400,
+            "PROVIDER_REQUEST_INVALID": 400,
             "RATE_LIMITED": 429,
             "PROVIDER_UNAVAILABLE": 503,
             "TIMEOUT": 504,

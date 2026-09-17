@@ -148,6 +148,27 @@ class AIUsageTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(nested_get(self.db["users"].documents[0], "subscription.usage.ai_gen_used"), 1)
         self.assertEqual(self.db["ai_usage_records"].documents[-1]["credits_consumed"], 1)
 
+    async def test_provider_failure_logging_is_diagnostic_without_request_secrets(self):
+        error = LLMProviderError(
+            "PROVIDER_REQUEST_INVALID", "safe", status_code=400,
+            provider_error_type="invalid_request_error", provider_error_code="invalid_json_schema",
+            provider_error_param="response_format",
+        )
+        request = LLMRequest(
+            prompt="private bug text", system_prompt="private system prompt",
+            response_schema={"secret-shaped-example": "must not log"}, response_schema_name="test_intent_v1",
+        )
+        with self.assertLogs("app.services.ai.ai_usage_service", level="WARNING") as captured:
+            with self.assertRaises(LLMProviderError):
+                await self.service(Gateway(error=error)).execute(AIOperation.BUG_INTERPRETER, "PRJ1", self.owner, request)
+        output = " ".join(captured.output)
+        for expected in ("operation=BUG_INTERPRETER", "provider=openai", "model=gpt-test", "provider_status=400",
+                         "error_code=PROVIDER_REQUEST_INVALID", "provider_error_code=invalid_json_schema",
+                         "provider_error_param=response_format", "structured_output=True", "schema_name=test_intent_v1", "usage_id=AIU-"):
+            self.assertIn(expected, output)
+        for secret in ("private bug text", "private system prompt", "secret-shaped-example", "api_key", "credential_ref"):
+            self.assertNotIn(secret, output)
+
     async def test_rate_limit_rejects_without_provider_or_credit(self):
         gateway = Gateway(); service = self.service(gateway)
         with patch.object(settings.ai_usage, "rate_limit_requests", 1):

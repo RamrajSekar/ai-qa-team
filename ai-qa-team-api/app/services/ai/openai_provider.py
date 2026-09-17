@@ -1,6 +1,6 @@
 from openai import AsyncOpenAI
 
-from app.services.ai.base_provider import BaseAIProvider, LLMRequest, LLMResponse, normalized_token_usage
+from app.services.ai.base_provider import BaseAIProvider, LLMRequest, LLMResponse, normalized_token_usage, strict_json_schema
 from app.services.ai.provider_errors import normalize_provider_error
 
 
@@ -25,7 +25,7 @@ class OpenAIProvider(BaseAIProvider):
                 **({"max_tokens": request.max_tokens} if request.max_tokens else {}),
                 **({"response_format": {"type": "json_schema", "json_schema": {
                     "name": request.response_schema_name or "structured_response",
-                    "strict": True, "schema": request.response_schema,
+                    "strict": True, "schema": strict_json_schema(request.response_schema),
                 }}} if request.response_schema else {}),
             )
             input_tokens, output_tokens, total_tokens = normalized_token_usage(response)

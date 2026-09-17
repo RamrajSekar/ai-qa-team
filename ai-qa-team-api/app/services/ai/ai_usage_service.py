@@ -72,6 +72,7 @@ class AIUsageService:
                 if not consume:
                     await self._release_reservation(billing_owner, policy, reservation)
                 await self._finish_failed(usage_id, exc, policy.credit_cost if consume else 0)
+                self._log_provider_failure(policy, project_id, context, bounded_request, usage_id, exc)
                 if isinstance(exc, LLMProviderError):
                     raise
                 raise AIUsageError("AI_PROVIDER_FAILED", 502, "The AI provider could not complete the request.") from None
@@ -162,6 +163,23 @@ class AIUsageService:
         await self.db["ai_usage_records"].update_one(
             {"usage_id": usage_id},
             {"$set": {"status": "FAILED", "error_code": code, "credits_consumed": credits_consumed, "completed_at": self.now()}},
+        )
+
+    @staticmethod
+    def _log_provider_failure(policy: AIUsagePolicy, project_id: str, context: ResolvedLLMContext,
+                              request: LLMRequest, usage_id: str, exc: Exception) -> None:
+        provider_error = exc if isinstance(exc, LLMProviderError) else None
+        logger.warning(
+            "AI operation failed operation=%s project=%s provider=%s model=%s status=FAILED "
+            "error_code=%s provider_status=%s provider_error_type=%s provider_error_code=%s "
+            "provider_error_param=%s structured_output=%s schema_name=%s usage_id=%s",
+            policy.operation.value, project_id, context.provider_id, context.model,
+            provider_error.code if provider_error else "AI_PROVIDER_FAILED",
+            provider_error.status_code if provider_error else None,
+            provider_error.provider_error_type if provider_error else None,
+            provider_error.provider_error_code if provider_error else None,
+            provider_error.provider_error_param if provider_error else None,
+            request.response_schema is not None, request.response_schema_name, usage_id,
         )
 
     @staticmethod

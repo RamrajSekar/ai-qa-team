@@ -15,7 +15,7 @@ with patch.dict(os.environ, TEST_ENV):
     from app.models.ai_configuration_model import AIConfigurationInput
     from app.routes import ai_configuration_routes
     from app.services.ai import ai_configuration_service
-    from app.services.ai.base_provider import LLMProviderError, LLMRequest
+    from app.services.ai.base_provider import LLMProviderError, LLMRequest, strict_json_schema
     from app.services.ai.llm_gateway import LLMGateway
     from app.services.ai.openai_provider import OpenAIProvider
     from app.services.ai.azure_openai_provider import AzureOpenAIProvider
@@ -23,6 +23,7 @@ with patch.dict(os.environ, TEST_ENV):
     from app.services.ai.provider_registry import ProviderRegistry
     from app.services.secrets import encrypted_mongo
     from app.services.secrets.encrypted_mongo import EncryptedMongoSecretStore
+    from app.models.test_intent_model import TestIntentV1
 
 
 class Result:
@@ -125,6 +126,34 @@ class AIConfigurationTests(unittest.IsolatedAsyncioTestCase):
         await azure.validate_connection(); generated = await azure.generate(LLMRequest(prompt="hello"))
         self.assertEqual((generated.provider_id, generated.model), ("azure_openai", "deployment"))
 
+    async def test_phase_c_schema_is_strict_for_openai_and_azure_sdk_shape(self):
+        schema = strict_json_schema(TestIntentV1.model_json_schema())
+        objects = []
+        def collect(node):
+            if isinstance(node, dict):
+                if node.get("type") == "object": objects.append(node)
+                for value in node.values(): collect(value)
+            elif isinstance(node, list):
+                for value in node: collect(value)
+        collect(schema)
+        self.assertTrue(objects)
+        for node in objects:
+            self.assertFalse(node["additionalProperties"])
+            self.assertEqual(set(node["required"]), set(node.get("properties", {})))
+        self.assertNotIn("default", str(schema))
+        self.assertIn({"type": "null"}, schema["properties"]["environment"]["anyOf"])
+        self.assertIn({"type": "null"}, schema["$defs"]["IntentInput"]["properties"]["constraint"]["anyOf"])
+
+        completion = type("Completion", (), {"choices": [type("Choice", (), {"message": type("Message", (), {"content": "{}"})()})()], "usage": None})()
+        request = LLMRequest(prompt="bug", system_prompt="system", response_schema=TestIntentV1.model_json_schema(), response_schema_name="test_intent_v1")
+        for provider in (OpenAIProvider("key"), AzureOpenAIProvider("key", "https://sample.openai.azure.com", "deployment", "2024-10-21")):
+            provider.client.chat.completions.create = AsyncMock(return_value=completion)
+            await provider.generate(request)
+            kwargs = provider.client.chat.completions.create.call_args.kwargs
+            self.assertEqual(kwargs["response_format"]["type"], "json_schema")
+            self.assertTrue(kwargs["response_format"]["json_schema"]["strict"])
+            self.assertEqual(kwargs["response_format"]["json_schema"]["schema"], schema)
+
     async def test_failed_switch_preserves_active_configuration_and_secret(self):
         self.db["ai_configurations"].documents.append({"project_id": "PRJ1", "provider_id": "openai", "mode": "BYOK", "credential_ref": "old", "status": "ACTIVE"})
         self.db["encrypted_secrets"].documents.append({"project_id": "PRJ1", "credential_ref": "old", "nonce": "n", "ciphertext": "c"})
@@ -164,6 +193,14 @@ class AIConfigurationTests(unittest.IsolatedAsyncioTestCase):
         normalized = normalize_provider_error(error)
         self.assertEqual(normalized.code, "AUTHENTICATION_ERROR"); self.assertNotIn("secret", str(normalized))
         self.assertEqual(ai_configuration_service.public_error(normalized).status_code, 400)
+        request_error = type("BadRequestError", (Exception,), {
+            "status_code": 400,
+            "body": {"error": {"type": "invalid_request_error", "code": "invalid_json_schema", "param": "response_format"}},
+        })("raw provider detail must not leak")
+        normalized = normalize_provider_error(request_error)
+        self.assertEqual(normalized.code, "PROVIDER_REQUEST_INVALID")
+        self.assertEqual(normalized.provider_error_param, "response_format")
+        self.assertNotIn("raw provider detail", str(normalized))
 
     def test_configuration_rejects_secret_inside_generic_configuration(self):
         with self.assertRaises(ValueError): AIConfigurationInput(provider_id="openai", mode="BYOK", model="gpt", configuration={"access_token": "bad"}, api_key="good")

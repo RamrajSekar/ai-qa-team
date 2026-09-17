@@ -22,11 +22,19 @@ Implement only: Paste Bug → BugInterpreter → PromptRegistry → AIUsageServi
 
 ## Current status
 
-Implementation and validation are complete.
+Implementation, production structured-output remediation, and validation are complete.
+
+## Production remediation
+
+- Production Test Connection passed because it sends a plain two-token chat completion without structured output.
+- Bug interpretation failed because raw Pydantic JSON Schema omitted nullable/defaulted properties from object `required` arrays, while OpenAI strict structured output requires every declared property to be required and uses `null` to express semantic optionality.
+- Added provider-neutral strict-schema normalization and retained `chat.completions.create(response_format={type: json_schema, ...})` for OpenAI SDK 2.7.1.
+- Provider HTTP 400/422 request rejections now use `PROVIDER_REQUEST_INVALID` instead of the connection-validation message.
+- Safe failure logs include operation, provider, model, normalized status/type/code/parameter, structured-output flag, schema name, and usage ID; prompts, bug text, schemas, credentials, and raw output are excluded.
 
 ## Next actions
 
-1. Relevant backend regression suites: 93 tests passed.
+1. Relevant backend regression suites: 86 tests passed; isolated feature-flag suite: 13 tests passed (99 total).
 2. TypeScript, targeted lint, and production build passed.
 3. The protected Reproduce Bug route rendered successfully at a narrow 551 px browser viewport, returned HTTP 200, and showed no Next.js diagnostic badge after a clean reload.
 4. Security audit confirmed no TestIntent persistence and no direct provider, secret-store, repository, coverage, planner, data-engine, or execution coupling in the BugInterpreter boundary.

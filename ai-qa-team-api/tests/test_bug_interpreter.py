@@ -182,6 +182,19 @@ class BugInterpreterTests(unittest.IsolatedAsyncioTestCase):
                     await BugInterpreter(Usage(error=source_error)).interpret("PRJ1", {}, "bug")
             self.assertEqual(caught.exception.code, expected)
 
+    async def test_provider_schema_rejection_has_safe_specific_message(self):
+        error = LLMProviderError(
+            "PROVIDER_REQUEST_INVALID", "The AI provider rejected the request.",
+            status_code=400, provider_error_code="invalid_json_schema",
+            provider_error_param="response_format",
+        )
+        with patch.object(bug_interpreter, "get_active", new=AsyncMock(return_value=self.prompt())):
+            with self.assertRaises(BugInterpretationError) as caught:
+                await BugInterpreter(Usage(error=error)).interpret("PRJ1", {}, "private bug text")
+        self.assertEqual((caught.exception.code, caught.exception.status_code), ("PROVIDER_REQUEST_INVALID", 502))
+        self.assertEqual(str(caught.exception), "The AI provider rejected the structured interpretation request.")
+        self.assertNotIn("private bug text", str(caught.exception))
+
     async def test_reference_fixtures_preserve_required_semantics(self):
         tour = await self._interpret(intent_payload())
         self.assertEqual(len(tour.test_intent.workflow_steps), 6)

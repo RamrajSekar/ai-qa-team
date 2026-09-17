@@ -48,7 +48,8 @@ class BugInterpreter:
             raise BugInterpretationError(exc.code, exc.status_code, str(exc)) from None
         except LLMProviderError as exc:
             status_by_code = {"AUTHENTICATION_ERROR": 400, "RATE_LIMITED": 429, "TIMEOUT": 504, "PROVIDER_UNAVAILABLE": 503}
-            raise BugInterpretationError(exc.code, status_by_code.get(exc.code, 502), str(exc)) from None
+            message = "The AI provider rejected the structured interpretation request." if exc.code == "PROVIDER_REQUEST_INVALID" else str(exc)
+            raise BugInterpretationError(exc.code, status_by_code.get(exc.code, 502), message) from None
         except Exception:
             raise BugInterpretationError("BUG_INTERPRETATION_FAILED", 500, "The bug could not be interpreted.") from None
 
