@@ -28,6 +28,7 @@ _PUBLIC_USER_FIELDS = {
     "email",
     "provider",
     "role",
+    "platform_role",
     "onboarding",
     "subscription",
     "created_at",
@@ -37,4 +38,6 @@ _PUBLIC_USER_FIELDS = {
 
 def serialize_public_user(doc: dict) -> dict:
     """Serialize only fields that are safe to return in public user payloads."""
-    return serialize_doc({key: value for key, value in doc.items() if key in _PUBLIC_USER_FIELDS})
+    result = serialize_doc({key: value for key, value in doc.items() if key in _PUBLIC_USER_FIELDS})
+    result["platform_role"] = doc.get("platform_role", "NONE")
+    return result

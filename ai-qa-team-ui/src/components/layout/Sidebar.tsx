@@ -5,10 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useProjects } from "@/hooks/useProjects";
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
-import { LayoutGrid, FolderOpen, Puzzle, Zap, Bot, ChevronLeft, ChevronRight, Layers, FileText, GitBranch, Users, BrainCircuit } from "lucide-react";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { LayoutGrid, FolderOpen, Puzzle, Zap, Bot, ChevronLeft, ChevronRight, Layers, FileText, GitBranch, Users, BrainCircuit, ShieldCheck, MessageSquareText } from "lucide-react";
 
 export default function Sidebar() {
   const { enabled } = useFeatures();
+  const { user } = useAuth();
   const pathname = usePathname();
   const { projects } = useProjects();
   const [collapsed, setCollapsed] = useState(false);
@@ -19,6 +21,10 @@ export default function Sidebar() {
     { name: "Projects", icon: FolderOpen, href: "/projects" },
     ...(enabled("test_generation") ? [{ name: "AI Generator", icon: Bot, href: "/ai" }] : []),
   ];
+  const platformMenu = user?.platform_role === "OWNER" || user?.platform_role === "ADMIN" ? [
+    { name: "Admin Dashboard", icon: ShieldCheck, href: "/platform-admin" },
+    { name: "Prompts", icon: MessageSquareText, href: "/platform-admin/prompts" },
+  ] : [];
   const projectMenu = projectId ? [
     { name: "Overview", icon: Layers, href: `/projects/${projectId}` },
     ...(enabled("story_management") ? [{ name: "Stories", icon: FileText, href: `/projects/${projectId}/stories` }] : []),
@@ -29,7 +35,7 @@ export default function Sidebar() {
     ...(enabled("scenario_generation") ? [{ name: "Scenarios", icon: Puzzle, href: `/projects/${projectId}/scenarios` }] : []),
     // Execution history is shown on the overview; there is no separate execution page yet.
   ] : [];
-  const destination = [...globalMenu, ...projectMenu].filter((item) => pathname === item.href || pathname.startsWith(item.href + "/"))
+  const destination = [...globalMenu, ...platformMenu, ...projectMenu].filter((item) => pathname === item.href || pathname.startsWith(item.href + "/"))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
   return (
@@ -42,6 +48,7 @@ export default function Sidebar() {
       <nav className="workspace-nav">
         <p className="workspace-nav-label">Workspace</p>
         {globalMenu.map(({ name, icon: Icon, href }) => <Link key={href} href={href} title={name} aria-label={name} aria-current={destination === href ? "page" : undefined} className="workspace-nav-link"><Icon size={18} /><span>{name}</span></Link>)}
+        {platformMenu.length > 0 && <><p className="workspace-nav-label">Platform Admin</p>{platformMenu.map(({ name, icon: Icon, href }) => <Link key={href} href={href} title={name} aria-label={name} aria-current={destination === href ? "page" : undefined} className="workspace-nav-link"><Icon size={18} /><span>{name}</span></Link>)}</>}
         {projectId && <>
           <p className="workspace-nav-label workspace-project-label" title={project?.name}>{project?.name || "Current project"}</p>
           {projectMenu.map(({ name, icon: Icon, href }) => <Link key={href} href={href} title={name} aria-label={name} aria-current={destination === href ? "page" : undefined} className="workspace-nav-link"><Icon size={18} /><span>{name}</span></Link>)}

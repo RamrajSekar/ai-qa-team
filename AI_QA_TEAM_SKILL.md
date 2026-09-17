@@ -489,3 +489,11 @@ Project AI configuration uses `LLMGateway → ProviderRegistry → LLMProvider`.
 Each project has at most one active `ai_configurations` document. ADMIN members can test, activate, replace, or remove configuration; TESTER members can read only safe status metadata. Managed mode uses the server's `OPENAI_API_KEY`. BYOK documents contain a `credential_ref`, harmless suffix, and non-secret provider configuration only.
 
 BYOK material is stored through the replaceable `SecretStore` contract. The MVP `EncryptedMongoSecretStore` uses AES-256-GCM with a fresh nonce and project/reference authenticated data. Its 32-byte URL-safe base64 master key comes only from server configuration as `LLM_SECRET_MASTER_KEY`; it is never stored in Mongo. Provider credentials are not returned, logged, placed in Redis, or exposed to prompts. Replacement validates before changing the active configuration, and the old encrypted secret is deleted only after the new configuration is active.
+
+## Platform control plane and Prompt Registry
+
+Platform authorization is independent from customer project authorization. `users.platform_role` is `OWNER`, `ADMIN`, or `NONE`; missing values read as `NONE`. `PLATFORM_OWNER_EMAIL` is a server-side bootstrap that can persist `OWNER` after trusted local or verified Google authentication. It never demotes an existing owner. Platform roles do not grant access to customer `/projects/...` APIs, and Project ADMIN/TESTER membership grants no platform access.
+
+The current platform module is Prompt Management under `/platform-admin`. Future modules are Customers, Customer Onboarding, Subscriptions, Usage, Projects Overview, and Platform Settings; they are documentation targets only.
+
+`PromptRegistry` stores one atomic definition document per prompt key with embedded immutable versions. Only `DRAFT` content can change. Activation atomically marks one version `ACTIVE`, previous active versions `INACTIVE`, and updates `active_version`; reactivating history provides rollback. `BUG_INTERPRETER` is the sole current definition and declares `TestIntentV1` as metadata only. When no database version is active, resolution returns the canonical `CODE_DEFAULT_V1` code fallback. Prompts are platform-managed, contain no credentials or provider/model settings, and have no project overrides.

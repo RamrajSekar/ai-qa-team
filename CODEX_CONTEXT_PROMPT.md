@@ -742,3 +742,23 @@ The implemented provider-neutral path is `AI feature → LLMGateway → Provider
 Project ADMIN members manage one active/default `AIConfiguration`; TESTER members receive safe provider/status metadata without management controls. Managed mode resolves the server-managed `OPENAI_API_KEY`. BYOK mode stores only a `credential_ref` in `ai_configurations`. Actual keys are held by `EncryptedMongoSecretStore` using AES-256-GCM and the server-only `LLM_SECRET_MASTER_KEY` (URL-safe base64 encoding of exactly 32 random bytes). The master key must remain stable across deployments and must not be stored in Mongo.
 
 Test Connection returns normalized provider errors without raw responses or credentials. Switching validates the proposed provider before persisting it, retains the current active provider on validation failure, and deletes the old encrypted credential only after successful activation. Disabled legacy generation remains disabled; its compatibility factory is not the preferred path for new AI features.
+
+## Platform control plane
+
+Platform administration uses the dedicated `users.platform_role` values `OWNER`, `ADMIN`, and `NONE`. Existing users without the field resolve to `NONE`. The server-only `PLATFORM_OWNER_EMAIL` bootstrap persists `OWNER` after trusted authentication and never synchronizes or demotes past owners. Platform authorization and ProjectMembership authorization are independent: Platform OWNER has no implicit customer-project access, and Project ADMIN has no platform access. Never add a platform-owner bypass to normal project APIs.
+
+The implemented platform namespace is `/platform-admin`, currently containing the dashboard shell and Prompt Management. Future Customers, Customer Onboarding, Subscriptions, Usage, Projects Overview, and Platform Settings modules remain unimplemented.
+
+## Platform Prompt Registry
+
+`BUG_INTERPRETER` is the only managed prompt. Its definition names `TestIntentV1` as future output-contract metadata; no TestIntent model or BugInterpreter execution exists yet. A single `prompt_definitions` Mongo document embeds prompt versions so activation and `active_version` change atomically. DRAFT versions are editable; ACTIVE and INACTIVE history are immutable. Activation supports rollback and permits at most one ACTIVE version.
+
+Fallback-first initialization performs no startup writes. `PromptRegistry.get_active("BUG_INTERPRETER")` returns the canonical `CODE_DEFAULT_V1` source when no persisted active version exists. Platform OWNER/ADMIN can create a draft from the fallback, edit it, activate it, and reactivate history. Prompt records contain instructions only: no credentials, project overrides, provider selection, model configuration, schemas, analytics, or evaluations.
+
+Next phase integration, not yet implemented:
+
+```text
+Project ADMIN / TESTER → Paste Bug → BugInterpreter
+→ PromptRegistry.get_active("BUG_INTERPRETER")
+→ LLMGateway → TestIntentV1 → Review
+```

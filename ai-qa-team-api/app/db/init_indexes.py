@@ -28,3 +28,4 @@ async def init_indexes():
     await db["ai_configurations"].create_index("project_id", unique=True)
     await db["encrypted_secrets"].create_index("credential_ref", unique=True)
     await db["encrypted_secrets"].create_index([("project_id", 1), ("credential_ref", 1)])
+    await db["prompt_definitions"].create_index("prompt_key", unique=True)

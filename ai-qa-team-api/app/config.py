@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     google_client_secret: str | None = None
     google_redirect_uri: str | None = None
     frontend_url: str | None = None
+    platform_owner_email: str | None = None
 
     github_client_id: str | None = None
     github_client_secret: str | None = None

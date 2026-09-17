@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from app.models.subscription import Subscription
 from app.services.sync_usage import sync_usage
 from app.services.project_team_service import activate_pending_memberships
+from app.services.platform_role_service import ensure_platform_owner
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -68,6 +69,7 @@ async def signup(user: User):
             "password": hashed_pw,
             "provider": "local",
             "role": "admin",
+            "platform_role": "NONE",
             "subscription": subscription_dict,
             "onboarding":onboarding.model_dump(),
             "created_at": datetime.now(timezone.utc),
@@ -76,6 +78,7 @@ async def signup(user: User):
         # 5️⃣ Insert ONLY AFTER everything validated
         result = await db["users"].insert_one(user_doc)
         user_doc["_id"] = str(result.inserted_id)
+        await ensure_platform_owner(user_doc, trusted_for_bootstrap=True, users_collection=db["users"])
 
         # 6️⃣ Generate tokens
         access = create_access_token({"email": user.email, "role": "admin"})
@@ -100,6 +103,7 @@ async def login(credentials: dict):
     if not pwd_context.verify(credentials["password"], user["password"]):
         raise HTTPException(401, "Invalid credentials")
 
+    await ensure_platform_owner(user, trusted_for_bootstrap=True, users_collection=db["users"])
     user_data = serialize_public_user(user)
 
     access = create_access_token({"email": user_data["email"], "role": user_data["role"]})
@@ -221,6 +225,12 @@ async def oauth_callback(request: Request, provider: str):
             persisted_role = existing.get("role", "tester")
 
         persisted_user = await db["users"].find_one({"email": email})
+        if persisted_user:
+            await ensure_platform_owner(
+                persisted_user,
+                trusted_for_bootstrap=provider == "google" and user_info.get("email_verified") is True,
+                users_collection=db["users"],
+            )
         if persisted_user and provider == "google" and user_info.get("email_verified") is True:
             await activate_pending_memberships(persisted_user)
 
@@ -333,6 +343,12 @@ async def get_my_profile(request: Request):
 
     # Reload user after usage update
     refreshed_user = await db["users"].find_one({"email": user_email})
+    if refreshed_user:
+        await ensure_platform_owner(
+            refreshed_user,
+            trusted_for_bootstrap=refreshed_user.get("provider", "local") == "local",
+            users_collection=db["users"],
+        )
     user_data = serialize_public_user(refreshed_user)
 
     user_data["token_issued_to"] = user_email

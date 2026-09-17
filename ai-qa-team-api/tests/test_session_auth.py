@@ -112,7 +112,7 @@ class AuthSessionTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(
             serialized,
-            {"email": "safe@example.com", "subscription": {"plan": "free"}},
+            {"email": "safe@example.com", "subscription": {"plan": "free"}, "platform_role": "NONE"},
         )
 
     def test_production_cookies_are_secure_and_have_explicit_lifetimes(self):

@@ -26,6 +26,7 @@ class User(BaseModel):
     password: Optional[str] = None
     provider: str = "local"  # local, google, github
     role: str = "admin"     # admin, lead, tester
+    platform_role: Literal["OWNER", "ADMIN", "NONE"] = "NONE"
     onboarding: dict = Field(default_factory=lambda: OnboardingModel().model_dump())
     subscription: Subscription = Field(default_factory=Subscription)
     created_at: datetime = datetime.now(timezone.utc)
