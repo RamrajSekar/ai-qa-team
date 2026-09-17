@@ -142,7 +142,13 @@ class AIConfigurationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(set(node["required"]), set(node.get("properties", {})))
         self.assertNotIn("default", str(schema))
         self.assertIn({"type": "null"}, schema["properties"]["environment"]["anyOf"])
+        self.assertIn({"type": "null"}, schema["properties"]["user_context"]["anyOf"])
         self.assertIn({"type": "null"}, schema["$defs"]["IntentInput"]["properties"]["constraint"]["anyOf"])
+        user_context = schema["$defs"]["UserContext"]
+        self.assertFalse(user_context["additionalProperties"])
+        self.assertEqual(set(user_context["required"]), set(user_context["properties"]))
+        self.assertEqual(user_context["properties"]["allowed_roles"]["items"]["type"], "string")
+        self.assertEqual(schema["$defs"]["UserContextSelectionType"]["enum"], ["EXACT", "ANY_OF", "UNSPECIFIED"])
 
         completion = type("Completion", (), {"choices": [type("Choice", (), {"message": type("Message", (), {"content": "{}"})()})()], "usage": None})()
         request = LLMRequest(prompt="bug", system_prompt="system", response_schema=TestIntentV1.model_json_schema(), response_schema_name="test_intent_v1")

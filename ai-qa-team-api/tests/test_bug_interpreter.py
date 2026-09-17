@@ -14,7 +14,7 @@ TEST_ENV = {"MONGO_URI": "mongodb://localhost:27017", "MONGO_DB": "bug_tests", "
     "REDIS_USERNAME": "test", "REDIS_PASSWORD": "test", "SESSION_SECRET_KEY": "test", "JWT_SECRET_KEY": "test", "OPENAI_API_KEY": ""}
 
 with patch.dict(os.environ, TEST_ENV):
-    from app.models.test_intent_model import BugInterpretRequest, Confidence, Constraint, IntentInput, TestIntentV1
+    from app.models.test_intent_model import BugInterpretRequest, Confidence, Constraint, IntentInput, TestIntentV1, UserContext
     from app.routes import bug_routes
     from app.services import bug_interpreter, prompt_registry_service
     from app.services.ai.ai_usage_policy import AIOperation, AIUsageError
@@ -23,7 +23,7 @@ with patch.dict(os.environ, TEST_ENV):
     from app.services.prompt_defaults import BUG_INTERPRETER_SYSTEM_PROMPT
 
 
-TOUR_BUG = """1. Login to Salesforce QA org
+TOUR_BUG = """1. Login to Salesforce QA org as Admin or Sales rep
 2. Create a new contact
 3. Click on Tour Search
 4. Enter Tour Code as BA with Departure date in November 2026
@@ -54,6 +54,8 @@ def intent_payload(step_count=6):
     return {
         "source": "PASTED_BUG", "schema_version": "1", "title": "Tour Search Error",
         "description": "An error is reported during Tour Search.", "environment": "Salesforce QA",
+        "user_context": {"raw_value": "Admin or Sales rep", "selection_type": "ANY_OF",
+                         "allowed_roles": ["Admin", "Sales rep"], "confidence": "HIGH"},
         "preconditions": [],
         "workflow_steps": [
             {"step_number": index, "action": "PERFORM", "target": None, "details": line.split(". ", 1)[1], "raw_text": line.split(". ", 1)[1]}
@@ -93,6 +95,8 @@ class TestIntentContractTests(unittest.TestCase):
         self.assertEqual((intent.source, intent.schema_version, intent.confidence), ("PASTED_BUG", "1", Confidence.HIGH))
         self.assertEqual([step.step_number for step in intent.workflow_steps], list(range(1, 7)))
         self.assertEqual(intent.workflow_steps[3].raw_text, "Enter Tour Code as BA with Departure date in November 2026")
+        self.assertEqual((intent.environment, intent.user_context.selection_type), ("Salesforce QA", "ANY_OF"))
+        self.assertEqual(intent.user_context.allowed_roles, ["Admin", "Sales rep"])
         self.assertEqual(intent.inputs[0].raw_value, "BA")
         self.assertIsNone(intent.expected_result)
         self.assertEqual(intent.ambiguities[0].field, "expected_result")
@@ -113,6 +117,34 @@ class TestIntentContractTests(unittest.TestCase):
         unspecified = IntentInput(name="room", constraint_type="UNSPECIFIED")
         self.assertIsNone(unspecified.raw_value); self.assertIsNone(unspecified.constraint)
 
+    def test_user_context_exact_any_of_unspecified_and_no_invented_role(self):
+        exact = UserContext(raw_value="Admin", selection_type="EXACT", allowed_roles=["Admin"], confidence="HIGH")
+        self.assertEqual(exact.allowed_roles, ["Admin"])
+        any_of = UserContext(raw_value="Agent or Supervisor", selection_type="ANY_OF",
+                             allowed_roles=["Agent", "Supervisor"], confidence="HIGH")
+        self.assertEqual(any_of.allowed_roles, ["Agent", "Supervisor"])
+        unspecified = UserContext(raw_value=None, selection_type="UNSPECIFIED", allowed_roles=[])
+        self.assertFalse(unspecified.allowed_roles)
+        with self.assertRaises(ValidationError):
+            UserContext(raw_value="Admin or Sales rep", selection_type="ANY_OF", allowed_roles=["Admin"])
+        no_role = intent_payload(); no_role["user_context"] = None; no_role["environment"] = "Salesforce QA"
+        self.assertIsNone(TestIntentV1.model_validate(no_role).user_context)
+
+    def test_user_context_is_not_a_business_input(self):
+        invalid = intent_payload()
+        invalid["inputs"].append({"name": "user_role", "raw_value": "Admin", "constraint_type": "EXACT"})
+        with self.assertRaises(ValidationError): TestIntentV1.model_validate(invalid)
+
+    def test_missing_expected_result_adds_one_info_ambiguity(self):
+        missing = intent_payload(); missing["ambiguities"] = []
+        result = TestIntentV1.model_validate(missing)
+        expected = [item for item in result.ambiguities if item.field == "expected_result"]
+        self.assertEqual(len(expected), 1); self.assertEqual(expected[0].severity, "INFO")
+        existing = intent_payload()
+        existing["ambiguities"] = [{"field": "expected_behavior", "description": "Expected result is missing.", "severity": "INFO"}]
+        result = TestIntentV1.model_validate(existing)
+        self.assertEqual(len(result.ambiguities), 1)
+
     def test_date_ranges_and_duplicate_names_are_deterministic(self):
         with self.assertRaises(ValidationError): Constraint(type="DATE_RANGE", start="2026-11-x", end="2026-11-30")
         with self.assertRaises(ValidationError): Constraint(type="DATE_RANGE", start="2026-12-01", end="2026-11-30")
@@ -131,6 +163,27 @@ class TestIntentContractTests(unittest.TestCase):
 
 
 class BugInterpreterTests(unittest.IsolatedAsyncioTestCase):
+    async def test_generic_environment_and_user_context_fixtures(self):
+        cases = [
+            ("Login as Admin", None, {"raw_value": "Admin", "selection_type": "EXACT", "allowed_roles": ["Admin"], "confidence": "HIGH"}),
+            ("Login as Admin or Sales rep", None, {"raw_value": "Admin or Sales rep", "selection_type": "ANY_OF", "allowed_roles": ["Admin", "Sales rep"], "confidence": "HIGH"}),
+            ("Login to Salesforce QA", "Salesforce QA", None),
+            ("Run this in UAT as Manager", "UAT", {"raw_value": "Manager", "selection_type": "EXACT", "allowed_roles": ["Manager"], "confidence": "HIGH"}),
+            ("Login as Agent or Supervisor", None, {"raw_value": "Agent or Supervisor", "selection_type": "ANY_OF", "allowed_roles": ["Agent", "Supervisor"], "confidence": "HIGH"}),
+        ]
+        for bug_text, environment, user_context in cases:
+            payload = intent_payload(step_count=1)
+            payload["environment"] = environment; payload["user_context"] = user_context; payload["inputs"] = []
+            payload["workflow_steps"][0].update({"details": bug_text, "raw_text": bug_text})
+            result = await self._interpret(payload, bug_text)
+            self.assertEqual(result.test_intent.environment, environment)
+            if user_context is None:
+                self.assertIsNone(result.test_intent.user_context)
+            else:
+                self.assertEqual(result.test_intent.user_context.allowed_roles, user_context["allowed_roles"])
+                self.assertEqual(result.test_intent.user_context.selection_type, user_context["selection_type"])
+            self.assertFalse(result.test_intent.inputs)
+
     async def test_prompt_registry_fallback_and_usage_service_boundary(self):
         usage = Usage(); interpreter = BugInterpreter(usage)
         db = DB()
@@ -141,6 +194,8 @@ class BugInterpreterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(call["request"].system_prompt, BUG_INTERPRETER_SYSTEM_PROMPT)
         self.assertEqual(call["request"].prompt, TOUR_BUG)
         self.assertIsNotNone(call["request"].response_schema)
+        for guidance in ("environment", "user_context", "ANY_OF", "Never generate users", "INFO ambiguity"):
+            self.assertIn(guidance, call["request"].system_prompt)
         self.assertEqual((result.interpretation_metadata.prompt_version, result.interpretation_metadata.prompt_source), ("CODE_DEFAULT_V1", "CODE_FALLBACK"))
 
     async def test_active_database_prompt_is_used(self):
@@ -200,6 +255,10 @@ class BugInterpreterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(tour.test_intent.workflow_steps), 6)
         self.assertEqual(tour.test_intent.inputs[0].constraint_type, "EXACT")
         self.assertEqual(tour.test_intent.inputs[1].constraint.start, "2026-11-01")
+        self.assertEqual(tour.test_intent.environment, "Salesforce QA")
+        self.assertEqual(tour.test_intent.user_context.allowed_roles, ["Admin", "Sales rep"])
+        self.assertEqual(tour.test_intent.user_context.selection_type, "ANY_OF")
+        self.assertNotIn("Admin", [item.raw_value for item in tour.test_intent.inputs])
         self.assertNotIn("2026-11-12", tour.model_dump_json())
 
         modify = intent_payload(step_count=6)
@@ -228,9 +287,9 @@ class BugInterpreterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(usage.calls[0]["request"].prompt, INJECTION_BUG)
         self.assertNotIn("secret", safe.model_dump_json().lower())
 
-    async def _interpret(self, payload):
+    async def _interpret(self, payload, bug_text="bug"):
         with patch.object(bug_interpreter, "get_active", new=AsyncMock(return_value=self.prompt())):
-            return await BugInterpreter(Usage(payload)).interpret("PRJ1", {"email": "user@example.com"}, "bug")
+            return await BugInterpreter(Usage(payload)).interpret("PRJ1", {"email": "user@example.com"}, bug_text)
 
     @staticmethod
     def prompt():

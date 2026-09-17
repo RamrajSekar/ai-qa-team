@@ -22,7 +22,15 @@ Implement only: Paste Bug → BugInterpreter → PromptRegistry → AIUsageServi
 
 ## Current status
 
-Implementation, production structured-output remediation, and validation are complete.
+Production Phase C is verified. The user-context/environment/expected-result semantic refinement and validation are complete.
+
+## Semantic refinement
+
+- Added nullable framework-neutral `user_context` with EXACT, ANY_OF, and UNSPECIFIED selection semantics.
+- Roles/profiles/personas remain separate from business inputs and never resolve users or credentials.
+- Refined fallback prompt guidance for explicit environment and actor extraction.
+- Missing expected results deterministically receive one INFO ambiguity without duplicates.
+- Added conditional User Context review UI; absent context creates no UI clutter.
 
 ## Production remediation
 
@@ -34,7 +42,7 @@ Implementation, production structured-output remediation, and validation are com
 
 ## Next actions
 
-1. Relevant backend regression suites: 86 tests passed; isolated feature-flag suite: 13 tests passed (99 total).
+1. Semantic refinement and relevant backend suites: 65 tests passed; isolated feature-flag suite: 13 tests passed (78 total).
 2. TypeScript, targeted lint, and production build passed.
 3. The protected Reproduce Bug route rendered successfully at a narrow 551 px browser viewport, returned HTTP 200, and showed no Next.js diagnostic badge after a clean reload.
 4. Security audit confirmed no TestIntent persistence and no direct provider, secret-store, repository, coverage, planner, data-engine, or execution coupling in the BugInterpreter boundary.

@@ -1,5 +1,6 @@
 export type Confidence = "HIGH" | "MEDIUM" | "LOW";
 export type InputConstraintType = "EXACT" | "CONSTRAINED" | "UNSPECIFIED";
+export type UserContextSelectionType = "EXACT" | "ANY_OF" | "UNSPECIFIED";
 
 export interface IntentConstraint {
   type: string;
@@ -26,12 +27,20 @@ export interface IntentInput {
   confidence?: Confidence | null;
 }
 
+export interface UserContext {
+  raw_value?: string | null;
+  selection_type: UserContextSelectionType;
+  allowed_roles: string[];
+  confidence?: Confidence | null;
+}
+
 export interface TestIntentV1 {
   source: "PASTED_BUG";
   schema_version: "1";
   title: string;
   description: string;
   environment?: string | null;
+  user_context?: UserContext | null;
   preconditions: string[];
   workflow_steps: WorkflowStep[];
   inputs: IntentInput[];

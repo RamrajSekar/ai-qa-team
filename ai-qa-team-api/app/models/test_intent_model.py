@@ -30,6 +30,12 @@ class InputConstraintType(StrEnum):
     UNSPECIFIED = "UNSPECIFIED"
 
 
+class UserContextSelectionType(StrEnum):
+    EXACT = "EXACT"
+    ANY_OF = "ANY_OF"
+    UNSPECIFIED = "UNSPECIFIED"
+
+
 class AmbiguitySeverity(StrEnum):
     INFO = "INFO"
     WARNING = "WARNING"
@@ -69,6 +75,33 @@ class WorkflowStep(IntentModel):
     target: str | None = Field(default=None, max_length=200)
     details: str = Field(min_length=1, max_length=2_000)
     raw_text: str = Field(min_length=1, max_length=2_000)
+
+
+class UserContext(IntentModel):
+    raw_value: str | None = Field(default=None, max_length=1_000)
+    selection_type: UserContextSelectionType
+    allowed_roles: list[str] = Field(default_factory=list, max_length=20)
+    confidence: Confidence | None = None
+
+    @field_validator("allowed_roles")
+    @classmethod
+    def normalize_roles(cls, roles: list[str]) -> list[str]:
+        normalized = [role.strip() for role in roles if role.strip()]
+        if len({role.casefold() for role in normalized}) != len(normalized):
+            raise ValueError("Duplicate allowed roles are not permitted")
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_selection(self):
+        if self.selection_type == UserContextSelectionType.EXACT:
+            if not self.raw_value or len(self.allowed_roles) != 1:
+                raise ValueError("EXACT user context requires raw evidence and one allowed role")
+        elif self.selection_type == UserContextSelectionType.ANY_OF:
+            if not self.raw_value or len(self.allowed_roles) < 2:
+                raise ValueError("ANY_OF user context requires raw evidence and at least two allowed roles")
+        elif self.raw_value is not None or self.allowed_roles:
+            raise ValueError("UNSPECIFIED user context must not invent role evidence")
+        return self
 
 
 class IntentInput(IntentModel):
@@ -113,6 +146,7 @@ class TestIntentV1(IntentModel):
     title: str = Field(min_length=1, max_length=300)
     description: str = Field(min_length=1, max_length=5_000)
     environment: str | None = Field(default=None, max_length=500)
+    user_context: UserContext | None = None
     preconditions: list[str] = Field(default_factory=list, max_length=50)
     workflow_steps: list[WorkflowStep] = Field(min_length=1, max_length=100)
     inputs: list[IntentInput] = Field(default_factory=list, max_length=100)
@@ -134,6 +168,23 @@ class TestIntentV1(IntentModel):
         names = [item.name for item in self.inputs]
         if len(names) != len(set(names)):
             raise ValueError("Duplicate normalized input names are not allowed")
+        if self.user_context is not None:
+            actor_input_names = {"role", "user_role", "profile", "user_profile", "persona", "user_context"}
+            if actor_input_names.intersection(names):
+                raise ValueError("User role/profile belongs in user_context, not business inputs")
+        if self.expected_result is None:
+            equivalent = any(
+                ambiguity.field.strip().lower().replace(" ", "_") in {"expected_result", "expected_behavior"}
+                or ("expected" in ambiguity.description.lower()
+                    and any(word in ambiguity.description.lower() for word in ("missing", "absent", "not provided", "not explicitly")))
+                for ambiguity in self.ambiguities
+            )
+            if not equivalent:
+                self.ambiguities.append(Ambiguity(
+                    field="expected_result",
+                    description="Expected behavior was not explicitly provided.",
+                    severity=AmbiguitySeverity.INFO,
+                ))
         return self
 
 

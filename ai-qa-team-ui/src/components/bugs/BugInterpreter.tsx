@@ -67,6 +67,15 @@ export default function BugInterpreter({ projectId }: { projectId: string }) {
         <div><h3>Environment</h3><p>{intent.environment || "Not specified"}</p></div>
         <div><h3>Preconditions</h3>{intent.preconditions.length ? <ul>{intent.preconditions.map((item) => <li key={item}>{item}</li>)}</ul> : <p>None explicitly supplied</p>}</div>
       </section>
+      {intent.user_context && <section className="intent-section intent-user-context">
+        <h3>User Context</h3>
+        <div className="intent-user-context-grid">
+          <div><span>Roles</span><p>{intent.user_context.allowed_roles.length ? intent.user_context.allowed_roles.join(" · ") : "Not supplied"}</p></div>
+          <div><span>Selection</span><p>{intent.user_context.selection_type}</p></div>
+          <div><span>Meaning</span><p>{intent.user_context.selection_type === "ANY_OF" ? "Use any explicitly allowed role; the final role is resolved later." : intent.user_context.selection_type === "EXACT" ? "Preserve this explicitly requested role." : "No role was supplied."}</p></div>
+          {intent.user_context.confidence && <div><span>Confidence</span><p>{intent.user_context.confidence}</p></div>}
+        </div>
+      </section>}
       <section className="intent-section"><h3>Workflow</h3><ol className="intent-workflow">{intent.workflow_steps.map((step) => <li key={step.step_number}><span>{step.step_number}</span><div><strong>{step.action}{step.target ? ` · ${step.target}` : ""}</strong><p>{step.details}</p><small>Source: {step.raw_text}</small></div></li>)}</ol></section>
       <section className="intent-section"><h3>Inputs</h3>{intent.inputs.length ? <div className="intent-input-grid">{intent.inputs.map((input) => <InputCard input={input} key={input.name} />)}</div> : <p className="workspace-description">No explicit inputs identified.</p>}</section>
       <section className="intent-outcomes">
