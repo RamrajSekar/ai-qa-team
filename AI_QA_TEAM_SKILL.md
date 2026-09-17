@@ -513,3 +513,18 @@ Customer-facing credits are bounded AI operations and are not tokens. The existi
 Mongo atomically reserves credits before provider invocation. Successful inference consumes the reservation. Authentication, configuration, model, and provider rate-limit failures refund it; timeouts, provider-unavailable responses, and unknown failures consume it conservatively because provider work may have occurred. Rejections before invocation consume no credit. Redis counters enforce per-project, per-user, per-operation rate and concurrency limits; concurrency keys have a bounded TTL and are released after success or failure.
 
 Usage records contain operation, project/user identity, Managed/BYOK mode, provider/model, credit outcome, character count, timestamps, and actual provider-reported token usage when available. Missing token usage remains null and does not fail the operation. Records never contain prompts, pasted bug text, API keys, decrypted credentials, or credential references. Managed cost remains null until a reliable centralized price mapping exists; `managed_cost_eligible` is the extension point for a future monthly cost ceiling. BYOK still consumes platform credits and limits, but is not marked as platform provider spend.
+
+## TestIntentV1 and Bug Interpreter
+
+The implemented Phase C path is:
+
+```text
+Paste Bug → BugInterpreter → PromptRegistry → AIUsageService
+→ LLMGateway → TestIntentV1 validation → Review
+```
+
+`TestIntentV1` answers what the user wants tested. It is framework-neutral and contains no repository, test selection, coverage, plan, dataset, or runner information. `PASTED_BUG` is the only current source and schema version `1` is explicit. Expected result, actual result, and reported behavior remain separate. Meaningful missing information is represented as an INFO or WARNING ambiguity; confidence is HIGH, MEDIUM, or LOW.
+
+Inputs use three semantics. `EXACT` is an explicit bug value that future components must preserve. `CONSTRAINED` describes a condition within which a later resolver may select a final value; BugInterpreter does not select it. `UNSPECIFIED` identifies a relevant input without a supplied value or constraint and does not invent one. Constraints remain small and generic; a month such as November 2026 is represented as the complete DATE_RANGE from 2026-11-01 through 2026-11-30.
+
+The active platform prompt is a system message and pasted bug text is an untrusted user message. Providers receive a provider-neutral JSON-schema response request. The result must pass JSON parsing, Pydantic validation, and deterministic semantic validation before it is returned. TestIntent is not persisted; only the existing AI usage telemetry is durable. The project Reproduce Bug page ends at review and provides no run, matching, coverage, or data-generation action.

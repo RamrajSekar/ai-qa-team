@@ -115,6 +115,11 @@ class AIConfigurationTests(unittest.IsolatedAsyncioTestCase):
         openai.client.chat.completions.create = AsyncMock(return_value=response)
         await openai.validate_connection(); generated = await openai.generate(LLMRequest(prompt="hello"))
         self.assertEqual((generated.provider_id, generated.text, generated.total_tokens), ("openai", "ok", 5))
+        structured = LLMRequest(prompt="untrusted", system_prompt="system", response_schema={"type": "object"}, response_schema_name="contract")
+        await openai.generate(structured)
+        call = openai.client.chat.completions.create.call_args.kwargs
+        self.assertEqual(call["messages"], [{"role": "system", "content": "system"}, {"role": "user", "content": "untrusted"}])
+        self.assertEqual(call["response_format"]["json_schema"]["name"], "contract")
         azure = AzureOpenAIProvider("key", "https://sample.openai.azure.com", "deployment", "2024-10-21")
         azure.client.chat.completions.create = AsyncMock(return_value=response)
         await azure.validate_connection(); generated = await azure.generate(LLMRequest(prompt="hello"))

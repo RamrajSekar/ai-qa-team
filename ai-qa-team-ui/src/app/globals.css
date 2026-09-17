@@ -251,3 +251,42 @@ html[data-workspace-theme] [data-slot="dialog-close"] { background: transparent;
 .prompt-metadata dd { margin: 4px 0 0; font-size: 12px; font-weight: 650; }
 .prompt-history .workspace-row { cursor: pointer; }
 @media (max-width: 900px) { .prompt-layout { grid-template-columns: 1fr; } }
+.bug-interpreter { display: grid; gap: 24px; }
+.bug-input-card,.intent-review { background: var(--ws-surface); border: 1px solid var(--ws-border); border-radius: 14px; box-shadow: var(--ws-shadow); padding: 24px; }
+.bug-input-card { display: grid; gap: 12px; }
+.bug-input-card label { font-size: 13px; font-weight: 650; }
+.bug-input-card textarea { width: 100%; min-height: 220px; resize: vertical; line-height: 1.6; }
+.bug-input-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.bug-input-footer p { color: var(--ws-muted); font-size: 11px; margin: 0; }
+.bug-input-footer button:disabled { opacity: .65; cursor: wait; }
+.intent-review { display: grid; gap: 26px; }
+.intent-review-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--ws-border); padding-bottom: 22px; }
+.intent-review-heading h2 { font-size: 23px; margin: 0 0 8px; }
+.intent-review-heading p { color: var(--ws-muted); margin: 0; }
+.intent-confidence { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; color: #267457; background: color-mix(in srgb,#3b946d 12%,var(--ws-surface)); border-radius: 8px; padding: 7px 10px; font-size: 11px; font-weight: 700; }
+.intent-summary-grid,.intent-outcomes { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.intent-summary-grid > div,.intent-outcomes > div { border: 1px solid var(--ws-border); border-radius: 10px; padding: 16px; background: var(--ws-soft); }
+.intent-outcomes { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.intent-review h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--ws-muted); margin: 0 0 10px; }
+.intent-review :is(p,ul) { font-size: 13px; margin: 0; }
+.intent-section { display: grid; gap: 10px; }
+.intent-workflow { display: grid; gap: 0; list-style: none; padding: 0; margin: 0; }
+.intent-workflow li { display: grid; grid-template-columns: 30px 1fr; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--ws-border); }
+.intent-workflow li:last-child { border-bottom: 0; }
+.intent-workflow li > span { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: var(--ws-accent); background: var(--ws-accent-soft); font-size: 11px; font-weight: 700; }
+.intent-workflow strong { font-size: 12px; }
+.intent-workflow p { margin: 4px 0; }
+.intent-workflow small { color: var(--ws-muted); font-size: 10px; }
+.intent-input-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(230px,1fr)); gap: 12px; }
+.intent-input { border: 1px solid var(--ws-border); border-left-width: 4px; border-radius: 10px; padding: 15px; }
+.intent-input-exact { border-left-color: #7052c8; }
+.intent-input-constrained { border-left-color: #bf7b21; }
+.intent-input-unspecified { border-left-color: #7a8498; }
+.intent-input header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.intent-input dl { display: grid; gap: 10px; margin: 0; }
+.intent-input dt { color: var(--ws-muted); font-size: 10px; }
+.intent-input dd { font-size: 12px; margin: 2px 0 0; }
+.intent-ambiguities { display: grid; gap: 8px; }
+.intent-ambiguities > div { display: flex; align-items: flex-start; gap: 10px; background: var(--ws-soft); border-radius: 8px; padding: 11px 12px; }
+.intent-metadata { color: var(--ws-muted); border-top: 1px solid var(--ws-border); padding-top: 16px; font-size: 10px; }
+@media (max-width: 760px) { .bug-input-card,.intent-review { padding: 17px; } .bug-input-footer,.intent-review-heading { align-items: stretch; flex-direction: column; } .bug-input-footer button { width: 100%; } .intent-summary-grid,.intent-outcomes { grid-template-columns: 1fr; } .intent-confidence { align-self: flex-start; } }

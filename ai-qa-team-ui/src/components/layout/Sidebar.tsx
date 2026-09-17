@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useProjects } from "@/hooks/useProjects";
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { LayoutGrid, FolderOpen, Puzzle, Zap, Bot, ChevronLeft, ChevronRight, Layers, FileText, GitBranch, Users, BrainCircuit, ShieldCheck, MessageSquareText } from "lucide-react";
+import { LayoutGrid, FolderOpen, Puzzle, Zap, Bot, ChevronLeft, ChevronRight, Layers, FileText, GitBranch, Users, BrainCircuit, ShieldCheck, MessageSquareText, Bug } from "lucide-react";
 
 export default function Sidebar() {
   const { enabled } = useFeatures();
@@ -27,6 +27,7 @@ export default function Sidebar() {
   ] : [];
   const projectMenu = projectId ? [
     { name: "Overview", icon: Layers, href: `/projects/${projectId}` },
+    { name: "Reproduce Bug", icon: Bug, href: `/projects/${projectId}/reproduce` },
     ...(enabled("story_management") ? [{ name: "Stories", icon: FileText, href: `/projects/${projectId}/stories` }] : []),
     { name: "Environments", icon: FolderOpen, href: `/projects/${projectId}/environments` },
     ...(enabled("repository_discovery", "test_registry") ? [{ name: "Repositories", icon: GitBranch, href: `/projects/${projectId}/repositories` }] : []),

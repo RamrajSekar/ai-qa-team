@@ -14,11 +14,19 @@ class OpenAIProvider(BaseAIProvider):
     async def generate(self, request: LLMRequest) -> LLMResponse:
         model = request.model or self.default_model
         try:
+            messages = []
+            if request.system_prompt:
+                messages.append({"role": "system", "content": request.system_prompt})
+            messages.append({"role": "user", "content": request.prompt})
             response = await self.client.chat.completions.create(
                 model=model,
-                messages=[{"role": "user", "content": request.prompt}],
+                messages=messages,
                 temperature=request.temperature,
                 **({"max_tokens": request.max_tokens} if request.max_tokens else {}),
+                **({"response_format": {"type": "json_schema", "json_schema": {
+                    "name": request.response_schema_name or "structured_response",
+                    "strict": True, "schema": request.response_schema,
+                }}} if request.response_schema else {}),
             )
             input_tokens, output_tokens, total_tokens = normalized_token_usage(response)
             return LLMResponse(

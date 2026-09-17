@@ -791,4 +791,27 @@ BugInterpreter
   → TestIntentV1
 ```
 
-The TestIntent model and BugInterpreter are not implemented by this foundation.
+The AI usage foundation originally stopped at this boundary; Phase C now implements the TestIntent model and BugInterpreter described below.
+
+## Phase C — TestIntentV1 and Reproduce Bug review
+
+Phase C now implements:
+
+```text
+Paste Bug
+  → BugInterpreter
+  → PromptRegistry.get_active("BUG_INTERPRETER")
+  → AIUsageService.execute(BUG_INTERPRETER, ...)
+  → LLMGateway structured response
+  → TestIntentV1
+  → deterministic validation
+  → Review UI
+```
+
+Project ADMIN and TESTER members can use `POST /projects/{project_id}/bugs/interpret`. The request accepts only `bug_text`; provider, model, credentials, limits, cost, and prompt version remain server controlled. Prompt Registry fallback and active database versions both work. The prompt is sent with system authority, while the pasted bug is isolated as untrusted user content.
+
+`TestIntentV1` is framework-neutral and answers **what should be tested**. It does not decide how existing automation will satisfy the intent. Ordered workflow steps retain raw evidence. Explicit values are `EXACT` and must be preserved by later components. Conditions and ranges are `CONSTRAINED`; later components may resolve a value only within the constraint. `UNSPECIFIED` marks a relevant input without a supplied value or constraint and must not be treated as generated data.
+
+Expected, actual, and reported behavior remain distinct. Confidence is HIGH/MEDIUM/LOW, and useful uncertainty is carried as INFO/WARNING ambiguities. JSON, Pydantic, date-range, workflow-order, evidence, and duplicate-input rules are enforced before returning a complete intent. Invalid raw model output is never returned.
+
+The UI supports Paste Bug, Interpret Bug, review, source editing, and Interpret Again. There is no TestIntent persistence, repository search, Test Matcher, FULL/PARTIAL/NONE determination, ReproductionPlanner, data generation, or execution in this phase.

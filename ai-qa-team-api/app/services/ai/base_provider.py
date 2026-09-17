@@ -6,9 +6,12 @@ from typing import Any
 @dataclass(frozen=True)
 class LLMRequest:
     prompt: str
+    system_prompt: str | None = None
     model: str | None = None
     temperature: float = 0.3
     max_tokens: int | None = None
+    response_schema: dict[str, Any] | None = None
+    response_schema_name: str | None = None
 
 
 @dataclass(frozen=True)
