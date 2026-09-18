@@ -199,6 +199,7 @@ class RepositoryDiscoveryTests(unittest.IsolatedAsyncioTestCase):
         scanned = {"test_name": "Valid Login", "relative_file_path": "tests/login.robot", "line_number": 2, "tags": ["smoke", "login"]}
         contract = build_test_contract(repository, "a" * 40, scanned, discovered_at)
         self.assertEqual(contract["test_name"], "Valid Login")
+        self.assertEqual(contract["test_identity"], "Valid Login")
         self.assertEqual(contract["relative_file_path"], "tests/login.robot")
         self.assertEqual(contract["line_number"], 2)
         self.assertEqual(contract["tags"], ["smoke", "login"])
@@ -279,10 +280,13 @@ class RepositoryDiscoveryTests(unittest.IsolatedAsyncioTestCase):
         result = canonical_test_contract(legacy, {"scanner_version": "robot-basic-1"})
         self.assertEqual((result["contract_version"], result["registry_version"]), (CONTRACT_VERSION, REGISTRY_VERSION))
         self.assertEqual(result["updated_at"], discovered_at)
+        self.assertEqual(result["test_identity"], "Legacy")
         self.assertEqual(result["capabilities"], [])
         self.assertEqual(result["steps"], [])
         self.assertEqual(result["resource_imports"], [])
         self.assertEqual(result["keyword_references"], [])
+        self.assertEqual(result["source_imports"], [])
+        self.assertEqual(result["callable_references"], [])
 
     async def test_same_commit_rescan_replaces_removed_tests(self):
         repository = {
@@ -298,7 +302,7 @@ class RepositoryDiscoveryTests(unittest.IsolatedAsyncioTestCase):
         second_tests = first_tests[:1]
         with (
             patch.object(repository_routes, "db", fake_db),
-            patch.object(repository_routes, "run_in_threadpool", new=AsyncMock(side_effect=[("a" * 40, first_tests, True), ("a" * 40, second_tests, True)])),
+            patch.object(repository_routes, "run_in_threadpool", new=AsyncMock(side_effect=[("a" * 40, first_tests, "robot"), ("a" * 40, second_tests, "robot")])),
         ):
             await repository_routes.scan_repository(repository)
             await repository_routes.scan_repository(repository)

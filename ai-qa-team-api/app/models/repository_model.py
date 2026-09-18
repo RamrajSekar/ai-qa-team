@@ -15,7 +15,7 @@ class RepositoryConnectRequest(BaseModel):
     repository_url: str | None = None
     local_path: str | None = None
     branch: str = "main"
-    framework: Literal["auto", "robot"] = "auto"
+    framework: Literal["auto", "robot", "playwright"] = "auto"
 
 
 class RepositoryResponse(BaseModel):

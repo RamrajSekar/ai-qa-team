@@ -13,8 +13,11 @@ from robot.libdoc import LibraryDocumentation
 from robot.parsing.model.blocks import KeywordSection, SettingSection, TestCaseSection
 from robot.parsing.model.statements import Arguments, KeywordCall, LibraryImport, ResourceImport, Tags
 
+from app.services.playwright_discovery_service import discover_playwright_tests
+
 
 SCANNER_VERSION = "robot-structure-2"
+REPOSITORY_SCANNER_VERSION = "repository-static-2"
 GITHUB_PATH = re.compile(r"^/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?$")
 
 
@@ -61,8 +64,14 @@ def git_commit_sha(path: Path) -> str | None:
 
 def content_commit_sha(path: Path) -> str:
     digest = hashlib.sha256()
-    source_files = sorted({*path.rglob("*.robot"), *path.rglob("*.resource")})
+    ignored = {".git", ".next", "node_modules", "dist", "build"}
+    source_files = sorted({
+        *path.rglob("*.robot"), *path.rglob("*.resource"), *path.rglob("*.ts"),
+        *path.rglob("*.js"), *path.rglob("*.tsx"), *path.rglob("*.jsx"),
+    })
     for source_file in source_files:
+        if any(part in ignored for part in source_file.relative_to(path).parts):
+            continue
         digest.update(source_file.relative_to(path).as_posix().encode())
         digest.update(source_file.read_bytes())
     return digest.hexdigest()
@@ -257,6 +266,8 @@ def discover_robot_tests(root: Path) -> list[dict]:
                             if call["keyword_reference"] and call["keyword_reference"] not in referenced
                         )
                     discovered.append({
+                        "framework": "robot",
+                        "scanner_version": SCANNER_VERSION,
                         "test_name": test.name,
                         "relative_file_path": relative_path,
                         "line_number": getattr(test, "lineno", None),
@@ -268,12 +279,35 @@ def discover_robot_tests(root: Path) -> list[dict]:
     return discovered
 
 
-def scan_path(root: Path, commit_sha: str) -> tuple[str, list[dict], bool]:
-    has_robot_files = any(root.rglob("*.robot"))
-    return commit_sha, discover_robot_tests(root), has_robot_files
+def _scan_robot(root: Path) -> tuple[list[dict], bool]:
+    detected = any(root.rglob("*.robot"))
+    return (discover_robot_tests(root) if detected else []), detected
 
 
-def static_scan(source_type: str, repository_url: str | None, local_path: str | None, branch: str) -> tuple[str, list[dict], bool]:
+def _scan_playwright(root: Path) -> tuple[list[dict], bool]:
+    tests = discover_playwright_tests(root)
+    return tests, bool(tests)
+
+
+FRAMEWORK_SCANNERS = {
+    "robot": _scan_robot,
+    "playwright": _scan_playwright,
+}
+
+
+def scan_path(root: Path, commit_sha: str) -> tuple[str, list[dict], str]:
+    tests: list[dict] = []
+    frameworks: set[str] = set()
+    for framework, scanner in FRAMEWORK_SCANNERS.items():
+        discovered, detected = scanner(root)
+        tests.extend(discovered)
+        if detected:
+            frameworks.add(framework)
+    detected = "mixed" if len(frameworks) > 1 else next(iter(frameworks), "unsupported")
+    return commit_sha, tests, detected
+
+
+def static_scan(source_type: str, repository_url: str | None, local_path: str | None, branch: str) -> tuple[str, list[dict], str]:
     if source_type == "LOCAL":
         root = validate_local_repository_path(local_path or "")
         return scan_path(root, git_commit_sha(root) or content_commit_sha(root))

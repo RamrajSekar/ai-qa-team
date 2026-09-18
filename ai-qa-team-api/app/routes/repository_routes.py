@@ -11,7 +11,7 @@ from app.models.repository_model import (
     RepositoryResponse,
 )
 from app.services.repository_discovery_service import (
-    SCANNER_VERSION,
+    REPOSITORY_SCANNER_VERSION,
     static_scan,
     validate_branch,
     validate_local_repository_path,
@@ -53,15 +53,15 @@ async def scan_repository(repository: dict) -> dict:
         {"$set": {"scan_status": "scanning", "scan_error": None, "updated_at": now}},
     )
     try:
-        commit_sha, tests, has_robot_files = await run_in_threadpool(
+        commit_sha, tests, detected_framework = await run_in_threadpool(
             static_scan,
             repository["source_type"],
             repository.get("repository_url"),
             repository.get("local_path"),
             repository["branch"],
         )
-        status = "completed" if has_robot_files else "unsupported"
-        error = None if has_robot_files else "Robot Framework was not detected. This MVP scans .robot files only."
+        status = "completed" if detected_framework != "unsupported" else "unsupported"
+        error = None if status == "completed" else "No supported Robot or Playwright Test files were detected."
         discovered_at = datetime.now(timezone.utc)
         documents = [build_test_contract(repository, commit_sha, item, discovered_at) for item in tests]
         await db["discovered_tests"].delete_many({
@@ -71,14 +71,14 @@ async def scan_repository(repository: dict) -> dict:
         if documents:
             await db["discovered_tests"].insert_many(documents)
         updates = {
-            "framework": "robot" if has_robot_files else "unsupported",
+            "framework": detected_framework,
             "source_commit_sha": commit_sha,
             "scan_status": status,
             "scan_error": error,
             "test_count": len(documents),
             "last_scanned_at": discovered_at,
             "updated_at": discovered_at,
-            "scanner_version": SCANNER_VERSION,
+            "scanner_version": REPOSITORY_SCANNER_VERSION,
             "registry_version": REGISTRY_VERSION,
         }
         await db["repositories"].update_one(
@@ -102,7 +102,7 @@ async def repository_options(current_user=Depends(get_current_user)):
     return {
         "github_public": True,
         "local_repository": local_repositories_enabled(),
-        "frameworks": ["robot"],
+        "frameworks": ["robot", "playwright"],
     }
 
 
@@ -143,7 +143,7 @@ async def connect_repository(
         "scan_error": None,
         "test_count": 0,
         "last_scanned_at": None,
-        "scanner_version": SCANNER_VERSION,
+        "scanner_version": REPOSITORY_SCANNER_VERSION,
         "registry_version": REGISTRY_VERSION,
         "created_by": email,
         "created_at": now,
