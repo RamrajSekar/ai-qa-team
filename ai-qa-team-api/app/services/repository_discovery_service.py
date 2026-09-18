@@ -9,11 +9,12 @@ from urllib.parse import urlparse
 
 from fastapi import HTTPException
 from robot.api import get_model
-from robot.parsing.model.blocks import TestCaseSection
-from robot.parsing.model.statements import Tags
+from robot.libdoc import LibraryDocumentation
+from robot.parsing.model.blocks import KeywordSection, SettingSection, TestCaseSection
+from robot.parsing.model.statements import Arguments, KeywordCall, LibraryImport, ResourceImport, Tags
 
 
-SCANNER_VERSION = "robot-basic-1"
+SCANNER_VERSION = "robot-structure-2"
 GITHUB_PATH = re.compile(r"^/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?$")
 
 
@@ -60,9 +61,10 @@ def git_commit_sha(path: Path) -> str | None:
 
 def content_commit_sha(path: Path) -> str:
     digest = hashlib.sha256()
-    for robot_file in sorted(path.rglob("*.robot")):
-        digest.update(robot_file.relative_to(path).as_posix().encode())
-        digest.update(robot_file.read_bytes())
+    source_files = sorted({*path.rglob("*.robot"), *path.rglob("*.resource")})
+    for source_file in source_files:
+        digest.update(source_file.relative_to(path).as_posix().encode())
+        digest.update(source_file.read_bytes())
     return digest.hexdigest()
 
 
@@ -81,27 +83,188 @@ def clone_public_repository(repository_url: str, branch: str, destination: Path)
     return commit_sha
 
 
+def _normalized_keyword(name: str) -> str:
+    return re.sub(r"[ _]", "", name).casefold()
+
+
+def _relative(root: Path, path: Path) -> str:
+    return path.relative_to(root).as_posix()
+
+
+def _keyword_reference(relative_path: str, name: str) -> str:
+    return f"{relative_path}::{_normalized_keyword(name)}"
+
+
+def _resolve_resource(root: Path, importer: Path, raw_path: str) -> tuple[str, str | None]:
+    if re.match(r"^[A-Za-z][A-Za-z0-9+.-]*://", raw_path):
+        return "REMOTE", None
+    if "${" in raw_path or "%{" in raw_path:
+        return "DYNAMIC", None
+    candidate = (importer.parent / raw_path).resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        return "OUTSIDE_REPOSITORY", None
+    if not candidate.is_file() or candidate.suffix.lower() not in {".robot", ".resource"}:
+        return "UNRESOLVED", None
+    return "RESOLVED", _relative(root, candidate)
+
+
+def _call(statement: KeywordCall, source_file: str, sequence: int) -> dict:
+    return {
+        "sequence": sequence,
+        "name": statement.keyword,
+        "arguments": list(statement.args),
+        "source_file": source_file,
+        "line_number": getattr(statement, "lineno", None),
+    }
+
+
 def discover_robot_tests(root: Path) -> list[dict]:
-    discovered: list[dict] = []
-    for robot_file in sorted(root.rglob("*.robot")):
+    root = root.resolve()
+    parsed: dict[str, object] = {}
+    resource_imports: dict[str, list[dict]] = {}
+    libraries: dict[str, set[str]] = {}
+    definitions: dict[str, dict] = {}
+
+    source_files = sorted({*root.rglob("*.robot"), *root.rglob("*.resource")})
+    for source_file in source_files:
+        relative_path = _relative(root, source_file.resolve())
         try:
-            model = get_model(str(robot_file))
+            model = get_model(str(source_file))
         except Exception as exc:
-            raise RuntimeError(f"Could not parse {robot_file.relative_to(root).as_posix()}: {exc}") from exc
+            raise RuntimeError(f"Could not parse {relative_path}: {exc}") from exc
+        parsed[relative_path] = model
+        imports: list[dict] = []
+        imported_libraries: set[str] = set()
         for section in model.sections:
-            if not isinstance(section, TestCaseSection):
-                continue
-            for test in section.body:
-                tags: list[str] = []
-                for statement in test.body:
-                    if isinstance(statement, Tags):
-                        tags.extend(statement.values)
-                discovered.append({
-                    "test_name": test.name,
-                    "relative_file_path": robot_file.relative_to(root).as_posix(),
-                    "line_number": getattr(test, "lineno", None),
-                    "tags": list(dict.fromkeys(tags)),
-                })
+            if isinstance(section, SettingSection):
+                for statement in section.body:
+                    if isinstance(statement, ResourceImport):
+                        raw_path = statement.name
+                        status, resolved_path = _resolve_resource(root, source_file, raw_path)
+                        imports.append({
+                            "importing_file": relative_path,
+                            "raw_path": raw_path,
+                            "resolved_path": resolved_path,
+                            "resolution_status": status,
+                        })
+                    elif isinstance(statement, LibraryImport):
+                        imported_libraries.add(statement.name)
+            elif isinstance(section, KeywordSection):
+                for keyword in section.body:
+                    declared_arguments: list[str] = []
+                    nested_calls: list[dict] = []
+                    for statement in keyword.body:
+                        if isinstance(statement, Arguments):
+                            declared_arguments.extend(statement.values)
+                        elif isinstance(statement, KeywordCall):
+                            nested_calls.append(_call(statement, relative_path, len(nested_calls) + 1))
+                    reference = _keyword_reference(relative_path, keyword.name)
+                    definitions[reference] = {
+                        "keyword_reference": reference,
+                        "name": keyword.name,
+                        "source_file": relative_path,
+                        "line_number": getattr(keyword, "lineno", None),
+                        "declared_arguments": declared_arguments,
+                        "nested_calls": nested_calls,
+                    }
+        resource_imports[relative_path] = imports
+        libraries[relative_path] = imported_libraries
+
+    builtins = {_normalized_keyword(keyword.name) for keyword in LibraryDocumentation("BuiltIn").keywords}
+
+    def visible_files(source_file: str) -> tuple[list[str], list[dict]]:
+        visible: list[str] = []
+        imports_seen: list[dict] = []
+        visited: set[str] = set()
+
+        def visit(current: str) -> None:
+            if current in visited:
+                return
+            visited.add(current)
+            for item in resource_imports.get(current, []):
+                if item not in imports_seen:
+                    imports_seen.append(item)
+                resolved_path = item.get("resolved_path")
+                if item["resolution_status"] == "RESOLVED" and resolved_path:
+                    if resolved_path not in visible:
+                        visible.append(resolved_path)
+                    visit(resolved_path)
+
+        visit(source_file)
+        return visible, imports_seen
+
+    def resolve_call(call: dict, source_file: str) -> dict:
+        normalized = _normalized_keyword(call["name"])
+        local_matches = [
+            definition for definition in definitions.values()
+            if definition["source_file"] == source_file and _normalized_keyword(definition["name"]) == normalized
+        ]
+        visible, _ = visible_files(source_file)
+        resource_matches = [
+            definition for definition in definitions.values()
+            if definition["source_file"] in visible and _normalized_keyword(definition["name"]) == normalized
+        ]
+        matches = local_matches or resource_matches
+        if len(matches) == 1:
+            return {**call, "resolution_status": "RESOLVED", "keyword_reference": matches[0]["keyword_reference"]}
+        if len(matches) > 1:
+            return {**call, "resolution_status": "AMBIGUOUS", "keyword_reference": None}
+        library_prefixes = {
+            name.rsplit(".", 1)[-1].casefold() for name in libraries.get(source_file, set())
+        }
+        call_prefix = call["name"].split(".", 1)[0].casefold() if "." in call["name"] else None
+        if normalized in builtins or (call_prefix and call_prefix in library_prefixes):
+            status = "BUILTIN_OR_LIBRARY"
+        else:
+            status = "UNRESOLVED"
+        return {**call, "resolution_status": status, "keyword_reference": None}
+
+    resolved_definitions: dict[str, dict] = {}
+    for reference, definition in definitions.items():
+        resolved_definitions[reference] = {
+            **definition,
+            "nested_calls": [resolve_call(call, definition["source_file"]) for call in definition["nested_calls"]],
+        }
+
+    discovered: list[dict] = []
+    for relative_path, model in parsed.items():
+        if not relative_path.endswith(".robot"):
+            continue
+        for section in model.sections:
+            if isinstance(section, TestCaseSection):
+                for test in section.body:
+                    tags: list[str] = []
+                    raw_calls: list[dict] = []
+                    for statement in test.body:
+                        if isinstance(statement, Tags):
+                            tags.extend(statement.values)
+                        elif isinstance(statement, KeywordCall):
+                            raw_calls.append(_call(statement, relative_path, len(raw_calls) + 1))
+                    steps = [resolve_call(call, relative_path) for call in raw_calls]
+                    _, imports = visible_files(relative_path)
+                    referenced: dict[str, dict] = {}
+                    pending = [step["keyword_reference"] for step in steps if step["keyword_reference"]]
+                    while pending:
+                        reference = pending.pop()
+                        if reference in referenced:
+                            continue
+                        definition = resolved_definitions[reference]
+                        referenced[reference] = definition
+                        pending.extend(
+                            call["keyword_reference"] for call in definition["nested_calls"]
+                            if call["keyword_reference"] and call["keyword_reference"] not in referenced
+                        )
+                    discovered.append({
+                        "test_name": test.name,
+                        "relative_file_path": relative_path,
+                        "line_number": getattr(test, "lineno", None),
+                        "tags": list(dict.fromkeys(tags)),
+                        "steps": steps,
+                        "resource_imports": imports,
+                        "keyword_references": sorted(referenced.values(), key=lambda item: item["keyword_reference"]),
+                    })
     return discovered
 
 

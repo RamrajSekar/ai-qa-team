@@ -34,6 +34,7 @@ with patch.dict(os.environ, TEST_ENV):
         discover_robot_tests,
         git_commit_sha,
         static_scan,
+        content_commit_sha,
         validate_public_github_url,
     )
     from app.services.test_registry_service import (
@@ -58,6 +59,8 @@ Search Tour
 Invalid Tour
     Log    invalid
 """
+
+STRUCTURE_FIXTURE = Path(__file__).parent / "fixtures" / "robot_structure"
 
 
 class _Collection:
@@ -144,6 +147,16 @@ class RepositoryDiscoveryTests(unittest.IsolatedAsyncioTestCase):
             expected = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
             self.assertEqual(git_commit_sha(root), expected)
 
+    def test_content_revision_changes_when_resource_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "suite.robot").write_text(ROBOT_ONE, encoding="utf-8")
+            resource = root / "keywords.resource"
+            resource.write_text("*** Keywords ***\nExample\n    Log    first\n", encoding="utf-8")
+            first = content_commit_sha(root)
+            resource.write_text("*** Keywords ***\nExample\n    Log    second\n", encoding="utf-8")
+            self.assertNotEqual(first, content_commit_sha(root))
+
     async def test_rescan_keeps_commit_registries_separate_and_current_metadata_isolated(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -197,6 +210,58 @@ class RepositoryDiscoveryTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(contract[field], [])
         self.assertIsNone(contract["confidence"])
 
+    def test_robot_structural_discovery_resolves_resources_keywords_and_raw_arguments(self):
+        discovered = discover_robot_tests(STRUCTURE_FIXTURE)
+        self.assertEqual(len(discovered), 1)
+        test = discovered[0]
+        self.assertEqual(test["test_name"], "Structural Workflow")
+        self.assertEqual(test["relative_file_path"], "tests/workflow.robot")
+        self.assertEqual(test["tags"], ["structural", "robot"])
+
+        steps = test["steps"]
+        self.assertEqual([step["sequence"] for step in steps], [1, 2, 3, 4, 5])
+        self.assertEqual(steps[0]["arguments"], ["literal value", "${VARIABLE_VALUE}"])
+        self.assertEqual(steps[0]["resolution_status"], "RESOLVED")
+        self.assertEqual(steps[0]["source_file"], "tests/workflow.robot")
+        self.assertEqual(steps[1]["resolution_status"], "RESOLVED")
+        self.assertEqual(steps[2]["resolution_status"], "AMBIGUOUS")
+        self.assertEqual(steps[3]["resolution_status"], "BUILTIN_OR_LIBRARY")
+        self.assertEqual(steps[4]["resolution_status"], "UNRESOLVED")
+
+        imports = {(item["raw_path"], item["resolution_status"], item["resolved_path"]) for item in test["resource_imports"]}
+        self.assertIn(("../resources/common.resource", "RESOLVED", "resources/common.resource"), imports)
+        self.assertIn(("nested.resource", "RESOLVED", "resources/nested.resource"), imports)
+        self.assertIn(("../../../../outside.resource", "OUTSIDE_REPOSITORY", None), imports)
+        self.assertIn(("${DYNAMIC_RESOURCE}", "DYNAMIC", None), imports)
+        self.assertIn(("https://example.com/remote.resource", "REMOTE", None), imports)
+
+    def test_keyword_definitions_include_arguments_nested_calls_and_cycle_safe_references(self):
+        test = discover_robot_tests(STRUCTURE_FIXTURE)[0]
+        definitions = {item["keyword_reference"]: item for item in test["keyword_references"]}
+        local = definitions["tests/workflow.robot::localkeyword"]
+        resource = definitions["resources/common.resource::uniqueresourcekeyword"]
+        deep = definitions["resources/nested.resource::deepkeyword"]
+        self.assertEqual(local["declared_arguments"], ["${literal}", "${variable}"])
+        self.assertEqual(resource["declared_arguments"], ["${code}"])
+        self.assertEqual(resource["nested_calls"][0]["keyword_reference"], "resources/nested.resource::deepkeyword")
+        self.assertEqual(deep["nested_calls"][0]["keyword_reference"], "resources/common.resource::uniqueresourcekeyword")
+        self.assertEqual(len(definitions), 3)
+
+    def test_structural_fields_map_to_contract_while_semantic_fields_remain_empty(self):
+        scanned = discover_robot_tests(STRUCTURE_FIXTURE)[0]
+        contract = build_test_contract(
+            {"repository_id": "REP001", "project_id": "PRJ001"},
+            "a" * 40,
+            scanned,
+            datetime.now(timezone.utc),
+        )
+        self.assertEqual(contract["steps"][0]["name"], "Local Keyword")
+        self.assertTrue(contract["resource_imports"])
+        self.assertTrue(contract["keyword_references"])
+        for field in ("inputs", "runtime_dependencies", "capabilities", "assertions"):
+            self.assertEqual(contract[field], [])
+        self.assertIsNone(contract["confidence"])
+
     def test_test_id_is_stable_within_exact_revision_and_changes_across_commits(self):
         first = discovered_test_id("REP001", "a" * 40, "suite.robot", "Login")
         same = discovered_test_id("REP001", "a" * 40, "suite.robot", "Login")
@@ -215,6 +280,9 @@ class RepositoryDiscoveryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((result["contract_version"], result["registry_version"]), (CONTRACT_VERSION, REGISTRY_VERSION))
         self.assertEqual(result["updated_at"], discovered_at)
         self.assertEqual(result["capabilities"], [])
+        self.assertEqual(result["steps"], [])
+        self.assertEqual(result["resource_imports"], [])
+        self.assertEqual(result["keyword_references"], [])
 
     async def test_same_commit_rescan_replaces_removed_tests(self):
         repository = {
