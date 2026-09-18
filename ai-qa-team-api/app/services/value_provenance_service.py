@@ -40,7 +40,6 @@ def build_value_provenance(
     records: list[dict] = []
     definition_map = {item.get("callable_reference") or item.get("keyword_reference"): item for item in definitions}
     binding_items = bindings or []
-    visited: set[str] = set()
 
     def add(kind: str, expression: str, source_file: str, line: int | None, status: str = "RESOLVED",
             sources: list[str] | None = None, callable_reference: str | None = None,
@@ -97,7 +96,8 @@ def build_value_provenance(
             return add(kind, expression, source_file, line, sources=[base_id])
         return add(kind, expression, source_file, line, "DYNAMIC" if kind == "UNKNOWN_EXPRESSION" else "RESOLVED")
 
-    def visit_calls(calls: list[dict], scope: str, parameter_sources: dict[str, str], depth: int) -> None:
+    def visit_calls(calls: list[dict], scope: str, parameter_sources: dict[str, str], depth: int,
+                    callable_path: frozenset[str] = frozenset()) -> None:
         if depth > MAX_PROVENANCE_DEPTH or len(records) >= MAX_PROVENANCE_NODES:
             add("TRAVERSAL_LIMIT", scope, calls[0]["source_file"] if calls else "", None, "PARTIAL")
             return
@@ -108,13 +108,12 @@ def build_value_provenance(
                 argument_ids.append(add("ARGUMENT", expression, call["source_file"], call.get("line_number"), sources=[origin_id],
                                         callable_reference=call.get("callable_reference") or call.get("keyword_reference")))
             reference = call.get("callable_reference") or call.get("keyword_reference")
-            if not reference or reference not in definition_map or reference in visited:
+            if not reference or reference not in definition_map or reference in callable_path:
                 continue
-            visited.add(reference)
             definition = definition_map[reference]
             parameters = definition.get("declared_parameters", definition.get("declared_arguments", []))
             aligned = {parameter_name(value): argument_ids[index] for index, value in enumerate(parameters) if index < len(argument_ids)}
-            visit_calls(definition.get("nested_calls", []), reference, aligned, depth + 1)
+            visit_calls(definition.get("nested_calls", []), reference, aligned, depth + 1, callable_path | {reference})
 
     visit_calls(steps, test_identity, {}, 0)
     if len(records) >= MAX_PROVENANCE_NODES:

@@ -2,10 +2,11 @@ from datetime import datetime
 
 from app.models.test_contract_model import TestContract
 from app.services.repository_discovery_service import SCANNER_VERSION, discovered_test_id
+from app.services.value_ownership_service import build_value_ownership
 
 
-CONTRACT_VERSION = "4"
-REGISTRY_VERSION = "test-registry-4"
+CONTRACT_VERSION = "5"
+REGISTRY_VERSION = "test-registry-5"
 
 
 def build_test_contract(
@@ -38,6 +39,10 @@ def build_test_contract(
         "source_imports": discovered_test.get("source_imports", []),
         "callable_references": discovered_test.get("callable_references", []),
         "value_provenance": discovered_test.get("value_provenance", []),
+        "value_ownership": build_value_ownership(
+            discovered_test.get("test_identity", discovered_test["test_name"]),
+            discovered_test.get("value_provenance", []),
+        ),
         "inputs": [],
         "runtime_dependencies": [],
         "capabilities": [],
@@ -64,6 +69,7 @@ def canonical_test_contract(document: dict, repository: dict) -> dict:
         "source_imports": document.get("source_imports", []),
         "callable_references": document.get("callable_references", []),
         "value_provenance": document.get("value_provenance", []),
+        "value_ownership": document.get("value_ownership", []),
         "inputs": document.get("inputs", []),
         "runtime_dependencies": document.get("runtime_dependencies", []),
         "capabilities": document.get("capabilities", []),

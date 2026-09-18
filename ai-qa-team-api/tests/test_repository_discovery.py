@@ -288,6 +288,7 @@ class RepositoryDiscoveryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["source_imports"], [])
         self.assertEqual(result["callable_references"], [])
         self.assertEqual(result["value_provenance"], [])
+        self.assertEqual(result["value_ownership"], [])
 
     async def test_same_commit_rescan_replaces_removed_tests(self):
         repository = {

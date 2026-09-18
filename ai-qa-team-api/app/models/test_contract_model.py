@@ -16,6 +16,14 @@ ProvenanceKind = Literal[
     "CALL_RESULT", "MEMBER_REFERENCE", "ENV_ACCESS_EXPRESSION", "UNKNOWN_EXPRESSION", "TRAVERSAL_LIMIT",
 ]
 ProvenanceResolutionStatus = Literal["RESOLVED", "PARTIAL", "AMBIGUOUS", "UNRESOLVED", "DYNAMIC"]
+ValueOwnership = Literal[
+    "EXTERNAL_INPUT", "STATIC_INTERNAL", "GENERATED_RUNTIME", "ENVIRONMENT", "CREDENTIAL", "UNKNOWN",
+]
+OwnershipReason = Literal[
+    "STATIC_LITERAL_ORIGIN", "CALL_RESULT_ORIGIN", "ENV_ACCESS_ORIGIN", "EXPLICIT_CREDENTIAL_REFERENCE",
+    "EXTERNAL_BOUNDARY_ORIGIN", "AMBIGUOUS_ORIGINS", "DYNAMIC_ORIGIN", "UNRESOLVED_ORIGIN",
+    "TRAVERSAL_LIMIT", "CONFLICTING_OWNERSHIP", "MEMBER_ORIGIN",
+]
 
 
 class CallReference(BaseModel):
@@ -74,6 +82,17 @@ class ValueProvenanceRecord(BaseModel):
     parameter_name: str | None = None
 
 
+class ValueOwnershipRecord(BaseModel):
+    ownership_id: str
+    provenance_id: str
+    ownership: ValueOwnership
+    status: ProvenanceResolutionStatus
+    evidence_ids: list[str] = Field(default_factory=list)
+    reason_code: OwnershipReason
+    source_file: str
+    line_number: int | None = None
+
+
 class TestContract(BaseModel):
     """Canonical framework-neutral record for one test at one repository revision."""
 
@@ -98,6 +117,7 @@ class TestContract(BaseModel):
     source_imports: list[SourceImportReference] = Field(default_factory=list)
     callable_references: list[CallableDefinitionReference] = Field(default_factory=list)
     value_provenance: list[ValueProvenanceRecord] = Field(default_factory=list)
+    value_ownership: list[ValueOwnershipRecord] = Field(default_factory=list)
     inputs: list[dict[str, Any]] = Field(default_factory=list)
     runtime_dependencies: list[dict[str, Any]] = Field(default_factory=list)
     capabilities: list[dict[str, Any]] = Field(default_factory=list)
