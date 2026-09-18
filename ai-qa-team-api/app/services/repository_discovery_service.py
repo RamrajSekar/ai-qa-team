@@ -14,10 +14,11 @@ from robot.parsing.model.blocks import KeywordSection, SettingSection, TestCaseS
 from robot.parsing.model.statements import Arguments, KeywordCall, LibraryImport, ResourceImport, Tags
 
 from app.services.playwright_discovery_service import discover_playwright_tests
+from app.services.selenium_java_discovery_service import discover_selenium_java_tests
 
 
 SCANNER_VERSION = "robot-structure-2"
-REPOSITORY_SCANNER_VERSION = "repository-static-2"
+REPOSITORY_SCANNER_VERSION = "repository-static-3"
 GITHUB_PATH = re.compile(r"^/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?$")
 
 
@@ -63,17 +64,25 @@ def git_commit_sha(path: Path) -> str | None:
 
 
 def content_commit_sha(path: Path) -> str:
+    path = path.resolve()
     digest = hashlib.sha256()
-    ignored = {".git", ".next", "node_modules", "dist", "build"}
+    ignored = {".git", ".gradle", ".idea", ".next", "node_modules", "target", "dist", "build"}
     source_files = sorted({
         *path.rglob("*.robot"), *path.rglob("*.resource"), *path.rglob("*.ts"),
-        *path.rglob("*.js"), *path.rglob("*.tsx"), *path.rglob("*.jsx"),
+        *path.rglob("*.js"), *path.rglob("*.tsx"), *path.rglob("*.jsx"), *path.rglob("*.java"),
     })
     for source_file in source_files:
         if any(part in ignored for part in source_file.relative_to(path).parts):
             continue
-        digest.update(source_file.relative_to(path).as_posix().encode())
-        digest.update(source_file.read_bytes())
+        resolved = source_file.resolve()
+        try:
+            relative = resolved.relative_to(path)
+        except ValueError:
+            continue
+        digest.update(relative.as_posix().encode())
+        with resolved.open("rb") as stream:
+            while chunk := stream.read(1024 * 1024):
+                digest.update(chunk)
     return digest.hexdigest()
 
 
@@ -289,9 +298,15 @@ def _scan_playwright(root: Path) -> tuple[list[dict], bool]:
     return tests, bool(tests)
 
 
+def _scan_selenium_java(root: Path) -> tuple[list[dict], bool]:
+    tests = discover_selenium_java_tests(root)
+    return tests, bool(tests)
+
+
 FRAMEWORK_SCANNERS = {
     "robot": _scan_robot,
     "playwright": _scan_playwright,
+    "selenium_java": _scan_selenium_java,
 }
 
 

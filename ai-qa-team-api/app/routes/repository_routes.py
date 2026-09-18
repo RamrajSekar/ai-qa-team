@@ -61,7 +61,7 @@ async def scan_repository(repository: dict) -> dict:
             repository["branch"],
         )
         status = "completed" if detected_framework != "unsupported" else "unsupported"
-        error = None if status == "completed" else "No supported Robot or Playwright Test files were detected."
+        error = None if status == "completed" else "No supported Robot, Playwright Test, or Selenium Java tests were detected."
         discovered_at = datetime.now(timezone.utc)
         documents = [build_test_contract(repository, commit_sha, item, discovered_at) for item in tests]
         await db["discovered_tests"].delete_many({
@@ -102,7 +102,7 @@ async def repository_options(current_user=Depends(get_current_user)):
     return {
         "github_public": True,
         "local_repository": local_repositories_enabled(),
-        "frameworks": ["robot", "playwright"],
+        "frameworks": ["robot", "playwright", "selenium_java"],
     }
 
 
