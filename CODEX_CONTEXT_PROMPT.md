@@ -817,3 +817,9 @@ Explicit environment evidence is retained without inferring URLs, IDs, browsers,
 Expected, actual, and reported behavior remain distinct. When expected behavior is absent, deterministic processing adds one INFO ambiguity unless an equivalent ambiguity already exists. Confidence is HIGH/MEDIUM/LOW, and useful uncertainty is carried as INFO/WARNING ambiguities. JSON, Pydantic, date-range, workflow-order, evidence, and duplicate-input rules are enforced before returning a complete intent. Invalid raw model output is never returned.
 
 The UI supports Paste Bug, Interpret Bug, review, source editing, and Interpret Again. There is no TestIntent persistence, repository search, Test Matcher, FULL/PARTIAL/NONE determination, ReproductionPlanner, data generation, or execution in this phase.
+
+## Canonical Test Registry — TestContract Step 1
+
+The existing `discovered_tests` Mongo collection now serves as the single canonical Test Registry. Robot static discovery deterministically creates framework-neutral `TestContract` version `1` records containing stable test identity, project/repository identity, exact source commit SHA, framework, file/line/name, tags, scanner version, registry version, and timestamps. Inputs, runtime dependencies, capabilities, and assertions are deliberately empty; confidence is null. No AI participates in construction.
+
+Test IDs include repository ID, commit SHA, relative path, and test name. A same-commit rescan replaces that commit snapshot and removes tests no longer discovered. A new commit creates a separate snapshot; older commit rows remain available for future historical binding, while the existing repository tests API returns only contracts matching the repository's current commit. Legacy discovered-test rows are upgraded tolerantly at the API boundary without rewriting Mongo.

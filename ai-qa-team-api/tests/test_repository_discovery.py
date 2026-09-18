@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 import subprocess
 import sys
@@ -28,10 +29,18 @@ with patch.dict(os.environ, TEST_ENV):
     from app.utils import project_authorization
     from app.models.repository_model import RepositoryConnectRequest
     from app.services.repository_discovery_service import (
+        SCANNER_VERSION,
+        discovered_test_id,
         discover_robot_tests,
         git_commit_sha,
         static_scan,
         validate_public_github_url,
+    )
+    from app.services.test_registry_service import (
+        CONTRACT_VERSION,
+        REGISTRY_VERSION,
+        build_test_contract,
+        canonical_test_contract,
     )
 
 
@@ -166,6 +175,67 @@ class RepositoryDiscoveryTests(unittest.IsolatedAsyncioTestCase):
         current = [document for document in fake_db["discovered_tests"].documents if document["source_commit_sha"] == second["source_commit_sha"]]
         self.assertEqual(len(current), 2)
         self.assertTrue(all(document["project_id"] == "PRJ001" and document["repository_id"] == "REP001" for document in current))
+        self.assertTrue(all(document["contract_version"] == CONTRACT_VERSION for document in current))
+        self.assertTrue(all(document["registry_version"] == REGISTRY_VERSION for document in current))
+        self.assertTrue(all(document["scanner_version"] == SCANNER_VERSION for document in current))
+        self.assertEqual(second["registry_version"], REGISTRY_VERSION)
+
+    def test_robot_discovery_maps_to_canonical_contract_without_inference(self):
+        discovered_at = datetime.now(timezone.utc)
+        repository = {"repository_id": "REP001", "project_id": "PRJ001"}
+        scanned = {"test_name": "Valid Login", "relative_file_path": "tests/login.robot", "line_number": 2, "tags": ["smoke", "login"]}
+        contract = build_test_contract(repository, "a" * 40, scanned, discovered_at)
+        self.assertEqual(contract["test_name"], "Valid Login")
+        self.assertEqual(contract["relative_file_path"], "tests/login.robot")
+        self.assertEqual(contract["line_number"], 2)
+        self.assertEqual(contract["tags"], ["smoke", "login"])
+        self.assertEqual(contract["framework"], "robot")
+        self.assertEqual(contract["source_commit_sha"], "a" * 40)
+        self.assertEqual((contract["contract_version"], contract["registry_version"], contract["scanner_version"]),
+                         (CONTRACT_VERSION, REGISTRY_VERSION, SCANNER_VERSION))
+        for field in ("inputs", "runtime_dependencies", "capabilities", "assertions"):
+            self.assertEqual(contract[field], [])
+        self.assertIsNone(contract["confidence"])
+
+    def test_test_id_is_stable_within_exact_revision_and_changes_across_commits(self):
+        first = discovered_test_id("REP001", "a" * 40, "suite.robot", "Login")
+        same = discovered_test_id("REP001", "a" * 40, "suite.robot", "Login")
+        newer = discovered_test_id("REP001", "b" * 40, "suite.robot", "Login")
+        self.assertEqual(first, same)
+        self.assertNotEqual(first, newer)
+
+    def test_legacy_discovered_row_gets_tolerant_contract_defaults(self):
+        discovered_at = datetime.now(timezone.utc)
+        legacy = {
+            "test_id": "TSTLEGACY", "project_id": "PRJ001", "repository_id": "REP001",
+            "source_commit_sha": "a" * 40, "framework": "robot", "test_name": "Legacy",
+            "relative_file_path": "legacy.robot", "line_number": 2, "tags": [], "discovered_at": discovered_at,
+        }
+        result = canonical_test_contract(legacy, {"scanner_version": "robot-basic-1"})
+        self.assertEqual((result["contract_version"], result["registry_version"]), (CONTRACT_VERSION, REGISTRY_VERSION))
+        self.assertEqual(result["updated_at"], discovered_at)
+        self.assertEqual(result["capabilities"], [])
+
+    async def test_same_commit_rescan_replaces_removed_tests(self):
+        repository = {
+            "repository_id": "REP001", "project_id": "PRJ001", "source_type": "GITHUB_PUBLIC",
+            "provider": "github", "repository_url": "https://github.com/example/repo",
+            "local_path": None, "branch": "main", "framework": "robot", "scanner_version": SCANNER_VERSION,
+        }
+        fake_db = _DB(); fake_db["repositories"].documents.append(repository.copy())
+        first_tests = [
+            {"test_name": "Keep", "relative_file_path": "suite.robot", "line_number": 2, "tags": []},
+            {"test_name": "Removed", "relative_file_path": "suite.robot", "line_number": 5, "tags": []},
+        ]
+        second_tests = first_tests[:1]
+        with (
+            patch.object(repository_routes, "db", fake_db),
+            patch.object(repository_routes, "run_in_threadpool", new=AsyncMock(side_effect=[("a" * 40, first_tests, True), ("a" * 40, second_tests, True)])),
+        ):
+            await repository_routes.scan_repository(repository)
+            await repository_routes.scan_repository(repository)
+        current = fake_db["discovered_tests"].documents
+        self.assertEqual([item["test_name"] for item in current], ["Keep"])
 
     async def test_scan_failure_updates_only_repository_state(self):
         fake_db = _DB()

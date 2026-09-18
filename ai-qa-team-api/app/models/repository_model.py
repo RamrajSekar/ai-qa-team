@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+
+from app.models.test_contract_model import TestContract
 
 
 SourceType = Literal["GITHUB_PUBLIC", "LOCAL"]
@@ -31,18 +33,9 @@ class RepositoryResponse(BaseModel):
     test_count: int = 0
     last_scanned_at: datetime | None = None
     scanner_version: str
+    registry_version: str = "test-registry-1"
     created_at: datetime
     updated_at: datetime
 
 
-class DiscoveredTestResponse(BaseModel):
-    test_id: str
-    project_id: str
-    repository_id: str
-    source_commit_sha: str
-    framework: str
-    test_name: str
-    relative_file_path: str
-    line_number: int | None = None
-    tags: list[str] = Field(default_factory=list)
-    discovered_at: datetime
+DiscoveredTestResponse = TestContract

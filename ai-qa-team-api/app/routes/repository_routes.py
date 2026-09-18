@@ -12,11 +12,15 @@ from app.models.repository_model import (
 )
 from app.services.repository_discovery_service import (
     SCANNER_VERSION,
-    discovered_test_id,
     static_scan,
     validate_branch,
     validate_local_repository_path,
     validate_public_github_url,
+)
+from app.services.test_registry_service import (
+    REGISTRY_VERSION,
+    build_test_contract,
+    canonical_test_contract,
 )
 from app.services.story_service import get_next_sequence
 from app.utils.auth_dependency import get_current_user
@@ -59,21 +63,7 @@ async def scan_repository(repository: dict) -> dict:
         status = "completed" if has_robot_files else "unsupported"
         error = None if has_robot_files else "Robot Framework was not detected. This MVP scans .robot files only."
         discovered_at = datetime.now(timezone.utc)
-        documents = [
-            {
-                "test_id": discovered_test_id(
-                    repository["repository_id"], commit_sha,
-                    item["relative_file_path"], item["test_name"],
-                ),
-                "project_id": repository["project_id"],
-                "repository_id": repository["repository_id"],
-                "source_commit_sha": commit_sha,
-                "framework": "robot",
-                "discovered_at": discovered_at,
-                **item,
-            }
-            for item in tests
-        ]
+        documents = [build_test_contract(repository, commit_sha, item, discovered_at) for item in tests]
         await db["discovered_tests"].delete_many({
             "repository_id": repository["repository_id"],
             "source_commit_sha": commit_sha,
@@ -88,6 +78,8 @@ async def scan_repository(repository: dict) -> dict:
             "test_count": len(documents),
             "last_scanned_at": discovered_at,
             "updated_at": discovered_at,
+            "scanner_version": SCANNER_VERSION,
+            "registry_version": REGISTRY_VERSION,
         }
         await db["repositories"].update_one(
             {"repository_id": repository["repository_id"]}, {"$set": updates}
@@ -152,6 +144,7 @@ async def connect_repository(
         "test_count": 0,
         "last_scanned_at": None,
         "scanner_version": SCANNER_VERSION,
+        "registry_version": REGISTRY_VERSION,
         "created_by": email,
         "created_at": now,
         "updated_at": now,
@@ -195,4 +188,4 @@ async def list_discovered_tests(repository_id: str, current_user=Depends(get_cur
         "repository_id": repository_id,
         "source_commit_sha": commit_sha,
     }).sort([("relative_file_path", 1), ("line_number", 1)])
-    return [{key: value for key, value in doc.items() if key != "_id"} async for doc in cursor]
+    return [canonical_test_contract(doc, repository) async for doc in cursor]

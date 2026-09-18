@@ -1,0 +1,60 @@
+from datetime import datetime
+
+from app.models.test_contract_model import TestContract
+from app.services.repository_discovery_service import SCANNER_VERSION, discovered_test_id
+
+
+CONTRACT_VERSION = "1"
+REGISTRY_VERSION = "test-registry-1"
+
+
+def build_test_contract(
+    repository: dict,
+    source_commit_sha: str,
+    discovered_test: dict,
+    discovered_at: datetime,
+) -> dict:
+    """Map deterministic scanner output into the canonical registry contract."""
+    document = {
+        "contract_version": CONTRACT_VERSION,
+        "registry_version": REGISTRY_VERSION,
+        "scanner_version": SCANNER_VERSION,
+        "test_id": discovered_test_id(
+            repository["repository_id"], source_commit_sha,
+            discovered_test["relative_file_path"], discovered_test["test_name"],
+        ),
+        "project_id": repository["project_id"],
+        "repository_id": repository["repository_id"],
+        "source_commit_sha": source_commit_sha,
+        "framework": "robot",
+        "test_name": discovered_test["test_name"],
+        "relative_file_path": discovered_test["relative_file_path"],
+        "line_number": discovered_test.get("line_number"),
+        "tags": discovered_test.get("tags", []),
+        "inputs": [],
+        "runtime_dependencies": [],
+        "capabilities": [],
+        "assertions": [],
+        "confidence": None,
+        "discovered_at": discovered_at,
+        "updated_at": discovered_at,
+    }
+    return TestContract.model_validate(document).model_dump()
+
+
+def canonical_test_contract(document: dict, repository: dict) -> dict:
+    """Provide a complete contract for legacy discovered-test rows without rewriting Mongo."""
+    discovered_at = document["discovered_at"]
+    compatible = {
+        **document,
+        "contract_version": document.get("contract_version", CONTRACT_VERSION),
+        "registry_version": document.get("registry_version", REGISTRY_VERSION),
+        "scanner_version": document.get("scanner_version", repository.get("scanner_version", SCANNER_VERSION)),
+        "inputs": document.get("inputs", []),
+        "runtime_dependencies": document.get("runtime_dependencies", []),
+        "capabilities": document.get("capabilities", []),
+        "assertions": document.get("assertions", []),
+        "confidence": document.get("confidence"),
+        "updated_at": document.get("updated_at", discovered_at),
+    }
+    return TestContract.model_validate(compatible).model_dump()
