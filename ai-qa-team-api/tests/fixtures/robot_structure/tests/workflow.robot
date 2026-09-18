@@ -5,6 +5,9 @@ Resource    ../../../../outside.resource
 Resource    ${DYNAMIC_RESOURCE}
 Resource    https://example.com/remote.resource
 
+*** Variables ***
+${TOUR_CODE}    ABC
+
 *** Test Cases ***
 Structural Workflow
     [Tags]    structural    robot
@@ -13,6 +16,9 @@ Structural Workflow
     Duplicate Keyword
     Log    preserved literal
     Unknown Custom Keyword
+    ${contact}=    Create Contact
+    Local Keyword    ${contact}    ${TOUR_CODE}
+    Log    %{TEST_USER}
 
 *** Keywords ***
 Local Keyword

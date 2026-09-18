@@ -15,6 +15,7 @@ public class JUnit4SeleniumTest {
     @Test
     public void legacyFlow() {
         String code = "variable";
+        String contact = createContact();
         loginPage.login("literal", code, System.getenv("TEST_USER"), data.getCode());
         loginPage.navigate("/home");
         driver.get(Config.TEST_URL);
@@ -24,6 +25,9 @@ public class JUnit4SeleniumTest {
         action.perform();
         localHelper();
         unknownMethod();
+        TestHelper.prepare(contact);
+        if (flag) { code = "A"; } else { code = "B"; }
+        TestHelper.prepare(code);
     }
 
     private void localHelper() {

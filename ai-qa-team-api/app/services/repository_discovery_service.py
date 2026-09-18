@@ -1,4 +1,5 @@
 import hashlib
+from collections import defaultdict
 import os
 from pathlib import Path
 import re
@@ -10,15 +11,16 @@ from urllib.parse import urlparse
 from fastapi import HTTPException
 from robot.api import get_model
 from robot.libdoc import LibraryDocumentation
-from robot.parsing.model.blocks import KeywordSection, SettingSection, TestCaseSection
-from robot.parsing.model.statements import Arguments, KeywordCall, LibraryImport, ResourceImport, Tags
+from robot.parsing.model.blocks import KeywordSection, SettingSection, TestCaseSection, VariableSection
+from robot.parsing.model.statements import Arguments, KeywordCall, LibraryImport, ResourceImport, Tags, Variable
 
 from app.services.playwright_discovery_service import discover_playwright_tests
 from app.services.selenium_java_discovery_service import discover_selenium_java_tests
+from app.services.value_provenance_service import build_value_provenance
 
 
-SCANNER_VERSION = "robot-structure-2"
-REPOSITORY_SCANNER_VERSION = "repository-static-3"
+SCANNER_VERSION = "robot-provenance-3"
+REPOSITORY_SCANNER_VERSION = "repository-static-4"
 GITHUB_PATH = re.compile(r"^/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?$")
 
 
@@ -135,6 +137,7 @@ def _call(statement: KeywordCall, source_file: str, sequence: int) -> dict:
         "arguments": list(statement.args),
         "source_file": source_file,
         "line_number": getattr(statement, "lineno", None),
+        "assignments": list(statement.assign),
     }
 
 
@@ -144,6 +147,7 @@ def discover_robot_tests(root: Path) -> list[dict]:
     resource_imports: dict[str, list[dict]] = {}
     libraries: dict[str, set[str]] = {}
     definitions: dict[str, dict] = {}
+    variable_bindings: dict[str, list[dict]] = defaultdict(list)
 
     source_files = sorted({*root.rglob("*.robot"), *root.rglob("*.resource")})
     for source_file in source_files:
@@ -187,6 +191,15 @@ def discover_robot_tests(root: Path) -> list[dict]:
                         "declared_arguments": declared_arguments,
                         "nested_calls": nested_calls,
                     }
+            elif isinstance(section, VariableSection):
+                for statement in section.body:
+                    if isinstance(statement, Variable) and statement.value:
+                        variable_bindings[relative_path].append({
+                            "name": statement.name.strip("${}@&%{}"),
+                            "expression": " ".join(statement.value), "source_file": relative_path,
+                            "line_number": getattr(statement, "lineno", None), "evidence_kind": "DECLARATION",
+                            "origin_kind": "LITERAL",
+                        })
         resource_imports[relative_path] = imports
         libraries[relative_path] = imported_libraries
 
@@ -284,6 +297,25 @@ def discover_robot_tests(root: Path) -> list[dict]:
                         "steps": steps,
                         "resource_imports": imports,
                         "keyword_references": sorted(referenced.values(), key=lambda item: item["keyword_reference"]),
+                        "value_provenance": build_value_provenance(
+                            test.name,
+                            steps,
+                            list(referenced.values()),
+                            [
+                                {**item, "scope": test.name, "name": item["name"]}
+                                for item in variable_bindings.get(relative_path, [])
+                            ] + [
+                                {
+                                    "scope": test.name,
+                                    "name": assignment.rstrip("=").strip().strip("${}@&%{}"),
+                                    "expression": f"{call['name']}({', '.join(call['arguments'])})",
+                                    "source_file": relative_path, "line_number": call.get("line_number"),
+                                    "evidence_kind": "ASSIGNMENT",
+                                    "origin_kind": "CALL_RESULT",
+                                }
+                                for call in raw_calls for assignment in call.get("assignments", [])
+                            ],
+                        ),
                     })
     return discovered
 

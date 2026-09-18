@@ -16,6 +16,9 @@ test('basic structure', { tag: ['@structural', '@typescript'] }, async ({ page }
     const month = '11';
     const year = '2026';
     const examplePage = new ExamplePage(page);
+    let latest = 'A';
+    latest = 'B';
+    const contact = await createContact();
     await localHelper('literal value');
     await importedHelper(variableValue, process.env.TEST_USER, `${month}-${year}`);
     await duplicateHelper();
@@ -25,4 +28,7 @@ test('basic structure', { tag: ['@structural', '@typescript'] }, async ({ page }
     await unknownHelper();
     await handlers[methodName]();
     recursiveHelper();
+    await importedHelper(latest, contact.email);
+    if (flag) { latest = 'C'; } else { latest = 'D'; }
+    await importedHelper(latest);
 });

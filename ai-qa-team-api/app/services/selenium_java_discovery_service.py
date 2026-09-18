@@ -7,8 +7,10 @@ from typing import Iterable
 from tree_sitter import Language, Node, Parser
 import tree_sitter_java
 
+from app.services.value_provenance_service import build_value_provenance
 
-SELENIUM_JAVA_SCANNER_VERSION = "selenium-java-1"
+
+SELENIUM_JAVA_SCANNER_VERSION = "selenium-java-provenance-2"
 IGNORED_DIRECTORIES = {".git", ".gradle", ".idea", "node_modules", "target", "build", "dist"}
 MAX_SOURCE_BYTES = 2 * 1024 * 1024
 TEST_IMPORTS = {
@@ -118,6 +120,39 @@ def _class_ancestor(node: Node) -> Node | None:
     while parent and parent.type not in {"class_declaration", "interface_declaration"}:
         parent = parent.parent
     return parent
+
+
+def _value_bindings(source: bytes, scope_node: Node | None, scope: str, source_file: str) -> list[dict]:
+    bindings: list[dict] = []
+    if not scope_node:
+        return bindings
+    for node in _walk(scope_node):
+        name_node = None
+        value_node = None
+        evidence_kind = "ASSIGNMENT"
+        if node.type == "variable_declarator":
+            name_node = node.child_by_field_name("name")
+            value_node = node.child_by_field_name("value")
+            evidence_kind = "DECLARATION"
+        elif node.type == "assignment_expression":
+            name_node = node.child_by_field_name("left")
+            value_node = node.child_by_field_name("right")
+        if not name_node or not value_node or name_node.type != "identifier":
+            continue
+        ancestor = node.parent
+        ambiguous = False
+        while ancestor and ancestor != scope_node:
+            if ancestor.type in {"if_statement", "switch_expression", "for_statement", "while_statement"}:
+                ambiguous = True
+                break
+            ancestor = ancestor.parent
+        bindings.append({
+            "scope": scope, "name": _text(source, name_node), "expression": _text(source, value_node),
+            "source_file": source_file, "line_number": node.start_point[0] + 1,
+            "evidence_kind": evidence_kind, "ambiguous": ambiguous,
+            "origin_kind": "CALL_RESULT" if any(child.type == "method_invocation" for child in _walk(value_node)) else None,
+        })
+    return bindings
 
 
 def discover_selenium_java_tests(root: Path) -> list[dict]:
@@ -323,5 +358,21 @@ def discover_selenium_java_tests(root: Path) -> list[dict]:
             "keyword_references": [],
             "source_imports": source_imports[source_file],
             "callable_references": sorted(referenced.values(), key=lambda item: item["callable_reference"]),
+            "value_provenance": build_value_provenance(
+                f"{qualified_class}.{definition['method_name']}",
+                steps,
+                list(referenced.values()),
+                _value_bindings(
+                    parsed[source_file][0], definition.get("body"),
+                    f"{qualified_class}.{definition['method_name']}", source_file,
+                ) + [
+                    binding
+                    for item in referenced
+                    for binding in _value_bindings(
+                        parsed[definitions[item]["source_file"]][0], definitions[item].get("body"),
+                        item, definitions[item]["source_file"],
+                    )
+                ],
+            ),
         })
     return discovered

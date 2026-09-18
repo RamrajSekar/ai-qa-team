@@ -40,11 +40,12 @@ class PlaywrightDiscoveryTests(unittest.TestCase):
         test = next(item for item in discover_playwright_tests(FIXTURE) if item["test_name"] == "basic structure")
         steps = test["steps"]
         self.assertEqual([step["sequence"] for step in steps], list(range(1, len(steps) + 1)))
-        by_name = {step["name"]: step for step in steps}
+        by_name = {step["name"]: step for step in steps if step["name"] != "importedHelper"}
+        imported = next(step for step in steps if step["name"] == "importedHelper" and len(step["arguments"]) == 3)
         self.assertEqual(by_name["localHelper"]["arguments"], ["'literal value'"])
-        self.assertEqual(by_name["importedHelper"]["arguments"], ["variableValue", "process.env.TEST_USER", "`${month}-${year}`"])
+        self.assertEqual(imported["arguments"], ["variableValue", "process.env.TEST_USER", "`${month}-${year}`"])
         self.assertEqual(by_name["localHelper"]["resolution_status"], "RESOLVED")
-        self.assertEqual(by_name["importedHelper"]["resolution_status"], "RESOLVED")
+        self.assertEqual(imported["resolution_status"], "RESOLVED")
         self.assertEqual(by_name["duplicateHelper"]["resolution_status"], "AMBIGUOUS")
         self.assertEqual(by_name["examplePage.open"]["resolution_status"], "RESOLVED")
         self.assertEqual(by_name["page.goto"]["resolution_status"], "EXTERNAL_LIBRARY")

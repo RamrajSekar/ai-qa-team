@@ -9,8 +9,10 @@ from tree_sitter import Language, Node, Parser
 import tree_sitter_javascript
 import tree_sitter_typescript
 
+from app.services.value_provenance_service import build_value_provenance
 
-PLAYWRIGHT_SCANNER_VERSION = "playwright-tsjs-1"
+
+PLAYWRIGHT_SCANNER_VERSION = "playwright-provenance-2"
 SUPPORTED_SUFFIXES = (".spec.ts", ".test.ts", ".spec.js", ".test.js")
 SOURCE_EXTENSIONS = (".ts", ".js", ".tsx", ".jsx")
 PLAYWRIGHT_MODULE = "@playwright/test"
@@ -158,6 +160,39 @@ def _test_identity(source: bytes, node: Node, aliases: set[str], test_name: str)
     return " > ".join([*reversed(groups), test_name])
 
 
+def _value_bindings(source: bytes, scope_node: Node | None, scope: str, source_file: str) -> list[dict]:
+    bindings: list[dict] = []
+    if not scope_node:
+        return bindings
+    for node in _walk(scope_node):
+        name_node = None
+        value_node = None
+        evidence_kind = "ASSIGNMENT"
+        if node.type == "variable_declarator":
+            name_node = node.child_by_field_name("name")
+            value_node = node.child_by_field_name("value")
+            evidence_kind = "DECLARATION"
+        elif node.type == "assignment_expression":
+            name_node = node.child_by_field_name("left")
+            value_node = node.child_by_field_name("right")
+        if not name_node or not value_node or name_node.type != "identifier":
+            continue
+        ancestor = node.parent
+        ambiguous = False
+        while ancestor and ancestor != scope_node:
+            if ancestor.type in {"if_statement", "switch_statement", "for_statement", "while_statement"}:
+                ambiguous = True
+                break
+            ancestor = ancestor.parent
+        bindings.append({
+            "scope": scope, "name": _text(source, name_node), "expression": _text(source, value_node),
+            "source_file": source_file, "line_number": node.start_point[0] + 1,
+            "evidence_kind": evidence_kind, "ambiguous": ambiguous,
+            "origin_kind": "CALL_RESULT" if any(child.type == "call_expression" for child in _walk(value_node)) else None,
+        })
+    return bindings
+
+
 def discover_playwright_tests(root: Path) -> list[dict]:
     root = root.resolve()
     files = sorted(
@@ -270,6 +305,7 @@ def discover_playwright_tests(root: Path) -> list[dict]:
                     "line_number": node.start_point[0] + 1,
                     "declared_parameters": _parameters(source, parameters),
                     "nested_calls": raw_calls,
+                    "body_node": body,
                 }
                 if kind == "method" and class_name:
                     classes_by_file[relative][name].append(reference)
@@ -337,7 +373,7 @@ def discover_playwright_tests(root: Path) -> list[dict]:
         source, root_node = parsed[definition["source_file"]]
         scope_instances = instances(source, root_node)
         resolved_definitions[reference] = {
-            **definition,
+            **{key: value for key, value in definition.items() if key != "body_node"},
             "nested_calls": [
                 resolve_call(call, definition["source_file"], scope_instances, definition["name"])
                 for call in definition["nested_calls"]
@@ -384,11 +420,19 @@ def discover_playwright_tests(root: Path) -> list[dict]:
                     call["callable_reference"] for call in definition["nested_calls"]
                     if call["callable_reference"] and call["callable_reference"] not in referenced
                 )
+            test_identity = _test_identity(source, node, aliases, test_name)
+            bindings = _value_bindings(source, body, test_identity, relative)
+            for reference in referenced:
+                raw_definition = definitions[reference]
+                definition_source, _ = parsed[raw_definition["source_file"]]
+                bindings.extend(_value_bindings(
+                    definition_source, raw_definition.get("body_node"), reference, raw_definition["source_file"]
+                ))
             discovered.append({
                 "framework": "playwright",
                 "scanner_version": PLAYWRIGHT_SCANNER_VERSION,
                 "test_name": test_name,
-                "test_identity": _test_identity(source, node, aliases, test_name),
+                "test_identity": test_identity,
                 "relative_file_path": relative,
                 "line_number": node.start_point[0] + 1,
                 "tags": _test_tags(source, arguments),
@@ -397,5 +441,6 @@ def discover_playwright_tests(root: Path) -> list[dict]:
                 "keyword_references": [],
                 "source_imports": imports[relative],
                 "callable_references": sorted(referenced.values(), key=lambda item: item["callable_reference"]),
+                "value_provenance": build_value_provenance(test_identity, steps, list(referenced.values()), bindings),
             })
     return discovered

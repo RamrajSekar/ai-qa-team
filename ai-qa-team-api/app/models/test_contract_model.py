@@ -11,6 +11,11 @@ ResourceResolutionStatus = Literal["RESOLVED", "UNRESOLVED", "DYNAMIC", "REMOTE"
 SourceImportResolutionStatus = Literal[
     "RESOLVED", "UNRESOLVED", "EXTERNAL_LIBRARY", "DYNAMIC", "REMOTE", "OUTSIDE_REPOSITORY"
 ]
+ProvenanceKind = Literal[
+    "LITERAL", "VARIABLE_REFERENCE", "PARAMETER", "ARGUMENT", "ASSIGNMENT", "DECLARATION",
+    "CALL_RESULT", "MEMBER_REFERENCE", "ENV_ACCESS_EXPRESSION", "UNKNOWN_EXPRESSION", "TRAVERSAL_LIMIT",
+]
+ProvenanceResolutionStatus = Literal["RESOLVED", "PARTIAL", "AMBIGUOUS", "UNRESOLVED", "DYNAMIC"]
 
 
 class CallReference(BaseModel):
@@ -57,6 +62,18 @@ class CallableDefinitionReference(BaseModel):
     nested_calls: list[CallReference] = Field(default_factory=list)
 
 
+class ValueProvenanceRecord(BaseModel):
+    provenance_id: str
+    expression: str
+    evidence_kind: ProvenanceKind
+    source_file: str
+    line_number: int | None = None
+    resolution_status: ProvenanceResolutionStatus
+    source_ids: list[str] = Field(default_factory=list)
+    callable_reference: str | None = None
+    parameter_name: str | None = None
+
+
 class TestContract(BaseModel):
     """Canonical framework-neutral record for one test at one repository revision."""
 
@@ -80,6 +97,7 @@ class TestContract(BaseModel):
     keyword_references: list[KeywordDefinitionReference] = Field(default_factory=list)
     source_imports: list[SourceImportReference] = Field(default_factory=list)
     callable_references: list[CallableDefinitionReference] = Field(default_factory=list)
+    value_provenance: list[ValueProvenanceRecord] = Field(default_factory=list)
     inputs: list[dict[str, Any]] = Field(default_factory=list)
     runtime_dependencies: list[dict[str, Any]] = Field(default_factory=list)
     capabilities: list[dict[str, Any]] = Field(default_factory=list)

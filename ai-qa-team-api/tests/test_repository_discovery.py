@@ -220,7 +220,7 @@ class RepositoryDiscoveryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(test["tags"], ["structural", "robot"])
 
         steps = test["steps"]
-        self.assertEqual([step["sequence"] for step in steps], [1, 2, 3, 4, 5])
+        self.assertEqual([step["sequence"] for step in steps], list(range(1, len(steps) + 1)))
         self.assertEqual(steps[0]["arguments"], ["literal value", "${VARIABLE_VALUE}"])
         self.assertEqual(steps[0]["resolution_status"], "RESOLVED")
         self.assertEqual(steps[0]["source_file"], "tests/workflow.robot")
@@ -287,6 +287,7 @@ class RepositoryDiscoveryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["keyword_references"], [])
         self.assertEqual(result["source_imports"], [])
         self.assertEqual(result["callable_references"], [])
+        self.assertEqual(result["value_provenance"], [])
 
     async def test_same_commit_rescan_replaces_removed_tests(self):
         repository = {
