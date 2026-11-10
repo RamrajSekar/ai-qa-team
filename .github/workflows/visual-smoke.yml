@@ -143,7 +143,15 @@ jobs:
           cd visual-runner
           python -m linux.check_dependencies
 
+      - name: Allow unprivileged user namespaces for Chrome
+        run: |
+          echo "before: $(sysctl -n kernel.apparmor_restrict_unprivileged_userns)"
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          echo "after:  $(sysctl -n kernel.apparmor_restrict_unprivileged_userns)"
+          unshare -U true && echo "userns: ok" || { echo "userns: BLOCKED"; exit 1; }
+
       - name: Probe native Chrome with sandbox enabled
+        id: native-probe
         run: |
           evidence="$RUNNER_TEMP/visual-smoke-native"
           mkdir -p "$evidence"
@@ -164,6 +172,26 @@ jobs:
           } | tee "$evidence/chrome-probe.txt"
           exit "$result"
 
+      - name: Compare native startup with Chrome sandbox disabled
+        if: failure() && steps.native-probe.outcome == 'failure'
+        run: |
+          evidence="$RUNNER_TEMP/visual-smoke-native"
+          profile=$(mktemp -d)
+          trap 'rm -rf -- "$profile"' EXIT
+          ulimit -c 0
+          if timeout --kill-after=5s 20s "$RUNNER_TEMP/cft-native/chrome-linux64/chrome" \
+            --headless=new --no-sandbox --user-data-dir="$profile" --disable-background-networking \
+            --proxy-server=http://127.0.0.1:9 '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1' \
+            --enable-logging=stderr --dump-dom about:blank > "$profile/chrome.log" 2>&1; then
+            result=0
+          else
+            result=$?
+          fi
+          {
+            printf 'Native Chrome diagnostic (--no-sandbox) exit=%s\n' "$result"
+            head -c 8192 "$profile/chrome.log"
+          } | tee "$evidence/chrome-probe-no-sandbox.txt"
+
       - name: Run controlled browser smoke check natively
         working-directory: visual-runner
         run: |
@@ -176,6 +204,7 @@ jobs:
           name: visual-smoke-native-evidence
           path: |
             ${{ runner.temp }}/visual-smoke-native/chrome-probe.txt
+            ${{ runner.temp }}/visual-smoke-native/chrome-probe-no-sandbox.txt
             ${{ runner.temp }}/visual-smoke-native/*/state.json
             ${{ runner.temp }}/visual-smoke-native/*/01-open.png
             ${{ runner.temp }}/visual-smoke-native/*/02-filled.png
