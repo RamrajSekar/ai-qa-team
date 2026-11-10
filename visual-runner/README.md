@@ -229,3 +229,29 @@ bounded waits/scrolling, independent assertions, selective retained evidence and
 latency/usage controls. See MVP_SPEC/IMPLEMENTATION_PLAN and DECISIONS A14. Five
 Linux check slots remain the MVP/default capacity; this documentation amendment
 changes no runtime setting or dependency and does not qualify five-way reliability.
+## BrowserStack visual button experiment
+
+The separate BrowserStack experiment uses one remote session and at most one
+OpenAI image request to locate a visible button on a fixed synthetic page.
+The fixture varies the button position. The probe requires a unique proposal,
+validates pixel bounds, and compares the current URL and screenshot immediately
+before clicking once. A synthetic title change confirms the click reached the
+button. Only the post-click screenshot is kept. This is a mechanical experiment
+outside the application gateway, project APIs, and Linux container qualification.
+
+From `visual-runner`, with the runner virtual environment activated, set
+`BROWSERSTACK_USERNAME`, `BROWSERSTACK_ACCESS_KEY`, `OPENAI_API_KEY` and an existing
+directory in `RUNNER_TEMP` through your environment or secret store, then run:
+
+```powershell
+python -c 'from linux.browserstack_probe import main; main(visual=True)'
+python -m unittest discover -s tests -p test_visual_button_probe.py -v
+```
+
+On the smoke branch, a push that changes `browserstack-probe.yml` and includes
+`[visual-button]` in its tip commit message selects the visual experiment.
+The manual Actions workflow also has a `visual_button` input. GitHub requires a
+manually dispatched workflow to exist on the default branch. Configure the
+three named credentials as Actions secrets before dispatching. The regular
+push-triggered BrowserStack form probe does not use the OpenAI secret.
+The guard tests use doubles and make no model or BrowserStack calls.

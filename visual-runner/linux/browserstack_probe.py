@@ -10,6 +10,7 @@ import httpx
 from lab.keywords import SmokeLibrary
 from lab.sample import HTML
 from lab.webdriver import DirectWebDriver
+from linux import visual_button_probe
 
 
 class RemoteFixtureBrowser(DirectWebDriver):
@@ -51,11 +52,13 @@ class FixtureContext:
         pass  # The outer probe reports the failed stage without provider details.
 
 
-def main():
+def main(*, visual=False):
     username = os.environ.get('BROWSERSTACK_USERNAME')
     access_key = os.environ.get('BROWSERSTACK_ACCESS_KEY')
     if not username or not access_key:
         raise SystemExit('Missing BrowserStack Automate credentials in Actions secrets.')
+    if visual and not os.environ.get('OPENAI_API_KEY'):
+        raise SystemExit('Missing OpenAI credential for the visual button experiment.')
 
     stage = 'session'
     try:
@@ -72,9 +75,11 @@ def main():
 
             session = command('POST', 'session', {'capabilities': {'alwaysMatch': {
                 'browserName': 'chrome',
+                **({'goog:chromeOptions': {'args': ['--force-device-scale-factor=1']}} if visual else {}),
                 'bstack:options': {
                     'os': 'Windows', 'osVersion': '11',
-                    'projectName': 'AI QA Squad', 'sessionName': 'Synthetic form smoke check',
+                    'projectName': 'AI QA Squad',
+                    'sessionName': 'Synthetic visual button check' if visual else 'Synthetic form smoke check',
                     'idleTimeout': 60,
                 },
             }}})['sessionId']
@@ -82,7 +87,9 @@ def main():
                 raise RuntimeError('Unexpected session identifier')
             route = f'session/{session}'
             try:
-                fixture = 'data:text/html;base64,' + base64.b64encode(HTML).decode('ascii')
+                fixture = visual_button_probe.fixture() if visual else (
+                    'data:text/html;base64,' + base64.b64encode(HTML).decode('ascii')
+                )
                 evidence = Path(os.environ['RUNNER_TEMP'], 'browserstack-fixture')
                 evidence.mkdir(exist_ok=True)
                 browser = RemoteFixtureBrowser(command, session, fixture)
@@ -90,11 +97,16 @@ def main():
                 stage = 'window_setup'
                 browser.command('POST', 'window/rect', {'width': 1000, 'height': 800})
                 stage = 'navigation'
-                workflow.open_sample()
-                stage = 'form_input'
-                workflow.fill_form()
-                stage = 'confirmation'
-                workflow.confirm()
+                if visual:
+                    browser.navigate_sample()
+                    stage = 'visual_button'
+                    visual_button_probe.run(browser, evidence)
+                else:
+                    workflow.open_sample()
+                    stage = 'form_input'
+                    workflow.fill_form()
+                    stage = 'confirmation'
+                    workflow.confirm()
             finally:
                 try:
                     command('DELETE', route)
@@ -103,10 +115,12 @@ def main():
                     raise
     except Exception as exc:
         # Provider responses and request details can include credentials.
-        detail = str(exc) if re.fullmatch(r'HTTP [0-9]{3}', str(exc)) else type(exc).__name__
+        detail = str(exc) if (
+            type(exc) is RuntimeError and re.fullmatch(r'HTTP [0-9]{3}|VISUAL_[A-Z_]+', str(exc))
+        ) else type(exc).__name__
         raise SystemExit(f'BrowserStack probe failed at {stage}: {detail}') from None
 
-    print('Browser smoke check completed')
+    print('Synthetic visual button click confirmed' if visual else 'Browser smoke check completed')
 
 
 if __name__ == '__main__':
