@@ -53,7 +53,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12.12"
-      - run: python -m pip install -r visual-runner/requirements.txt
+      - run: python -m pip install -r visual-runner/requirements.txt Pillow==13.0.0
       - name: Locate and click the synthetic button
         working-directory: visual-runner
         env:

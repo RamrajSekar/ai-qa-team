@@ -232,10 +232,11 @@ changes no runtime setting or dependency and does not qualify five-way reliabili
 ## BrowserStack visual button experiment
 
 The separate BrowserStack experiment uses one remote session and at most one
-OpenAI image request to locate a visible button on a fixed synthetic page.
-The fixture varies the button position. The probe requires a unique proposal,
-maps normalized coordinates to screenshot pixels, and rejects coordinates outside
-the known synthetic button bounds. It compares the current URL and screenshot
+OpenAI image request to confirm the label of a visible button on a fixed synthetic
+page. The fixture varies the button position. Pillow locates a single candidate
+using the synthetic button's color and shape. The model sees only its crop.
+Trusted code rejects coordinates outside the known synthetic button bounds.
+The probe compares the current URL and screenshot
 immediately before clicking once. A synthetic title change confirms the click
 reached the button. It keeps one screenshot on confirmation, target rejection,
 or an unconfirmed click. This is a mechanical experiment
@@ -246,6 +247,7 @@ From `visual-runner`, with the runner virtual environment activated, set
 directory in `RUNNER_TEMP` through your environment or secret store, then run:
 
 ```powershell
+python -m pip install Pillow==13.0.0
 python -c 'from linux.browserstack_probe import main; main(visual=True)'
 python -m unittest discover -s tests -p test_visual_button_probe.py -v
 ```
