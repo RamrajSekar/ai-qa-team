@@ -30,7 +30,7 @@ jobs:
       - name: Run controlled browser smoke check
         run: |
           docker run --name ai-qa-visual-smoke \
-            --no-sandbox --network none --shm-size 512m --memory 2g --cpus 2 --pids-limit 256 \
+            --network none --shm-size 512m --memory 2g --cpus 2 --pids-limit 256 \
             --mount source=ai-qa-visual-smoke-output,target=/output \
             ai-qa-visual-smoke:ci
 
