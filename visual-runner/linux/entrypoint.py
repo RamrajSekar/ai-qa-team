@@ -1,4 +1,4 @@
-"""Fixed, headless synthetic spike. No URLs/configuration supplied by callers."""
+"""Fixed, headless synthetic smoke check with bounded Linux supervision."""
 import functools
 import json
 import os
@@ -21,7 +21,7 @@ def child():
     main(browser_factory=functools.partial(DirectWebDriver, tree_factory=LinuxProcessTree), allow_linux=True)
 
 
-def main():
+def main(*, output_root=Path('/output'), browser_root=Path('/opt/cft')):
     if sys.platform != 'linux' or os.geteuid() == 0:
         raise SystemExit('NON_ROOT_LINUX_CONTAINER_REQUIRED')
     if len(sys.argv) == 3 and sys.argv[1] == '--child':
@@ -31,11 +31,11 @@ def main():
     if len(sys.argv) != 1:
         raise SystemExit('NO_CALLER_ARGUMENTS_ALLOWED')
     os.umask(0o077)
-    workspace = Path('/output') / uuid.uuid4().hex
+    workspace = output_root / uuid.uuid4().hex
     workspace.mkdir()
     atomic_json(workspace / 'config.json', {
-        'chrome': '/opt/cft/chrome-linux64/chrome',
-        'driver': '/opt/cft/chromedriver-linux64/chromedriver',
+        'chrome': str(browser_root / 'chrome-linux64' / 'chrome'),
+        'driver': str(browser_root / 'chromedriver-linux64' / 'chromedriver'),
         'headed': False, 'timeout': 90})
     heartbeat = workspace / 'heartbeat'
     heartbeat.touch()

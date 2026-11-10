@@ -108,3 +108,77 @@ jobs:
             ${{ runner.temp }}/visual-smoke/*/03-confirmed.png
           if-no-files-found: warn
           retention-days: 14
+
+  native-smoke:
+    name: Native Linux smoke experiment
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CFT_VERSION: "146.0.7680.31"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.12"
+
+      - name: Install pinned runner and browser pair
+        run: |
+          python -m pip install -r visual-runner/requirements.txt
+          python -m pip check
+          browser_root="$RUNNER_TEMP/cft-native"
+          mkdir -p "$browser_root"
+          for component in chrome chromedriver; do
+            archive="$RUNNER_TEMP/$component-linux64.zip"
+            curl --fail --location --proto '=https' --max-time 120 \
+              "https://storage.googleapis.com/chrome-for-testing-public/$CFT_VERSION/linux64/$component-linux64.zip" \
+              --output "$archive"
+            unzip -q "$archive" -d "$browser_root"
+          done
+          "$browser_root/chrome-linux64/chrome" --version | grep -F "$CFT_VERSION"
+          "$browser_root/chromedriver-linux64/chromedriver" --version | grep -F "$CFT_VERSION"
+          cd visual-runner
+          python -m linux.check_dependencies
+
+      - name: Probe native Chrome with sandbox enabled
+        run: |
+          evidence="$RUNNER_TEMP/visual-smoke-native"
+          mkdir -p "$evidence"
+          profile=$(mktemp -d)
+          trap 'rm -rf -- "$profile"' EXIT
+          ulimit -c 0
+          if timeout --kill-after=5s 20s "$RUNNER_TEMP/cft-native/chrome-linux64/chrome" \
+            --headless=new --user-data-dir="$profile" --disable-background-networking \
+            --proxy-server=http://127.0.0.1:9 '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1' \
+            --enable-logging=stderr --dump-dom about:blank > "$profile/chrome.log" 2>&1; then
+            result=0
+          else
+            result=$?
+          fi
+          {
+            printf 'Native Chrome probe exit=%s\n' "$result"
+            head -c 8192 "$profile/chrome.log"
+          } | tee "$evidence/chrome-probe.txt"
+          exit "$result"
+
+      - name: Run controlled browser smoke check natively
+        working-directory: visual-runner
+        run: |
+          python -c 'import os; from pathlib import Path; from linux.entrypoint import main; temp = Path(os.environ["RUNNER_TEMP"]); main(output_root=temp / "visual-smoke-native", browser_root=temp / "cft-native")'
+
+      - name: Upload native smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-smoke-native-evidence
+          path: |
+            ${{ runner.temp }}/visual-smoke-native/chrome-probe.txt
+            ${{ runner.temp }}/visual-smoke-native/*/state.json
+            ${{ runner.temp }}/visual-smoke-native/*/01-open.png
+            ${{ runner.temp }}/visual-smoke-native/*/02-filled.png
+            ${{ runner.temp }}/visual-smoke-native/*/03-confirmed.png
+          if-no-files-found: warn
+          retention-days: 14
