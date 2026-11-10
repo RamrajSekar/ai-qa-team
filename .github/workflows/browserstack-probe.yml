@@ -65,6 +65,6 @@ jobs:
         if: always()
         with:
           name: browserstack-visual-button
-          path: ${{ runner.temp }}/browserstack-fixture/button-after-click.png
+          path: ${{ runner.temp }}/browserstack-fixture/button-*.png
           if-no-files-found: ignore
           retention-days: 7

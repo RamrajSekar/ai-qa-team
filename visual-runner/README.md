@@ -234,9 +234,11 @@ changes no runtime setting or dependency and does not qualify five-way reliabili
 The separate BrowserStack experiment uses one remote session and at most one
 OpenAI image request to locate a visible button on a fixed synthetic page.
 The fixture varies the button position. The probe requires a unique proposal,
-validates pixel bounds, and compares the current URL and screenshot immediately
-before clicking once. A synthetic title change confirms the click reached the
-button. Only the post-click screenshot is kept. This is a mechanical experiment
+maps normalized coordinates to screenshot pixels, and rejects coordinates outside
+the known synthetic button bounds. It compares the current URL and screenshot
+immediately before clicking once. A synthetic title change confirms the click
+reached the button. It keeps one screenshot on confirmation, target rejection,
+or an unconfirmed click. This is a mechanical experiment
 outside the application gateway, project APIs, and Linux container qualification.
 
 From `visual-runner`, with the runner virtual environment activated, set

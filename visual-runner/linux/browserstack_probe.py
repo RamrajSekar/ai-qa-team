@@ -87,9 +87,10 @@ def main(*, visual=False):
                 raise RuntimeError('Unexpected session identifier')
             route = f'session/{session}'
             try:
-                fixture = visual_button_probe.fixture() if visual else (
-                    'data:text/html;base64,' + base64.b64encode(HTML).decode('ascii')
-                )
+                if visual:
+                    fixture, fixture_bounds = visual_button_probe.fixture()
+                else:
+                    fixture = 'data:text/html;base64,' + base64.b64encode(HTML).decode('ascii')
                 evidence = Path(os.environ['RUNNER_TEMP'], 'browserstack-fixture')
                 evidence.mkdir(exist_ok=True)
                 browser = RemoteFixtureBrowser(command, session, fixture)
@@ -100,7 +101,7 @@ def main(*, visual=False):
                 if visual:
                     browser.navigate_sample()
                     stage = 'visual_button'
-                    visual_button_probe.run(browser, evidence)
+                    visual_button_probe.run(browser, evidence, fixture_bounds)
                 else:
                     workflow.open_sample()
                     stage = 'form_input'
