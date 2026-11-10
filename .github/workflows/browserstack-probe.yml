@@ -21,15 +21,16 @@ jobs:
         with:
           python-version: "3.12.12"
       - run: python -m pip install -r visual-runner/requirements.txt
-      - name: Open the synthetic fixture on BrowserStack
+      - name: Exercise the synthetic form on BrowserStack
         working-directory: visual-runner
         env:
           BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
           BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
         run: python -m linux.browserstack_probe
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: browserstack-fixture
-          path: ${{ runner.temp }}/browserstack-fixture.png
+          path: ${{ runner.temp }}/browserstack-fixture/*.png
           if-no-files-found: ignore
           retention-days: 7
