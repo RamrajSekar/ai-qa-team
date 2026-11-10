@@ -28,6 +28,7 @@ jobs:
             --tag ai-qa-visual-smoke:ci visual-runner
 
       - name: Run controlled browser smoke check
+        id: smoke
         run: |
           docker run --name ai-qa-visual-smoke \
             --network none --shm-size 512m --memory 2g --cpus 2 --pids-limit 256 \
@@ -46,6 +47,40 @@ jobs:
             docker cp ai-qa-visual-smoke:/output/. "$evidence/"
           fi
 
+      - name: Probe Chrome startup after smoke failure
+        if: failure() && steps.smoke.outcome == 'failure'
+        run: |
+          evidence="$RUNNER_TEMP/visual-smoke"
+          mkdir -p "$evidence"
+          if docker run --rm \
+            --network none --shm-size 512m --memory 2g --cpus 2 --pids-limit 256 \
+            --entrypoint /bin/sh ai-qa-visual-smoke:ci -c '
+              set -eu
+              ulimit -c 0
+              chrome=/opt/cft/chrome-linux64/chrome
+              id
+              "$chrome" --version
+              ldd "$chrome" | awk "/not found/ { print; missing=1 } END { if (!missing) print \"No missing libraries reported by ldd\" }"
+              profile=$(mktemp -d)
+              if timeout --kill-after=5s 20s "$chrome" \
+                --headless=new --user-data-dir="$profile" \
+                --enable-logging=stderr --dump-dom about:blank \
+                > "$profile/chrome.log" 2>&1; then
+                result=0
+              else
+                result=$?
+              fi
+              printf "Chrome probe exit=%s\n" "$result"
+              head -c 8192 "$profile/chrome.log"
+              exit "$result"
+            ' > "$evidence/chrome-probe.txt" 2>&1; then
+            probe_exit=0
+          else
+            probe_exit=$?
+          fi
+          printf '\nProbe container exit=%s\n' "$probe_exit" >> "$evidence/chrome-probe.txt"
+          cat "$evidence/chrome-probe.txt"
+
       - name: Upload smoke evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -54,6 +89,7 @@ jobs:
           path: |
             ${{ runner.temp }}/visual-smoke/container-state.txt
             ${{ runner.temp }}/visual-smoke/container.log
+            ${{ runner.temp }}/visual-smoke/chrome-probe.txt
             ${{ runner.temp }}/visual-smoke/*/state.json
             ${{ runner.temp }}/visual-smoke/*/01-open.png
             ${{ runner.temp }}/visual-smoke/*/02-filled.png
