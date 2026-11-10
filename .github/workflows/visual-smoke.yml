@@ -60,6 +60,18 @@ jobs:
               chrome=/opt/cft/chrome-linux64/chrome
               id
               "$chrome" --version
+              printf "AppArmor label: "
+              cat /proc/self/attr/apparmor/current 2>/dev/null || printf "unavailable\n"
+              grep -E "^(NoNewPrivs|Seccomp|Seccomp_filters):" /proc/self/status || true
+              if command -v unshare >/dev/null 2>&1; then
+                if timeout --kill-after=2s 5s unshare -U true; then
+                  printf "User namespace probe exit=0\n"
+                else
+                  printf "User namespace probe exit=%s\n" "$?"
+                fi
+              else
+                printf "User namespace probe unavailable: unshare missing\n"
+              fi
               ldd "$chrome" | awk "/not found/ { print; missing=1 } END { if (!missing) print \"No missing libraries reported by ldd\" }"
               profile=$(mktemp -d)
               if timeout --kill-after=5s 20s "$chrome" \
