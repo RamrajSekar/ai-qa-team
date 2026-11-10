@@ -11,6 +11,8 @@ from app.config import settings
 from app.db.init_indexes import init_indexes
 from app.utils.feature_flags import feature_required
 from app.utils.auth_cookies import session_cookie_options
+from app.routes import approved_visual_runs
+from app.services import approved_visual_execution
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,7 +31,10 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.info(f"⚠️ Redis connection skipped or failed: {e}")
 
-    yield  # hand control back to FastAPI while app runs
+    try:
+        yield  # hand control back to FastAPI while app runs
+    finally:
+        await approved_visual_execution.shutdown()
 
     # --- Shutdown ---
     logger.info("👋 Shutting down AI QA Team API...")
@@ -47,6 +52,7 @@ local_origins = [
     "http://127.0.0.1:8000",  # Swagger docs
     "http://localhost:8000",
     "http://127.0.0.1:3000",  # React frontend (if applicable)
+    "http://localhost:3000",
     "http://localhost:3002",
     "http://172.20.10.6:3002",
 ]
@@ -105,6 +111,7 @@ app.include_router(project_team_routes.router)
 app.include_router(ai_configuration_routes.router)
 app.include_router(platform_admin_routes.router)
 app.include_router(bug_routes.router)
+app.include_router(approved_visual_runs.router)
 
 # === Base Routes ===
 @app.get("/features", response_model=dict[str, bool], tags=["Features"])

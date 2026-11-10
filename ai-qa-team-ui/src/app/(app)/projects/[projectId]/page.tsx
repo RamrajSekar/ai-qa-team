@@ -11,6 +11,7 @@ import { apiFetch } from '@/utils/api';
 import EditProjectModal from '@/components/projects/EditProjectModal';
 import AgentSettingsModal from '@/components/projects/AgentSettingsModal';
 import DeleteProjectModal from '@/components/projects/DeleteProjectModal';
+import ApprovedVisualRunPanel from '@/components/visual-lab/ApprovedVisualRunPanel';
 
 // ---------------------- Types ----------------------
 interface Project {
@@ -84,6 +85,8 @@ export default function ProjectPage() {
 
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<Project | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [historyError, setHistoryError] = useState(false);
 
   const [openEnvironmentModal, setOpenEnvironmentModal] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -103,9 +106,12 @@ export default function ProjectPage() {
   async function loadAll() {
     try {
       setLoading(true);
+      setLoadError(null);
+      setHistoryError(false);
 
       // 1. Project
       const p = await apiFetch(`/projects/${projectId}`);
+      if (!p.ok) throw new Error('PROJECT_UNAVAILABLE');
       const project = p.data;
 
       // 2. Stories
@@ -130,9 +136,14 @@ export default function ProjectPage() {
       const envList: Env[] = Array.isArray(envRes.data) ? envRes.data : [];
 
       // 6. Executions
-      const execRes = await apiFetch(`/execute?skip=0&limit=200`);
-      const execList: Execution[] = Array.isArray(execRes.data) ? execRes.data : [];
-      const execFiltered = execList.filter((e) => e.project_id === projectId);
+      let execFiltered: Execution[] = [];
+      try {
+        const execRes = await apiFetch(`/execute?skip=0&limit=200`);
+        if (!execRes.ok || !Array.isArray(execRes.data)) throw new Error('HISTORY_UNAVAILABLE');
+        execFiltered = execRes.data.filter((e: Execution) => e.project_id === projectId);
+      } catch {
+        setHistoryError(true);
+      }
 
       // Set state
       setProject(project);
@@ -141,9 +152,15 @@ export default function ProjectPage() {
       setTestcases(tcList);
       setEnvironments(envList);
       setExecutions(execFiltered);
+    } catch {
+      setLoadError('Unable to load project details. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
+  }
+
+  if (!loading && loadError) {
+    return <div className="p-6" role="alert"><p>{loadError}</p><button className="workspace-button" onClick={loadAll}>Try again</button></div>;
   }
 
   if (loading || !project) {
@@ -197,8 +214,8 @@ export default function ProjectPage() {
       </section>
       {canManage && <EnvironmentModal open={openEnvironmentModal} onClose={() => setOpenEnvironmentModal(false)} mode="create" projectId={projectId} onSaved={loadAll} />}
       <section id="execution-history" className="workspace-panel" aria-labelledby="history-title">
-        <div className="workspace-panel-header"><h2 id="history-title">Execution history</h2><span className="workspace-badge">{executions.length} recorded</span></div>
-        {executions.length ? <div className="workspace-panel-body">
+        <div className="workspace-panel-header"><h2 id="history-title">Execution history</h2>{!historyError && <span className="workspace-badge">{executions.length} recorded</span>}</div>
+        {historyError ? <div className="workspace-empty" role="alert"><strong>Execution history unavailable</strong>Project details are available. Check your connection and try again.<button className="workspace-button" onClick={loadAll}>Try again</button></div> : executions.length ? <div className="workspace-panel-body">
           {executions.map((execution) => <div key={execution.execution_id} className="workspace-row"><div><div className="workspace-row-title">Execution #{execution.execution_id}</div><div className="workspace-row-subtitle">{execution.started_at ? new Date(execution.started_at).toLocaleString() : "No start time recorded"}</div></div><span className="workspace-badge">{execution.status}</span></div>)}
         </div> : <div className="workspace-empty"><History size={24} /><strong>No execution history yet</strong>Recorded results for this project will appear here.</div>}
       </section>
@@ -270,6 +287,12 @@ export default function ProjectPage() {
           />
         )}
       />}
+      {testsEnabled && enabled("approved_visual_run_admission") && project && (
+        <ApprovedVisualRunPanel key={projectId} projectId={projectId}
+          cases={testcases.filter(testcase => testcase.project_id === projectId && testcase.testcase_id)}
+          environments={environments.filter(environment => environment.project_id === projectId)}
+          canApprove={project.current_user_role === "ADMIN"} />
+      )}
 
     </div>
   );

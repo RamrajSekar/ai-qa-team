@@ -19,7 +19,7 @@ TEST_ENV = {
     "JWT_SECRET_KEY": "jwt-test-only", "OPENAI_API_KEY": "", "FEATURES": "{}",
 }
 # Override all feature env values, even if a developer enables them locally.
-OFF = ["story_management", "scenario_generation", "test_generation", "recorder",
+OFF = ["approved_visual_run_admission", "approved_visual_run_execution", "story_management", "scenario_generation", "test_generation", "recorder",
        "native_execution", "jira_trigger", "failure_diagnostics", "self_healing",
        "playwright_repo_adapter", "selenium_repo_adapter"]
 ON = ["repository_discovery", "test_registry", "test_data_generation"]
@@ -219,6 +219,10 @@ class FeatureFlagTests(unittest.TestCase):
         executions.find.return_value = cursor
         single = self.client.get("/execute/EX1")
         listing = self.client.get("/execute/")
+        direct_listing = self.client.get("/execute?skip=0&limit=200", follow_redirects=False)
+        self.assertEqual(direct_listing.status_code, 200, direct_listing.text)
+        self.assertNotIn("location", direct_listing.headers)
+        self.assertEqual(direct_listing.json(), listing.json())
         self.assertEqual(single.status_code, 200, single.text)
         self.assertEqual(listing.status_code, 200, listing.text)
         self.assertEqual(listing.json()[0]["execution_id"], "EX1")
@@ -228,6 +232,21 @@ class FeatureFlagTests(unittest.TestCase):
             coll.insert_one.assert_not_called()
             coll.update_one.assert_not_called()
         self.assertEqual(redis_client.mock_calls, [])
+
+    def test_localhost_ui_history_preflight(self):
+        response = self.client.options('/execute?skip=0&limit=200', headers={
+            'Origin': 'http://localhost:3000',
+            'Access-Control-Request-Method': 'GET',
+            'Access-Control-Request-Headers': 'content-type',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers['access-control-allow-origin'], 'http://localhost:3000')
+        self.assertEqual(response.headers['access-control-allow-credentials'], 'true')
+        denied = self.client.options('/execute', headers={
+            'Origin': 'http://untrusted.invalid', 'Access-Control-Request-Method': 'GET',
+        })
+        self.assertEqual(denied.status_code, 400)
+        self.assertNotIn('access-control-allow-origin', denied.headers)
 
     def test_authentication_and_core_project_environment_subscription_flows(self):
         for url in ["/projects", "/environments", "/auth/check-plan"]:

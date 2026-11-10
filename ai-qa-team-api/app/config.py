@@ -8,6 +8,8 @@ class FeatureFlags(BaseModel):
     test_generation: bool = False
     recorder: bool = False
     native_execution: bool = False
+    approved_visual_run_admission: bool = False
+    approved_visual_run_execution: bool = False
     jira_trigger: bool = False
     failure_diagnostics: bool = False
     self_healing: bool = False
@@ -46,6 +48,8 @@ class Settings(BaseSettings):
     app_env: str = "development"
     app_port: int = 8000
     enable_local_repositories: bool = False
+    browserstack_username: str | None = None
+    browserstack_access_key: str | None = None
 
     session_secret_key: str
     jwt_secret_key: str

@@ -7,6 +7,7 @@ import { apiFetch } from "@/utils/api";
 export type FeatureName =
   | "story_management" | "scenario_generation" | "test_generation" | "recorder"
   | "native_execution" | "jira_trigger" | "failure_diagnostics" | "self_healing"
+  | "approved_visual_run_admission" | "approved_visual_run_execution"
   | "playwright_repo_adapter" | "selenium_repo_adapter"
   | "repository_discovery" | "test_registry" | "test_data_generation";
 
