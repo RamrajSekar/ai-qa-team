@@ -40,7 +40,7 @@ export default function AuthModal() {
             AI QA Team
           </div>
           <div>
-            <p className="auth-eyebrow">Your automation, easier to use</p>
+            <p className="auth-eyebrow">Product knowledge. Reviewed tests.</p>
             <h2>Start with the tests your team already owns.</h2>
             <p>
               Use one workspace for bug reproduction and focused QA exploration as the product

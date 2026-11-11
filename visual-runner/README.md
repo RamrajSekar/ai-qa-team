@@ -283,3 +283,42 @@ Focused lint on nine changed UI files reports five existing explicit-any errors
 in AuthProvider and two warnings (unused catch variable and story effect hook
 dependencies). These remain open. The intercepted browser UI regression was not
 rerun at this merge checkpoint. TypeScript and the 30 backend checks passed.
+
+## Project catalogs and workspace settings, 2026-11-10
+
+Project Scenarios and Test Cases now have paginated, membership-authorized lists,
+owner edit/delete controls and creation controls. Scenarios support manual creation
+and AI generation from a source story. Test cases support manual basic drafts and
+existing deterministic generation from approved scenarios. Edits require renewed
+review; immutable approved visual snapshots remain in history. Deletion rejects
+dependent tests, approvals and execution history. Parallel mutation versus approval
+and distributed quota enforcement were not qualified by these local checks.
+
+AI Configuration is in Workspace navigation with a project selector for administrators.
+Credentials remain scoped to projects; existing project settings URLs remain valid.
+Managed uses backend OPENAI_API_KEY. An inherited environment variable overrides
+.env, and API restart is needed after changing credentials. OpenAI project keys are
+retained after Test Connection until Save & Activate. The Managed label and error
+explain the credential source.
+
+Configure the backend using these boolean flags, then restart it and refresh the UI.
+
+```dotenv
+FEATURES__STORY_MANAGEMENT=true
+FEATURES__SCENARIO_GENERATION=true
+FEATURES__TEST_GENERATION=true
+FEATURES__REPOSITORY_UI=false
+```
+
+The repository UI flag hides navigation and guards direct UI access. Existing
+repository APIs/data retain their existing controls. .env remains private and is
+not included in Git. The landing page now describes the recording/knowledge,
+story/test-review and visual-evidence product direction with development labels.
+
+Verification for this change uses mocked backend services, TypeScript, focused lint
+and diff checks. Real-login UI/Mongo mutation flows, real AI generation, hosted
+deployment and concurrent mutation safety are not verified by these checks.
+
+Merge-candidate verification passed 22 feature/catalog tests and 12 provider tests
+with doubles, TypeScript, lint on all changed UI TypeScript files and staged diff
+checks. No real provider credentials were used for these regression runs.

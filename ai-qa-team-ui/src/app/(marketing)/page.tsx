@@ -6,7 +6,10 @@ import Features from '@/components/marketing/Features';
 import Roadmap from '@/components/marketing/Roadmap';
 import Footer from '@/components/marketing/Footer';
 
-export const metadata: Metadata = { title: 'AI QA Team | Your Existing Automation, Easier to Use', description: 'Explore the AI QA Team product vision: bug reproduction and strategic QA data built around automation you already own. Robot Framework first.' };
+export const metadata: Metadata = {
+  title: 'AI QA Team | Human-Supervised Visual QA',
+  description: 'Explore our product direction: learn product knowledge from narrated recordings, generate tests from stories and acceptance criteria, and review approved visual execution with evidence.',
+};
 
 export default function MarketingPage() {
   return (

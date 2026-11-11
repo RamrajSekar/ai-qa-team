@@ -173,6 +173,19 @@ async def list_scenarios(
 # -------------------------------------------------------------------
 # 3. PROJECT OVERVIEW AND SINGLE SCENARIO
 # -------------------------------------------------------------------
+@router.get("/project-list", response_model=List[ScenarioResponse],
+            dependencies=[Depends(feature_required("scenario_generation"))])
+async def project_scenarios(
+    project_id: str,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    current_user=Depends(get_current_user),
+):
+    await require_project_member(project_id, current_user)
+    cursor = db["scenarios"].find({"project_id": project_id}).sort("scenario_id", 1).skip(skip).limit(limit)
+    return [_build_scenario_response(doc) async for doc in cursor]
+
+
 @router.get("/project-overview")
 async def project_scenario_overview(
     project_id: str,
@@ -234,11 +247,16 @@ async def update_scenario(
     if not existing:
         raise HTTPException(404, "Scenario not found or access denied.")
 
+    await require_project_member(existing["project_id"], current_user)
+
     update_data = {k: v for k, v in update.model_dump().items() if v is not None}
 
     # Preserve existing approval flag if not explicitly updated
     if "approved" not in update_data:
         update_data["approved"] = existing.get("approved", False)
+
+    if any(field in update_data for field in ("title", "description", "steps")):
+        update_data["approved"] = False
 
     # Normalize steps if updated
     if "steps" in update_data and update_data["steps"] is not None:
@@ -284,6 +302,15 @@ async def update_scenario(
 @router.delete("/{scenario_id}")
 async def delete_scenario(scenario_id: str, current_user=Depends(get_current_user)):
     user_email = current_user["email"]
+
+    existing = await db["scenarios"].find_one({"scenario_id": scenario_id, "created_by": user_email})
+    if not existing:
+        raise HTTPException(404, "Scenario not found or access denied")
+    await require_project_member(existing["project_id"], current_user)
+    scope = {"project_id": existing["project_id"], "scenario_id": scenario_id}
+    for collection in ("testcases", "approved_visual_tests", "executions"):
+        if await db[collection].find_one(scope):
+            raise HTTPException(409, "This scenario has dependent tests, approvals or history and cannot be deleted.")
 
     result = await db["scenarios"].delete_one({
         "scenario_id": scenario_id,

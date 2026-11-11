@@ -34,7 +34,7 @@ export default function AIConfigurationManager({ projectId }: { projectId: strin
     const configuration: Record<string, string> = {};
     for (const field of provider?.fields || []) if (!field.secret && field.name !== "model") configuration[field.name] = values[field.name] || "";
     return { provider_id: providerId, mode: providerId === "managed" ? "MANAGED" : "BYOK", model: values.model || null,
-      configuration, ...(values.api_key ? { api_key: values.api_key } : {}) };
+      configuration, ...(providerId !== "managed" && values.api_key ? { api_key: values.api_key } : {}) };
   }
 
   function detail(data: unknown, fallback: string) {
@@ -59,11 +59,22 @@ export default function AIConfigurationManager({ projectId }: { projectId: strin
   }
   async function act(path: string, method: "POST" | "PUT", success: string) {
     setBusy(true); setMessage(null);
-    const response = await apiFetch(`/projects/${projectId}/ai/configuration${path}`, { method, body: JSON.stringify(payload()) });
-    if (response.ok) { setMessage(success); setValues((current) => ({ ...current, api_key: "" })); if (method === "PUT") await load(); }
-    else setMessage(detail(response.data, "Unable to validate this provider."));
-    setBusy(false);
+    try {
+      const response = await apiFetch(`/projects/${projectId}/ai/configuration${path}`, { method, body: JSON.stringify(payload()) });
+      if (response.ok) {
+        setMessage(success);
+        if (method === "PUT") {
+          setValues((current) => ({ ...current, api_key: "" }));
+          await load();
+        }
+      } else setMessage(detail(response.data, "Unable to validate this provider."));
+    } catch {
+      setMessage("Could not reach the AI configuration service. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
   }
+
   async function remove() {
     setBusy(true); const response = await apiFetch(`/projects/${projectId}/ai/configuration`, { method: "DELETE" });
     if (response.ok) { setActive(null); setProviderId("managed"); setValues({ model: "gpt-4o-mini" }); setMessage("AI configuration removed."); }
@@ -75,7 +86,9 @@ export default function AIConfigurationManager({ projectId }: { projectId: strin
     {!canManage ? <p className="workspace-description">A Project Admin manages AI provider settings.</p> : <div className="ai-config-form">
       <label>Provider<select value={providerId} onChange={(event) => { setProviderId(event.target.value as ProviderId); setValues(event.target.value === "managed" || event.target.value === "openai" ? { model: "gpt-4o-mini" } : { api_version: "2024-10-21" }); setMessage(null); }}>{providers.map((item) => <option value={item.provider_id} key={item.provider_id}>{item.label}</option>)}</select></label>
       <div className="ai-config-fields">{provider?.fields.map((field) => <label key={field.name}>{field.label}<input type={field.secret ? "password" : "text"} autoComplete={field.secret ? "new-password" : "off"} value={values[field.name] || ""} placeholder={field.secret && active?.credential_configured ? "Enter a new key to replace" : ""} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} /></label>)}</div>
-      <p className="ai-config-note">Keys are accepted only for validation and encrypted server-side. Existing keys are never returned.</p>
+      <p className="ai-config-note">{providerId === "managed"
+        ? "Managed uses the platform’s OpenAI credentials configured on the backend. A platform administrator manages this key."
+        : "Use your project’s provider key. Test Connection validates it; Save & Activate stores it encrypted. Existing keys are never returned."}</p>
       {message && <p className="repository-status"><CheckCircle2 size={15} />{message}</p>}
       <div className="repository-actions"><button className="workspace-button" disabled={busy} onClick={() => act("/test", "POST", "Connection successful.")}><PlugZap size={15} /> Test Connection</button><button className="workspace-button workspace-primary" disabled={busy} onClick={() => act("", "PUT", "Provider saved and activated.")}>{busy ? "Working…" : active ? "Save & Activate" : "Activate"}</button>{active && <button className="workspace-button team-remove" disabled={busy} onClick={remove}><Trash2 size={15} /> Remove</button>}</div>
     </div>}
