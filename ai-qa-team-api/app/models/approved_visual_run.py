@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, StringConstraints
+from pydantic import BaseModel, ConfigDict, StringConstraints, Field
 
 
 Identifier = Annotated[str, StringConstraints(pattern=r'^[A-Za-z0-9_-]{1,80}$')]
@@ -75,3 +75,47 @@ class AdmittedVisualRun(ApprovedVisualPreview):
 class VisualTestRunState(Contract):
     approval: ApprovedVisualTest | None = None
     latest_run: AdmittedVisualRun | None = None
+
+
+ApplicationRole = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
+
+
+class StagingBindingSelection(VisualRunSelection):
+    application_role: ApplicationRole
+
+
+class SaveStagingBinding(StagingBindingSelection):
+    binding_digest: Digest
+    idempotency_key: RequestKey
+
+
+class StagingBindingPreview(Contract):
+    schema_version: Literal["1.0"] = "1.0"
+    purpose: Literal["staging-login-preparation"] = "staging-login-preparation"
+    target_policy: Literal["salesforce-sandbox-preparation-v1"] = "salesforce-sandbox-preparation-v1"
+    execution_ready: Literal[False] = False
+    project_id: Identifier
+    testcase_id: Identifier
+    approved_test_version_id: RequestKey
+    approved_test_content_digest: Digest
+    source_digest: Digest
+    environment_id: Identifier
+    environment_revision: int = Field(ge=1)
+    environment_digest: Digest
+    target_url: str
+    target_origin: Literal["https://test.salesforce.com"] = "https://test.salesforce.com"
+    application_role: ApplicationRole
+    credential_id: Identifier
+    binding_digest: Digest
+
+
+class PreparedStagingBinding(StagingBindingPreview):
+    binding_id: Digest
+    prepared_by: str
+    prepared_at: datetime
+
+
+class StagingBindingState(Contract):
+    binding: PreparedStagingBinding
+    validation_state: Literal["current", "stale"]
+    reason: str | None = None

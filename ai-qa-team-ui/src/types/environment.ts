@@ -4,6 +4,8 @@ export interface EnvironmentCredentials {
   role: string;            // admin, qa, customer, etc.
   username: string;
   password: string;
+  credential_id?: string;
+  password_configured?: boolean;
   notes?: string;
 }
 
@@ -26,6 +28,8 @@ export interface Environment {
 
   auth_type: AuthType;
   auth_token?: string | null;
+  auth_token_configured?: boolean;
+  revision?: number;
 
   credentials: EnvironmentCredentials[];
   variables: EnvironmentVariables;
@@ -45,6 +49,9 @@ export interface EnvironmentFormState {
 
   auth_type: AuthType;
   auth_token?: string;
+  auth_token_configured?: boolean;
+  clear_auth_token?: boolean;
+  revision?: number;
 
   credentials: EnvironmentCredentials[];
   variables: EnvironmentVariables;

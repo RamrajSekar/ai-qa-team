@@ -34,7 +34,7 @@ export default function StepEnvironment({
   // Render UI
   // --------------------------------------------
   return (
-    <StepLayout title="Application & environment" description="Add the application URL and defaults for the environment your team will test first.">
+    <StepLayout title="Application & environment" description="Add the application URL and defaults. Use the Credentials tab to add an application role, username and password. Passwords are encrypted when saved.">
       {!projectId && (
         <p className="repository-error">
           No project found — go back and create one first.

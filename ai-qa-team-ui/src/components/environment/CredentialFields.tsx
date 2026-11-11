@@ -3,12 +3,7 @@
 import { useState } from "react";
 import { Eye, EyeOff, Trash } from "lucide-react";
 
-interface Credential {
-  role: string;
-  username: string;
-  password: string;
-  notes: string;
-}
+import type { EnvironmentCredentials as Credential } from "@/types/environment";
 
 export default function CredentialFields({
   credentials,
@@ -26,9 +21,9 @@ export default function CredentialFields({
     ]);
   }
 
-  function update(i: number, field: keyof Credential, value: string) {
+  function update(i: number, field: "role" | "username" | "password" | "notes", value: string) {
     const updated = [...credentials];
-    updated[i][field] = value;
+    updated[i] = { ...updated[i], [field]: value };
     setCredentials(updated);
   }
 
@@ -38,7 +33,9 @@ export default function CredentialFields({
 
   return (
     <div className="space-y-4">
+      <p className="text-sm text-gray-600">Passwords are encrypted when saved and are never returned. Leave a saved password blank to keep it. Remove a credential row to revoke it. Keep secrets out of notes and variables.</p>
       <button
+        type="button"
         onClick={addCredential}
         className="bg-purple-600 text-white px-3 py-1 rounded text-sm"
       >
@@ -53,6 +50,8 @@ export default function CredentialFields({
         <div key={i} className="border rounded p-4 bg-gray-50 space-y-4 relative">
           {/* DELETE BUTTON */}
           <button
+            type="button"
+            aria-label={`Remove credential ${i + 1}`}
             onClick={() => remove(i)}
             className="absolute right-4 top-4 text-red-500 hover:text-red-700"
           >
@@ -62,9 +61,10 @@ export default function CredentialFields({
           {/* ROLE / USERNAME / PASSWORD */}
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="text-sm font-medium">Role</label>
+              <label htmlFor={`credential-role-${i}`} className="text-sm font-medium">Application role</label>
               <input
                 className="border p-2 rounded w-full mt-1"
+                id={`credential-role-${i}`}
                 value={cred.role}
                 onChange={(e) => update(i, "role", e.target.value)}
                 placeholder="e.g. admin"
@@ -72,9 +72,11 @@ export default function CredentialFields({
             </div>
 
             <div>
-              <label className="text-sm font-medium">Username</label>
+              <label htmlFor={`credential-username-${i}`} className="text-sm font-medium">Username</label>
               <input
                 className="border p-2 rounded w-full mt-1"
+                id={`credential-username-${i}`}
+                autoComplete="off"
                 value={cred.username}
                 onChange={(e) => update(i, "username", e.target.value)}
                 placeholder="username"
@@ -82,9 +84,10 @@ export default function CredentialFields({
             </div>
 
             <div>
-              <label className="text-sm font-medium flex items-center justify-between">
+              <label htmlFor={`credential-password-${i}`} className="text-sm font-medium flex items-center justify-between">
                 Password
                 <button
+                  aria-label={`Toggle password visibility ${i + 1}`}
                   type="button"
                   onClick={() =>
                     setVisibleIndex(visibleIndex === i ? null : i)
@@ -101,9 +104,11 @@ export default function CredentialFields({
               <input
                 className="border p-2 rounded w-full mt-1"
                 type={visibleIndex === i ? "text" : "password"}
+                id={`credential-password-${i}`}
+                autoComplete="new-password"
                 value={cred.password}
                 onChange={(e) => update(i, "password", e.target.value)}
-                placeholder="••••••••"
+                placeholder={cred.password_configured ? "Saved — leave blank to keep" : "Enter password"}
               />
             </div>
           </div>
@@ -114,9 +119,9 @@ export default function CredentialFields({
             <textarea
               className="border p-2 rounded w-full mt-1"
               rows={2}
-              value={cred.notes}
+              value={cred.notes || ""}
               onChange={(e) => update(i, "notes", e.target.value)}
-              placeholder="Additional notes, tokens, etc."
+              placeholder="Non-secret notes only"
             />
           </div>
         </div>
