@@ -91,9 +91,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Load user at startup
   useEffect(() => {
-    apiFetch("/auth/me").then((res) => {
-      if (res.ok) setUser(res.data.user);
-    });
+    const controller = new AbortController();
+    apiFetch("/auth/me?refresh_usage=false", { signal: controller.signal }).then(res => {
+      if (!controller.signal.aborted && res.ok && res.data?.user) {
+        setUser((current: unknown) => current ?? res.data.user);
+      }
+    }).catch(() => { /* The sign-in form remains available on connection failure. */ });
+    return () => controller.abort();
   }, []);
 
   // FINAL FIX — Properly closed function now

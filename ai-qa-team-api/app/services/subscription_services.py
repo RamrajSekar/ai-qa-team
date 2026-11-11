@@ -98,7 +98,8 @@ async def increment_usage(user_identifier: str, field: str):
     and log the result.
     """
     query = build_user_query(user_identifier)
-    valid_fields = ["projects_used","stories_used", "scenarios_used", "executions_used", "team_members_used", "ai_gen_used"]
+    valid_fields = ["projects_used", "stories_used", "scenarios_used", "testcases_used",
+                    "executions_used", "team_members_used", "ai_gen_used"]
     if field not in valid_fields:
         logger.warning(f"Invalid usage field '{field}' for {user_identifier}")
         return

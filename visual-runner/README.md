@@ -259,3 +259,22 @@ manually dispatched workflow to exist on the default branch. Configure the
 three named credentials as Actions secrets before dispatching. The regular
 push-triggered BrowserStack form probe does not use the OpenAI secret.
 The guard tests use doubles and make no model or BrowserStack calls.
+
+## UI integration merge checkpoint, 2026-11-10
+
+The user reports a successful approved synthetic run from the local project UI
+through BrowserStack. The saved environment URL is not navigated by this adapter.
+Use `Save draft` as the visible button and `Draft saved` as the positive expectation.
+A different expected result exercises contradiction reporting. Customer staging
+execution remains gated.
+
+The integration restores story/scenario/test generation navigation and fixes
+collection route redirects through the UI proxy. It shares project loading,
+uses lightweight login profile loading and hides bug reproduction behind the
+new default-off `bug_reproduction_ui` flag.
+
+The isolated merge candidate passed 19 feature/API tests, eight approved-run
+tests and three synthetic-browser protocol tests using service doubles, and
+TypeScript checking. Run Windows API tests with `python -X utf8 -m unittest`.
+The successful real UI run is user-reported evidence. Hosted deployment and
+customer application execution have not been verified by this merge.

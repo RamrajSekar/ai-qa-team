@@ -14,6 +14,7 @@ from app.config import settings
 from app.services.step_mapper import StepMapper
 
 from app.utils.feature_flags import feature_required
+from app.utils.project_authorization import require_project_member
 
 router = APIRouter(prefix="/testcases", tags=["Test Cases"])
 
@@ -53,8 +54,8 @@ async def generate_testcases(
     scenario_id: str = Query(...),
     count: int = Query(1, ge=1, le=20),
     complexity: str = Query("basic", regex="^(basic|medium|advanced)$"),
+    project_id: Optional[str] = Query(None),
     current_user=Depends(get_current_user),
-    _: None = Depends(subscription_required("executions")),
 ):
     """
     Generate one or more test cases from a *single approved scenario*.
@@ -70,11 +71,13 @@ async def generate_testcases(
     # -------------------------------------
     # 1) Load Scenario & enforce approval
     # -------------------------------------
-    scenario = await db["scenarios"].find_one(
-        {"scenario_id": scenario_id, "created_by": user_email}
-    )
+    scenario_query = {"scenario_id": scenario_id, "created_by": user_email}
+    if project_id is not None:
+        scenario_query["project_id"] = project_id
+    scenario = await db["scenarios"].find_one(scenario_query)
     if not scenario:
         raise HTTPException(404, "Scenario not found.")
+    await require_project_member(scenario["project_id"], current_user)
 
     if not scenario.get("approved", False):
         raise HTTPException(
@@ -99,20 +102,31 @@ async def generate_testcases(
         )
 
     # Testcase quotas
-    used_tc = sub["usage"].get("testcases_used", 0)
-    tc_limit = sub["limits"].get("testcases_limit")
-
-    if tc_limit is not None:
-        remaining_tc = max(tc_limit - used_tc, 0)
-    else:
-        remaining_tc = count  # effectively unlimited
-
-    allowed = min(count, remaining_tc)
+    limits = sub["limits"]
+    tier_limits = {tier: limits.get(f"testcases_{tier}_limit") for tier in ("basic", "medium", "advanced")}
+    total_limit = limits.get("testcases_limit")
+    if total_limit in (None, 0) and any(value is not None for value in tier_limits.values()):
+        # Older subscriptions defaulted the unused aggregate to zero.
+        total_limit = sum(value or 0 for value in tier_limits.values())
+    testcase_owner = {"created_by": user_email}
+    used_total = await db["testcases"].count_documents(testcase_owner)
+    allowed = count if total_limit is None else min(count, max(total_limit - used_total, 0))
+    tier_limit = tier_limits[complexity]
+    if tier_limit is not None:
+        legacy_levels = [complexity, None] if complexity == "basic" else [complexity]
+        used_tier = await db["testcases"].count_documents({
+            **testcase_owner,
+            "$or": [
+                {"complexity": complexity},
+                {"complexity": None, "level": {"$in": legacy_levels}},
+            ],
+        })
+        allowed = min(allowed, max(tier_limit - used_tier, 0))
 
     if allowed <= 0:
         raise HTTPException(
             403,
-            f"Testcase generation limit reached. Used {used_tc}/{tc_limit}.",
+            f"Test case generation limit reached for {complexity} cases.",
         )
 
     # -------------------------------------
@@ -132,7 +146,7 @@ async def generate_testcases(
         structured_steps = [TestStep(**s) for s in structured_steps_dicts]
 
         # Generate Playwright code from structured steps
-        code = generate_playwright_test(structured_steps)
+        code = generate_playwright_test(scenario)
 
         doc = {
             "testcase_id": testcase_id,

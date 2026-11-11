@@ -1,8 +1,9 @@
 "use client";
 import { useFeatures, FeatureGate } from "@/components/providers/FeatureFlagsProvider";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { apiFetch } from "@/utils/api";
 import { Plus, Eye, Edit, Video } from "lucide-react";
 import type { Story } from "@/types/story";
@@ -16,6 +17,7 @@ export default function StoriesPage() {
 
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [openModal, setOpenModal] = useState(false);
   const [editStory, setEditStory] = useState<Story | null>(null);
   const [openRecorder, setOpenRecorder] = useState(false);
@@ -23,15 +25,25 @@ export default function StoriesPage() {
   const [deleteStory, setDeleteStory] = useState<Story | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  async function loadStories() {
+  const loadStories = useCallback(async () => {
+    setLoading(true);
+    setLoadError("");
     try {
-      setLoading(true);
-      const res = await apiFetch(`/stories?project_id=${projectId}`);
-      setStories(res.data || []);
+      const res = await apiFetch(`/stories?project_id=${encodeURIComponent(projectId)}`);
+      if (!res.ok) {
+        throw new Error(`Could not load stories (HTTP ${res.status}).`);
+      }
+      if (!Array.isArray(res.data)) {
+        throw new Error("The Stories API returned an unexpected response.");
+      }
+      setStories(res.data);
+    } catch (error) {
+      setStories([]);
+      setLoadError(error instanceof Error ? error.message : "Could not load stories.");
     } finally {
       setLoading(false);
     }
-  }
+  }, [projectId]);
 
   async function handleDelete() {
     if (!deleteStory) return;
@@ -55,8 +67,8 @@ export default function StoriesPage() {
   }
 
   useEffect(() => {
-    if (projectId) loadStories();
-  }, [projectId]);
+    if (projectId) void loadStories();
+  }, [projectId, loadStories]);
 
   function handleEdit(story: Story) {
     setEditStory(story);
@@ -86,6 +98,12 @@ export default function StoriesPage() {
       </div>
 
       {/* Table */}
+      {loading ? <p role="status">Loading stories…</p> : loadError ? (
+        <div role="alert" className="space-y-2">
+          <p>{loadError}</p>
+          <button type="button" className="workspace-button" onClick={() => void loadStories()}>Try again</button>
+        </div>
+      ) : stories.length === 0 ? <p>No stories yet. Select New Story to create one.</p> : (
       <div className="overflow-hidden border rounded-lg bg-white shadow-sm">
         <table className="w-full border-collapse">
           <thead className="bg-gray-100 text-left text-sm text-gray-600">
@@ -104,12 +122,12 @@ export default function StoriesPage() {
                 <td className="p-3 border font-medium">{story.story_id}</td>
 
                 <td className="p-3 border">
-                  <a
+                  <Link
                     href={`/projects/${projectId}/stories/${story.story_id}`}
                     className="text-indigo-600 hover:underline"
                   >
                     {story.title}
-                  </a>
+                  </Link>
                 </td>
 
                 <td className="p-3 border text-sm text-gray-700">
@@ -124,12 +142,12 @@ export default function StoriesPage() {
                   <div className="flex items-center justify-center gap-2">
 
                     {/* VIEW */}
-                    <a
+                    <Link
                       href={`/projects/${projectId}/stories/${story.story_id}`}
                       className="px-2 py-1 text-xs bg-gray-200 rounded hover:bg-gray-300 flex gap-1 items-center"
                     >
                       <Eye size={14} /> View
-                    </a>
+                    </Link>
 
                     {/* EDIT */}
                     <button
@@ -162,6 +180,7 @@ export default function StoriesPage() {
           </tbody>
         </table>
       </div>
+      )}
 
       {/* MODAL */}
       <StoryModal

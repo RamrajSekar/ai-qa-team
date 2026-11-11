@@ -19,7 +19,7 @@ TEST_ENV = {
     "JWT_SECRET_KEY": "jwt-test-only", "OPENAI_API_KEY": "", "FEATURES": "{}",
 }
 # Override all feature env values, even if a developer enables them locally.
-OFF = ["approved_visual_run_admission", "approved_visual_run_execution", "story_management", "scenario_generation", "test_generation", "recorder",
+OFF = ["approved_visual_run_admission", "approved_visual_run_execution", "bug_reproduction_ui", "story_management", "scenario_generation", "test_generation", "recorder",
        "native_execution", "jira_trigger", "failure_diagnostics", "self_healing",
        "playwright_repo_adapter", "selenium_repo_adapter"]
 ON = ["repository_discovery", "test_registry", "test_data_generation"]
@@ -41,7 +41,8 @@ with patch.dict(os.environ, TEST_ENV), \
     from app.main import app
     from app.workers import execution_worker
     from app.services import execution_engine
-    from app.routes import scenario_routes, testcase_routes, integration_routes
+    from app.routes import auth_routes, scenario_routes, testcase_routes, integration_routes
+    from app.services.ai.base_provider import LLMProviderError
     from app.utils import execution_queue
     from app.utils.feature_flags import require_features
     from app.utils.jwt_handler import create_access_token
@@ -165,6 +166,77 @@ class FeatureFlagTests(unittest.TestCase):
                 self.assertEqual(response.json()["detail"]["feature"], disabled)
                 self.assert_no_external_calls()
 
+    def test_free_basic_generation_uses_existing_tier_allowance(self):
+        settings.features.test_generation = True
+        self.authenticate()
+        db["scenarios"].find_one.return_value = {
+            "project_id": "P", "scenario_id": "SC1", "title": "Save draft", "approved": True,
+            "steps": [{"step_id": "S1", "action": "Click Save draft", "expected": "Draft saved"}],
+        }
+        testcases = db["testcases"]
+        testcases.count_documents.side_effect = [0, 0, 10, 10]
+        testcases.insert_one.return_value = MagicMock(inserted_id=ObjectId())
+        url = "/testcases/generate?scenario_id=SC1&project_id=P"
+        with patch.object(testcase_routes, "get_subscription", new=AsyncMock(return_value={
+            "plan": "free", "limits": {"testcases_limit": 0, "testcases_basic_limit": 10},
+        })), patch.object(testcase_routes, "require_project_member", new_callable=AsyncMock) as member, \
+             patch.object(testcase_routes, "get_next_sequence", new=AsyncMock(return_value="TC1")), \
+             patch.object(testcase_routes, "increment_usage", new_callable=AsyncMock) as increment:
+            first = self.client.post(url)
+            second = self.client.post(url)
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(first.json()[0]["steps"][0]["expected"], "Draft saved")
+        self.assertEqual(second.status_code, 403, second.text)
+        self.assertEqual(member.await_count, 2)
+        self.assertEqual(self.collections["scenarios"].find_one.call_args.args[0]["project_id"], "P")
+        testcases.insert_one.assert_awaited_once()
+        increment.assert_awaited_once()
+
+    def test_project_scenario_overview_uses_one_bounded_project_query(self):
+        settings.features.scenario_generation = True
+        self.authenticate()
+        stories = db["stories"]
+        stories.distinct = AsyncMock(return_value=["ST1", "ST2"])
+        scenarios = db["scenarios"]
+        scenarios.aggregate.return_value.to_list = AsyncMock(return_value=[{
+            "count": [{"total": 8}], "recent": [{"scenario_id": "SC1", "story_id": "ST1"}],
+        }])
+        with patch.object(scenario_routes, "require_project_member", new_callable=AsyncMock) as member:
+            response = self.client.get("/scenarios/project-overview?project_id=P")
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["total"], 8)
+        self.assertEqual(len(response.json()["recent"]), 1)
+        member.assert_awaited_once()
+        stories.distinct.assert_awaited_once_with("story_id", {"project_id": "P", "created_by": self.email})
+        scenarios.aggregate.assert_called_once()
+        pipeline = scenarios.aggregate.call_args.args[0]
+        self.assertEqual(pipeline[0], {"$match": {"project_id": "P", "story_id": {"$in": ["ST1", "ST2"]}}})
+        self.assertIn({"$limit": 5}, pipeline[1]["$facet"]["recent"])
+
+    def test_story_scenario_provider_authentication_failure_is_actionable(self):
+        settings.features.story_management = True
+        settings.features.scenario_generation = True
+        self.authenticate()
+        db["stories"].find_one.return_value = {"story_id": "ST1", "project_id": "P", "title": "Draft"}
+        db["projects"].find_one.return_value = {"project_id": "P"}
+        db["scenarios"].count_documents.return_value = 0
+        error = LLMProviderError("AUTHENTICATION_ERROR", "The provider credentials could not be authenticated.")
+        with patch.object(scenario_routes, "generate_scenarios_from_prompt", new=AsyncMock(side_effect=error)):
+            response = self.client.post("/scenarios/generate-from-story?story_id=ST1&count=1")
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertEqual(response.json()["detail"]["code"], "AUTHENTICATION_ERROR")
+        db["scenarios"].insert_one.assert_not_awaited()
+
+    def test_profile_bootstrap_skips_usage_recount_and_default_still_refreshes(self):
+        self.authenticate()
+        with patch.object(auth_routes, "sync_usage", new_callable=AsyncMock) as sync:
+            lightweight = self.client.get("/auth/me?refresh_usage=false")
+            self.assertEqual(lightweight.status_code, 200, lightweight.text)
+            sync.assert_not_awaited()
+            refreshed = self.client.get("/auth/me")
+            self.assertEqual(refreshed.status_code, 200, refreshed.text)
+            sync.assert_awaited_once_with(self.email)
+
     def test_recording_generation_cannot_bypass_disabled_recorder(self):
         settings.features = FeatureFlags(story_management=True, scenario_generation=True)
         response = self.client.post("/scenarios/generate-from-recording", json={})
@@ -279,9 +351,23 @@ class FeatureFlagTests(unittest.TestCase):
         cursor.limit.return_value = cursor
         cursor.to_list = AsyncMock(return_value=[])
         db["stories"].find.return_value = cursor
-        response = self.client.get("/stories/?project_id=P")
-        self.assertEqual(response.status_code, 200, response.text)
-        db["stories"].find.assert_called_once()
+        for path in ("/stories", "/stories/"):
+            response = self.client.get(f"{path}?project_id=P", follow_redirects=False)
+            self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(db["stories"].find.call_count, 2)
+
+    def test_create_story_accepts_both_collection_paths_without_redirect(self):
+        settings.features.story_management = True
+        self.authenticate()
+        db["projects"].find_one.return_value = {"_id": ObjectId(), "project_id": "P", "created_by": self.email}
+        db["counters"].find_one_and_update.side_effect = [{"seq": 1}, {"seq": 2}]
+        db["stories"].insert_one.return_value = MagicMock(inserted_id=ObjectId())
+        for path in ("/stories", "/stories/"):
+            response = self.client.post(path, json={"project_id": "P", "title": "Save draft", "description": ""},
+                                        follow_redirects=False)
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(response.json()["project_id"], "P")
+        self.assertEqual(db["stories"].insert_one.await_count, 2)
 
     def test_dormant_generator_is_guarded_if_registered(self):
         path = Path(__file__).resolve().parents[1] / "app/routes/generate-tests.py"

@@ -34,6 +34,7 @@ export default function DeleteProjectModal({
       });
 
       if (res.ok) {
+        window.dispatchEvent(new Event("projects-updated"));
         onDeleted();
       }
     } finally {

@@ -31,7 +31,6 @@ export default function LoginForm() {
 
       setUser(response.data.user);
       closeAuth();
-      await apiFetch("/auth/me");
       router.push("/dashboard");
     } catch {
       setError("We couldn’t sign you in. Please try again.");

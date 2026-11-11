@@ -7,46 +7,24 @@ import CreateProjectModal from "@/components/projects/CreateProjectModal";
 import ExecutionTrendChart from "@/components/dashboard/ExecutionTrendChart";
 import AiUsageChart from "@/components/dashboard/AiUsage";
 import OnboardingModal from "@/components/onboarding/OnboardingModal";
-import { apiFetch } from "@/utils/api";
+import { useProjects } from "@/hooks/useProjects";
 import Link from "next/link";
 
 export default function DashboardPage() {
   const { enabled } = useFeatures();
   const aiEnabled = enabled("scenario_generation") || enabled("test_generation");
-  const { user, setUser } = useAuth();
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { user, refreshSubscription } = useAuth();
+  const { projects, loading, failed, reload: loadProjects } = useProjects();
 
   const [openProjectModal, setOpenProjectModal] = useState(false);
   const [openOnboarding, setOpenOnboarding] = useState(false);
 
-  /** Load project list */
-  async function loadProjects() {
-    setLoading(true);
-    const res = await apiFetch(`/projects`);
-    if (res.ok) setProjects(res.data);
-    setLoading(false);
-  }
-
-  /** Load fresh user (usage, onboarding, limits) */
-  async function refreshUser() {
-    const res = await apiFetch(`/auth/me`);
-    if (res.ok) setUser(res.data.user);
-  }
-
-  /** Initial load */
-  useEffect(() => {
-    loadProjects();
-    refreshUser();
-  }, []);
-
   /** Reopen onboarding when last project is deleted */
   useEffect(() => {
-    if (!loading && projects.length === 0) {
+    if (!loading && !failed && projects.length === 0) {
       setOpenOnboarding(true);
     }
-    refreshUser();
-  }, [projects]);
+  }, [loading, failed, projects.length]);
 
   /** Open onboarding if new user */
   useEffect(() => {
@@ -69,7 +47,7 @@ export default function DashboardPage() {
       {openOnboarding && (
         <OnboardingModal
           user={user}
-          refreshUser={refreshUser}
+          refreshUser={refreshSubscription}
           onProjectsReload={loadProjects}
           onClose={() => setOpenOnboarding(false)}
         />
@@ -147,7 +125,7 @@ export default function DashboardPage() {
       <CreateProjectModal
         open={openProjectModal}
         onClose={() => setOpenProjectModal(false)}
-        onCreated={loadProjects}
+        onCreated={async () => { await Promise.all([loadProjects(), refreshSubscription()]); }}
         createdBy={user.email}
       />
     </div>

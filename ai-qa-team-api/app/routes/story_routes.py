@@ -12,6 +12,7 @@ from bson import ObjectId
 
 router = APIRouter(prefix="/stories", tags=["Stories"])
 
+@router.post("", response_model=StoryResponse, include_in_schema=False)
 @router.post("/", response_model=StoryResponse)
 async def create_story(
     story: StoryCreate,
@@ -72,6 +73,7 @@ async def create_story(
 # @router.get("/",response_model=List[StoryResponse])
 # async def get_stories(skip: int = 0, limit: int = 20,current_user=Depends(get_current_user)):
 #     """Fetch all stories created by the logged-in user."""
+@router.get("", response_model=list[StoryResponse], include_in_schema=False)
 @router.get("/", response_model=list[StoryResponse])
 async def list_stories(
     project_id: str,

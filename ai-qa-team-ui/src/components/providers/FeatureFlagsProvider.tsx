@@ -7,7 +7,7 @@ import { apiFetch } from "@/utils/api";
 export type FeatureName =
   | "story_management" | "scenario_generation" | "test_generation" | "recorder"
   | "native_execution" | "jira_trigger" | "failure_diagnostics" | "self_healing"
-  | "approved_visual_run_admission" | "approved_visual_run_execution"
+  | "approved_visual_run_admission" | "approved_visual_run_execution" | "bug_reproduction_ui"
   | "playwright_repo_adapter" | "selenium_repo_adapter"
   | "repository_discovery" | "test_registry" | "test_data_generation";
 
@@ -62,7 +62,7 @@ export function FeatureRouteGuard({ children }: { children: ReactNode }) {
     : pathname.split("/")[1];
   const required: Partial<Record<string, FeatureName>> = {
     stories: "story_management", scenarios: "scenario_generation",
-    recorder: "recorder", ai: "test_generation",
+    recorder: "recorder", reproduce: "bug_reproduction_ui",
   };
   const feature = required[segment];
   if (!feature) return children;

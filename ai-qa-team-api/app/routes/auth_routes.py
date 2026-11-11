@@ -316,7 +316,7 @@ async def update_user_role(
     }
 
 @router.get("/me")
-async def get_my_profile(request: Request):
+async def get_my_profile(request: Request, refresh_usage: bool = True):
     token = extract_token(request)
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -336,26 +336,21 @@ async def get_my_profile(request: Request):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # ----------------------------------------
-    # 🔥 Automatically recalculate all usage
-    # ----------------------------------------
-    usage = await sync_usage(user_email)
+    if refresh_usage:
+        await sync_usage(user_email)
+        user = await db["users"].find_one({"email": user_email})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
 
-    # Reload user after usage update
-    refreshed_user = await db["users"].find_one({"email": user_email})
-    if refreshed_user:
-        await ensure_platform_owner(
-            refreshed_user,
-            trusted_for_bootstrap=refreshed_user.get("provider", "local") == "local",
-            users_collection=db["users"],
-        )
-    user_data = serialize_public_user(refreshed_user)
+    await ensure_platform_owner(
+        user,
+        trusted_for_bootstrap=user.get("provider", "local") == "local",
+        users_collection=db["users"],
+    )
+    user_data = serialize_public_user(user)
 
     user_data["token_issued_to"] = user_email
     user_data["token_checked_at"] = datetime.utcnow().isoformat()
-
-    print("STEP 5: /auth/me called")
-    print("Synced usage:", usage)
 
     return {"ok": True, "user": user_data}
 

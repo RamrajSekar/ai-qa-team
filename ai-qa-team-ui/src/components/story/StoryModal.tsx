@@ -28,9 +28,12 @@ export default function StoryModal({
   const [acceptanceCriteria, setAcceptanceCriteria] = useState("");
   const [outOfScope, setOutOfScope] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   // Load values in edit mode
   useEffect(() => {
+    setSaveError("");
+    if (!open) return;
     if (story) {
       setTitle(story.title || "");
       setDescription(story.description || "");
@@ -42,7 +45,7 @@ export default function StoryModal({
       setAcceptanceCriteria("");
       setOutOfScope("");
     }
-  }, [story]);
+  }, [open, story]);
 
   if (!open) return null;
 
@@ -50,6 +53,7 @@ export default function StoryModal({
     if (!title.trim()) return;
 
     setSaving(true);
+    setSaveError("");
 
     const payload = {
       project_id: projectId,
@@ -59,31 +63,28 @@ export default function StoryModal({
       out_of_scope: outOfScope,
     };
 
-    let res;
-
-    if (isEdit) {
-      // Backend requires project_id in the query!
-      res = await apiFetch(`/stories/${story!.story_id}?project_id=${projectId}`, {
-        method: "PATCH",
+    try {
+      const path = story
+        ? `/stories/${encodeURIComponent(story.story_id)}?project_id=${encodeURIComponent(projectId)}`
+        : "/stories";
+      const res = await apiFetch(path, {
+        method: isEdit ? "PATCH" : "POST",
         body: JSON.stringify(payload),
       });
-    } else {
-      res = await apiFetch(`/stories`, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-    }
-
-    setSaving(false);
-
-    if (!res.ok) {
-      console.error("Story save failed", res);
-      alert(res.data?.detail || "Failed to save story");
+      if (!res.ok) {
+        const detail = res.data?.detail;
+        setSaveError(`Could not save story (HTTP ${res.status}).${typeof detail === "string" ? ` ${detail}` : ""}`);
+        return;
+      }
+    } catch {
+      setSaveError("Could not reach the Stories API. Check the connection and try again.");
       return;
+    } finally {
+      setSaving(false);
     }
 
-    await onSaved();
     onClose();
+    await onSaved();
   }
 
   return (
@@ -102,6 +103,7 @@ export default function StoryModal({
         <h2 className="text-xl font-semibold mb-4">
           {isEdit ? "Edit Story" : "Create New Story"}
         </h2>
+        {saveError && <p role="alert" className="mb-3 text-sm text-red-700">{saveError}</p>}
 
         {/* Fields */}
         <div className="space-y-4">

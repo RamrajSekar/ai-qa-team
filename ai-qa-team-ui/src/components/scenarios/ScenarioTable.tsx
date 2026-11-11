@@ -36,7 +36,7 @@ export default function ScenarioTable({ scenarios, onEdit, onDelete, onView }: P
             <tr key={s.scenario_id} className="border-t hover:bg-gray-50">
               <td className="p-3">{s.scenario_id}</td>
               <td className="p-3">{s.title}</td>
-              <td className="p-3 capitalize">{s.status}</td>
+              <td className="p-3">{s.approved ? "Approved" : "Pending approval"}</td>
               <td className="p-3 text-center">
                 <div className="flex items-center justify-center gap-3">
                   <button

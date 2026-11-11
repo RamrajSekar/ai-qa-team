@@ -30,6 +30,7 @@ export default function StepProject({ user, refreshUser, next }: StepProjectProp
     });
 
     if (res.ok) {
+      window.dispatchEvent(new Event("projects-updated"));
       await refreshUser();
       next();
     }

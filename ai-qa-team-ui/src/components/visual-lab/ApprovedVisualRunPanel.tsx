@@ -28,7 +28,7 @@ export default function ApprovedVisualRunPanel({ projectId, cases, environments,
   const [selected, setSelected] = useState("");
   const testcase = cases.find(item => item.testcase_id === selected);
   return (
-    <section className="workspace-panel p-4 space-y-3" aria-label="Approved visual run">
+    <section id="approved-visual-run" className="workspace-panel p-4 space-y-3" aria-label="Approved visual run">
       <h2 className="font-semibold">Approved visual run</h2>
       <p className="text-sm">{executionEnabled
         ? "Development execution uses one BrowserStack session against the controlled sample. Approve “Save draft” and “Draft saved” for the positive check."
