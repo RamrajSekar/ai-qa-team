@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional, List
+from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -294,3 +295,98 @@ async def list_testcases(
         results.append(TestCaseResponse(**doc))
 
     return results
+
+
+@router.get("/project-list", response_model=List[TestCaseResponse],
+            dependencies=[Depends(feature_required("test_generation"))])
+async def project_testcases(
+    project_id: str,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    current_user=Depends(get_current_user),
+):
+    await require_project_member(project_id, current_user)
+    cursor = db["testcases"].find({"project_id": project_id}, {"_id": 0}).sort("testcase_id", 1).skip(skip).limit(limit)
+    return [TestCaseResponse(**doc) async for doc in cursor]
+
+
+class CatalogTestCaseEdit(BaseModel):
+    title: str = Field(min_length=1, max_length=500)
+    description: str | None = None
+    steps: list[TestStep]
+
+
+@router.patch("/{testcase_id}", response_model=TestCaseResponse,
+              dependencies=[Depends(feature_required("test_generation"))])
+async def edit_catalog_testcase(testcase_id: str, payload: CatalogTestCaseEdit,
+                                project_id: str, current_user=Depends(get_current_user)):
+    await require_project_member(project_id, current_user)
+    scope = {"project_id": project_id, "testcase_id": testcase_id, "created_by": current_user["email"]}
+    existing = await db["testcases"].find_one(scope)
+    if not existing:
+        raise HTTPException(404, "Test case not found or access denied")
+    if not payload.title.strip():
+        raise HTTPException(422, "Title is required")
+    changes = {
+        "title": payload.title.strip(), "description": payload.description,
+        "steps": [step.model_dump() for step in payload.steps],
+        "natural_steps": [{**((existing.get("natural_steps") or [])[index]
+                                if index < len(existing.get("natural_steps") or []) else {}),
+                           "action": step.description or step.action, "expected": step.expected}
+                          for index, step in enumerate(payload.steps)],
+        "updated_by": current_user["email"], "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db["testcases"].update_one(scope, {"$set": changes})
+    return TestCaseResponse(**{**existing, **changes})
+
+
+@router.delete("/{testcase_id}", dependencies=[Depends(feature_required("test_generation"))])
+async def delete_catalog_testcase(testcase_id: str, project_id: str, current_user=Depends(get_current_user)):
+    await require_project_member(project_id, current_user)
+    scope = {"project_id": project_id, "testcase_id": testcase_id, "created_by": current_user["email"]}
+    if not await db["testcases"].find_one(scope):
+        raise HTTPException(404, "Test case not found or access denied")
+    for collection in ("approved_visual_tests", "approved_visual_runs", "executions"):
+        if await db[collection].find_one({"project_id": project_id, "testcase_id": testcase_id}):
+            raise HTTPException(409, "This test case has approvals or execution history and cannot be deleted.")
+    result = await db["testcases"].delete_one(scope)
+    if result.deleted_count:
+        from app.services.subscription_services import decrement_usage
+        await decrement_usage(current_user["email"], "testcases_used")
+    return {"ok": True}
+
+
+@router.post("/draft", response_model=TestCaseResponse,
+             dependencies=[Depends(feature_required("test_generation"))])
+async def create_catalog_testcase(payload: CatalogTestCaseEdit, project_id: str,
+                                  scenario_id: str, current_user=Depends(get_current_user)):
+    await require_project_member(project_id, current_user)
+    scenario = await db["scenarios"].find_one({"project_id": project_id, "scenario_id": scenario_id,
+                                              "created_by": current_user["email"]})
+    if not scenario:
+        raise HTTPException(404, "Scenario not found or access denied")
+    if not payload.title.strip():
+        raise HTTPException(422, "Title is required")
+    subscription = await get_subscription(current_user.get("_id") or current_user["email"])
+    if not subscription:
+        raise HTTPException(403, "No active subscription")
+    limits = subscription["limits"]
+    tier_limits = [limits.get(f"testcases_{tier}_limit") for tier in ("basic", "medium", "advanced")]
+    total_limit = limits.get("testcases_limit")
+    if total_limit in (None, 0) and any(value is not None for value in tier_limits):
+        total_limit = sum(value or 0 for value in tier_limits)
+    owner = {"created_by": current_user["email"]}
+    total = await db["testcases"].count_documents(owner)
+    basic = await db["testcases"].count_documents({**owner, "complexity": {"$in": ["basic", None]}})
+    if (total_limit is not None and total >= total_limit) or (tier_limits[0] is not None and basic >= tier_limits[0]):
+        raise HTTPException(403, "Test case limit reached")
+    doc = {"project_id": project_id, "scenario_id": scenario_id,
+           "testcase_id": await get_next_sequence("testcase_id", "TC"),
+           "title": payload.title.strip(), "description": payload.description,
+           "steps": [step.model_dump() for step in payload.steps],
+           "natural_steps": [{"action": step.description or step.action, "expected": step.expected} for step in payload.steps],
+           "complexity": "basic", "status": "draft", "code": "", "created_by": current_user["email"],
+           "created_at": datetime.now(timezone.utc).isoformat()}
+    await db["testcases"].insert_one(doc.copy())
+    await increment_usage(current_user.get("_id") or current_user["email"], "testcases_used")
+    return TestCaseResponse(**doc)

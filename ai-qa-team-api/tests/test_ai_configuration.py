@@ -65,6 +65,17 @@ class AIConfigurationTests(unittest.IsolatedAsyncioTestCase):
     def tearDown(self):
         for item in reversed(self.patches): item.stop()
 
+    async def test_managed_test_uses_platform_key_and_explains_auth_failure(self):
+        payload = AIConfigurationInput(provider_id="managed", mode="MANAGED", model="gpt-4o-mini", api_key="synthetic-project-key")
+        with patch.object(ai_configuration_service.provider_registry, "resolve", return_value=Provider(fail=True)) as resolve:
+            with self.assertRaises(LLMProviderError) as error:
+                await ai_configuration_service.validate_configuration("PRJ1", payload)
+        self.assertEqual(resolve.call_args.args[:2], ("openai", "managed-test-key"))
+        self.assertEqual(error.exception.code, "AUTHENTICATION_ERROR")
+        self.assertIn("platform administrator", str(error.exception))
+        self.assertNotIn("managed-test-key", str(error.exception))
+        self.assertNotIn("synthetic-project-key", str(error.exception))
+
     async def test_secret_store_encrypts_and_is_project_bound(self):
         store = EncryptedMongoSecretStore(self.key); ref = await store.put("PRJ1", "sk-secret")
         document = self.db["encrypted_secrets"].documents[0]

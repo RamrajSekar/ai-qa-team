@@ -11,6 +11,7 @@ class FeatureFlags(BaseModel):
     approved_visual_run_admission: bool = False
     approved_visual_run_execution: bool = False
     bug_reproduction_ui: bool = False
+    repository_ui: bool = False
     jira_trigger: bool = False
     failure_diagnostics: bool = False
     self_healing: bool = False

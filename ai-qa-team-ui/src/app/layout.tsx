@@ -4,7 +4,7 @@ import RootProviders from '@/components/providers/RootProviders';
 
 export const metadata: Metadata = {
   title: 'QA Squad',
-  description: 'AI-powered test-automation companion',
+  description: 'Human-supervised QA with product knowledge, reviewed tests and visual evidence',
 };
 
 export default function RootLayout({

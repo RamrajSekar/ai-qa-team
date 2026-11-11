@@ -1,5 +1,5 @@
 PROVIDER_CATALOG = {
-    "managed": {"label": "AI QA Team Managed", "modes": ["MANAGED"], "fields": [
+    "managed": {"label": "Managed", "modes": ["MANAGED"], "fields": [
         {"name": "model", "label": "Model", "secret": False, "required": True},
     ], "capabilities": ["structured_output"]},
     "openai": {"label": "OpenAI", "modes": ["BYOK"], "fields": [

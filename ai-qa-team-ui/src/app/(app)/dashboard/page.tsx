@@ -1,7 +1,8 @@
 "use client";
+import type { UsageStats, UsageLimits } from "@/types/user";
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import CreateProjectModal from "@/components/projects/CreateProjectModal";
 import ExecutionTrendChart from "@/components/dashboard/ExecutionTrendChart";
@@ -17,28 +18,16 @@ export default function DashboardPage() {
   const { projects, loading, failed, reload: loadProjects } = useProjects();
 
   const [openProjectModal, setOpenProjectModal] = useState(false);
-  const [openOnboarding, setOpenOnboarding] = useState(false);
-
-  /** Reopen onboarding when last project is deleted */
-  useEffect(() => {
-    if (!loading && !failed && projects.length === 0) {
-      setOpenOnboarding(true);
-    }
-  }, [loading, failed, projects.length]);
-
-  /** Open onboarding if new user */
-  useEffect(() => {
-    if (!user) return;
-
-    if (user.onboarding?.onboarding_status !== "completed") {
-      setOpenOnboarding(true);
-    }
-  }, [user]);
+  const [dismissedOnboarding, setDismissedOnboarding] = useState<string | null>(null);
+  const hasNoProjects = !loading && !failed && projects.length === 0;
+  const onboardingKey = `${user?.email}:${user?.onboarding?.onboarding_status}:${hasNoProjects}`;
+  const openOnboarding = !!user && (hasNoProjects || user.onboarding?.onboarding_status !== "completed")
+    && dismissedOnboarding !== onboardingKey;
 
   if (!user) return <p className="p-8">Loading...</p>;
 
-  const usage = user.subscription?.usage || {};
-  const limits = user.subscription?.limits || {};
+  const usage: Partial<UsageStats> = user.subscription?.usage || {};
+  const limits: Partial<UsageLimits> = user.subscription?.limits || {};
 
   return (
     <div className="px-6 py-8 md:px-10 lg:px-14 space-y-10 max-w-[1400px]">
@@ -49,7 +38,7 @@ export default function DashboardPage() {
           user={user}
           refreshUser={refreshSubscription}
           onProjectsReload={loadProjects}
-          onClose={() => setOpenOnboarding(false)}
+          onClose={() => setDismissedOnboarding(onboardingKey)}
         />
       )}
 
@@ -107,7 +96,7 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {projects.map((p: any) => (
+            {projects.map((p) => (
               <Link
                 key={p.project_id}
                 href={`/projects/${p.project_id}`}
@@ -132,7 +121,7 @@ export default function DashboardPage() {
   );
 }
 
-function KPI({ title, used, max }: { title: string; used: any; max: any }) {
+function KPI({ title, used, max }: { title: string; used?: number; max?: number }) {
   return (
     <div className="bg-white border rounded-lg p-5 shadow-sm hover:shadow transition">
       <p className="text-sm text-gray-600">{title}</p>

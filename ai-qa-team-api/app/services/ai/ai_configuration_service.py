@@ -38,7 +38,15 @@ async def validate_configuration(project_id: str, payload: AIConfigurationInput,
         existing = await db["ai_configurations"].find_one({"project_id": project_id})
     secret = await _resolve_secret(project_id, payload, existing)
     provider = provider_registry.resolve(_provider_id(payload), secret, payload.model, payload.configuration)
-    await provider.validate_connection(payload.model)
+    try:
+        await provider.validate_connection(payload.model)
+    except LLMProviderError as exc:
+        if payload.mode == "MANAGED" and exc.code == "AUTHENTICATION_ERROR":
+            raise LLMProviderError(
+                "AUTHENTICATION_ERROR",
+                "Managed AI credentials were rejected. The platform administrator must update the backend OpenAI key. Managed uses platform credentials; project keys are configured under OpenAI.",
+            ) from None
+        raise
 
 
 async def activate_configuration(project_id: str, payload: AIConfigurationInput, actor: str) -> dict:

@@ -1,7 +1,7 @@
 "use client";
 import { useFeatures, FeatureGate } from "@/components/providers/FeatureFlagsProvider";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -46,19 +46,19 @@ export default function StoryDetailsPage() {
   // -----------------------------
   // LOAD STORY
   // -----------------------------
-  async function loadStory() {
+  const loadStory = useCallback(async () => {
     try {
       const res = await apiFetch(`/stories/${storyId}?project_id=${projectId}`);
       if (res.ok) setStory(res.data);
     } catch (err) {
       console.error("Failed to load story:", err);
     }
-  }
+  }, [storyId, projectId]);
 
   // -----------------------------
   // LOAD RECORDINGS
   // -----------------------------
-  async function loadRecordings() {
+  const loadRecordings = useCallback(async () => {
     if (!recorderEnabled) return;
     try {
       const res = await apiFetch(`/recorder/by-story/${storyId}`);
@@ -67,12 +67,12 @@ export default function StoryDetailsPage() {
       console.error("Failed to load recordings:", err);
       setRecordings([]);
     }
-  }
+  }, [recorderEnabled, storyId]);
 
   // -----------------------------
   // LOAD SCENARIOS
   // -----------------------------
-  async function loadScenarios() {
+  const loadScenarios = useCallback(async () => {
     if (!scenariosEnabled) return;
     try {
       const res = await apiFetch(
@@ -85,7 +85,7 @@ export default function StoryDetailsPage() {
       setScenarios([]);
       setScenarioError(err instanceof Error ? err.message : "Could not load scenarios.");
     }
-  }
+  }, [scenariosEnabled, storyId, projectId]);
 
   async function generateScenario() {
     setGenerating(true);
@@ -97,7 +97,7 @@ export default function StoryDetailsPage() {
       if (!response.ok) {
         const detail = response.data?.detail;
         if (detail?.code === "AUTHENTICATION_ERROR") {
-          throw new Error("The active AI provider rejected its credentials. Ask a project administrator to check Project → AI Configuration.");
+          throw new Error("The active AI provider rejected its credentials. Ask a project administrator to check Workspace → AI Configuration.");
         }
         throw new Error(typeof detail === "string" ? detail : detail?.message || "Could not generate a scenario.");
       }
@@ -121,7 +121,7 @@ export default function StoryDetailsPage() {
     Promise.all([loadStory(), loadRecordings(), loadScenarios()]).finally(() =>
       setLoading(false)
     );
-  }, [storyId, recorderEnabled, scenariosEnabled]);
+  }, [storyId, loadStory, loadRecordings, loadScenarios]);
 
   if (loading) return <div className="p-6">Loading story…</div>;
 
