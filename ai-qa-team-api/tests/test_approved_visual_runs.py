@@ -96,6 +96,7 @@ class ApprovedVisualRunTests(unittest.IsolatedAsyncioTestCase):
             'approved_visual_tests': CollectionDouble(),
             'approved_visual_runs': CollectionDouble(),
             'approved_visual_execution_slots': CollectionDouble(),
+            'approved_staging_bindings': CollectionDouble(),
         }
         self.user = {'_id': 'reviewer', 'role': 'ADMIN'}
 
@@ -142,6 +143,113 @@ class ApprovedVisualRunTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('secret-target', response.text)
         self.assertNotIn('fixture-canary', response.text)
         return {**selection, 'preview_digest': response.json()['preview_digest'], 'idempotency_key': 'a' * 32}
+
+    async def staging_request(self):
+        approval = await self.approve()
+        self.db['environments'].docs[0] = {
+            'project_id': 'P1', 'env_id': 'ENV1', 'base_url': 'test.salesforce.com', 'revision': 3,
+            'credentials': [{'role': 'qa', 'credential_id': 'c' * 32, 'username': 'username-canary',
+                             'password': '', 'password_configured': True}],
+            'secret_payload': {'version': 1, 'ciphertext': 'ciphertext-canary'},
+        }
+        selection = {'approved_test_version_id': approval['version_id'], 'environment_id': 'ENV1', 'application_role': 'qa'}
+        preview = await self.client.post(self.path + '/staging-bindings/preview', json=selection)
+        self.assertEqual(preview.status_code, 200, preview.text)
+        return {**selection, 'binding_digest': preview.json()['binding_digest'], 'idempotency_key': 'd' * 32}
+
+    async def test_staging_binding_pins_metadata_without_dispatch_or_secrets(self):
+        request = await self.staging_request()
+        first, second = await asyncio.gather(*(self.client.post(self.path + '/staging-bindings', json=request) for _ in range(2)))
+        self.assertEqual(first.status_code, 201, first.text)
+        self.assertEqual(first.json(), second.json())
+        binding = first.json()
+        self.assertEqual(binding['target_url'], 'https://test.salesforce.com/')
+        self.assertEqual(binding['environment_revision'], 3)
+        self.assertEqual(binding['application_role'], 'qa')
+        self.assertEqual(binding['credential_id'], 'c' * 32)
+        self.assertEqual(binding['approved_test_version_id'], request['approved_test_version_id'])
+        self.assertFalse(binding['execution_ready'])
+        self.assertEqual(len(self.db['approved_staging_bindings'].docs), 1)
+        stored = str(self.db['approved_staging_bindings'].docs)
+        self.assertNotIn('username-canary', stored)
+        self.assertNotIn('ciphertext-canary', stored)
+        self.assertNotIn('password', stored)
+        self.assertEqual(self.db['approved_visual_runs'].docs, [])
+        self.assertEqual(self.db['approved_visual_execution_slots'].docs, [])
+        url = self.path + '/staging-bindings/' + binding['binding_id']
+        self.assertEqual((await self.client.get(url)).json()['validation_state'], 'current')
+        latest = await self.client.get(self.path + '/staging-bindings/testcases/TC1')
+        self.assertEqual(latest.json()['binding'], binding)
+        conflict = await self.client.post(self.path + '/staging-bindings', json={**request, 'application_role': 'other'})
+        self.assertEqual(conflict.status_code, 409)
+
+    async def test_staging_binding_becomes_stale_after_bound_input_changes(self):
+        request = await self.staging_request()
+        binding = (await self.client.post(self.path + '/staging-bindings', json=request)).json()
+        url = self.path + '/staging-bindings/' + binding['binding_id']
+        original = deepcopy(self.db['environments'].docs[0])
+        for change in ({'revision': 4}, {'base_url': 'https://test.salesforce.com/login'},
+                       {'credentials': []}, {'secret_payload': {'ciphertext': 'rotated'}}):
+            self.db['environments'].docs[0] = {**deepcopy(original), **change}
+            response = await self.client.get(url)
+            self.assertEqual(response.json()['validation_state'], 'stale', response.text)
+            self.assertEqual(response.json()['binding'], binding)
+        self.db['environments'].docs[0] = original
+        self.db['testcases'].docs[0]['status'] = 'edited'
+        self.assertEqual((await self.client.get(url)).json()['validation_state'], 'stale')
+        self.db['testcases'].docs[0]['status'] = 'ready'
+        self.db['stories'].docs[0]['acceptance_criteria'] = 'Changed requirement'
+        self.assertEqual((await self.client.get(url)).json()['validation_state'], 'stale')
+        self.db['stories'].docs[0]['acceptance_criteria'] = 'Display Draft saved.'
+        await self.approve(expected_text='Successor expectation')
+        self.assertEqual((await self.client.get(url)).json()['validation_state'], 'stale')
+        self.assertEqual((await self.client.post(self.path + '/staging-bindings', json=request)).json(), binding)
+
+    async def test_staging_binding_rejects_unsafe_urls_roles_and_unencrypted_credentials(self):
+        request = await self.staging_request()
+        selection = {key: request[key] for key in ('approved_test_version_id', 'environment_id', 'application_role')}
+        environment = self.db['environments'].docs[0]
+        for url in ('http://test.salesforce.com', 'https://test.salesforce.com.evil.test',
+                    'https://127.0.0.1', 'https://test.salesforce.com/?token=canary',
+                    'https://user:password-canary@test.salesforce.com', 'https://test.salesforce.com/#fragment',
+                    'https://test.salesforce.com:bad', 'https://test.salesforce.com/other'):
+            environment['base_url'] = url
+            response = await self.client.post(self.path + '/staging-bindings/preview', json=selection)
+            self.assertEqual(response.status_code, 422, response.text)
+            self.assertNotIn('password-canary', response.text)
+        environment['base_url'] = 'https://test.salesforce.com/'
+        self.assertEqual((await self.client.post(self.path + '/staging-bindings/preview', json={**selection, 'application_role': 'foreign'})).status_code, 422)
+        environment.pop('secret_payload')
+        self.assertEqual((await self.client.post(self.path + '/staging-bindings/preview', json=selection)).status_code, 409)
+        self.assertEqual(self.db['approved_staging_bindings'].docs, [])
+
+    async def test_staging_binding_scope_gates_and_no_synthetic_start(self):
+        request = await self.staging_request()
+        binding = (await self.client.post(self.path + '/staging-bindings', json=request)).json()
+        url = self.path + '/staging-bindings/' + binding['binding_id']
+        self.assertEqual((await self.client.get(url.replace('/P1/', '/P2/'))).status_code, 404)
+        self.assertEqual((await self.client.post(self.path.replace('/P1/', '/P2/') + '/staging-bindings', json=request)).status_code, 404)
+        for extra in ({'url': 'https://external.test'}, {'password': 'input-canary'}, {'command': 'anything'}):
+            rejected = await self.client.post(self.path + '/staging-bindings', json={**request, **extra})
+            self.assertEqual(rejected.status_code, 422)
+            self.assertNotIn('input-canary', rejected.text)
+        with patch.object(settings.features, 'approved_visual_run_execution', True), \
+             patch.object(settings, 'browserstack_username', 'fixture-user'), \
+             patch.object(settings, 'browserstack_access_key', 'fixture-key'):
+            self.assertEqual((await self.client.post(self.path + '/' + binding['binding_id'] + '/start')).status_code, 404)
+        self.assertEqual(self.db['approved_visual_execution_slots'].docs, [])
+        settings.features.approved_visual_run_admission = False
+        self.assertEqual((await self.client.get(url)).status_code, 403)
+        settings.features.approved_visual_run_admission = True
+        settings.app_env = 'production'
+        self.assertEqual((await self.client.get(url)).status_code, 403)
+
+    async def test_staging_binding_rejects_stale_preview_before_insert(self):
+        request = await self.staging_request()
+        self.db['environments'].docs[0]['revision'] += 1
+        response = await self.client.post(self.path + '/staging-bindings', json=request)
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(self.db['approved_staging_bindings'].docs, [])
 
     async def test_concurrent_admission_pins_inputs_and_returns_one_record(self):
         request = await self.prepare()

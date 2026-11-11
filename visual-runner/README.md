@@ -322,3 +322,10 @@ deployment and concurrent mutation safety are not verified by these checks.
 Merge-candidate verification passed 22 feature/catalog tests and 12 provider tests
 with doubles, TypeScript, lint on all changed UI TypeScript files and staged diff
 checks. No real provider credentials were used for these regression runs.
+
+## Secure staging preparation
+
+[Staging login preparation](../docs/mvp/STAGING_LOGIN_PREPARATION.md) records the
+encrypted environment credential and immutable input-binding implementation,
+configuration, routes, Windows verification commands and remaining login gates.
+Steps 1 and 2 prepare data only; the synthetic executor still opens its fixed sample.

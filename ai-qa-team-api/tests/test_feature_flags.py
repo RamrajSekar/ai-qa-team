@@ -335,6 +335,17 @@ class FeatureFlagTests(unittest.TestCase):
             execution_queue.enqueue_execution_job({"execution_id": "EX1"})
         self.assert_no_external_calls()
 
+    def test_legacy_execution_rejects_protected_environment_before_persistence(self):
+        settings.features = FeatureFlags(native_execution=True)
+        with patch.object(execution_engine, "get_next_sequence", new=AsyncMock()) as sequence:
+            with self.assertRaises(HTTPException) as protected:
+                asyncio.run(execution_engine.create_execution_record(
+                    project_id="P", testcase_id="T", triggered_by="test", env_type="qa",
+                    environment_doc={"secret_payload": {"version": 1}}, runner_type="manual"))
+        self.assertEqual(protected.exception.status_code, 409)
+        sequence.assert_not_awaited()
+        self.assert_no_external_calls()
+
     def test_disabled_worker_does_not_dequeue_or_run_any_runner(self):
         with patch.object(execution_worker, "execute_playwright_test", new_callable=AsyncMock) as runner, \
              patch.object(execution_worker, "_run_manual", new_callable=AsyncMock) as manual, \

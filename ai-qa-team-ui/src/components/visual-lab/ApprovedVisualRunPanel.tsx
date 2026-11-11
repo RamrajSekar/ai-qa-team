@@ -2,11 +2,15 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { apiFetch } from "@/utils/api";
+import StagingBindingPanel from "./StagingBindingPanel";
 import LabScreenshot from "./LabScreenshot";
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 
 type Testcase = { testcase_id: string; title: string };
-type Environment = { env_id?: string; name?: string; env_type?: string };
+type Environment = {
+  env_id?: string; name?: string; env_type?: string;
+  credentials?: { role: string; password_configured?: boolean }[];
+};
 type Approval = { version_id: string; story_id: string; button_label: string; expected_text: string };
 type Preview = { preview_digest: string; environment_id: string; test: Approval };
 type Run = Preview & {
@@ -189,6 +193,8 @@ function RunControls({ projectId, testcaseId, environments, canApprove, executio
         </button>}
         {run.evidence_available && <LabScreenshot key={run.run_id} url={`${base}/${run.run_id}/evidence`} label="Synthetic run evidence" />}
       </div>}
+      {approval && <StagingBindingPanel key={approval.version_id} projectId={projectId} testcaseId={testcaseId}
+        approvedVersionId={approval.version_id} environments={environments} />}
     </>}
   </div>;
 }

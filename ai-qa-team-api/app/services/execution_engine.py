@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Optional, List, Literal, Dict, Any
 
 from bson import ObjectId
+from fastapi import HTTPException
 
 from app.db.connection import db
 from app.models.test_execution_model import (
@@ -65,6 +66,8 @@ async def create_execution_record(
     """
 
     require_features("native_execution")
+    if environment_doc.get("secret_payload"):
+        raise HTTPException(409, "Protected environment credentials require the approved runtime resolver; legacy execution cannot use this environment.")
     execution_id = await get_next_sequence('execution_id', 'EX')
 
     # Normalize dataset

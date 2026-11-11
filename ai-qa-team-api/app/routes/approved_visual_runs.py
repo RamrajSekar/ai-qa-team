@@ -8,11 +8,15 @@ from app.db.connection import db
 from app.models.approved_visual_run import (
     AdmittedVisualRun, ApproveVisualTest, ApprovedVisualPreview, ApprovedVisualTest,
     StartApprovedVisualRun, VisualRunSelection, VisualTestRunState,
+    StagingBindingSelection, SaveStagingBinding, StagingBindingPreview,
+    PreparedStagingBinding, StagingBindingState,
 )
 from app.services.approved_visual_run import ApprovedVisualRuns
+from app.services.staging_run_binding import StagingRunBindings
 from app.services import approved_visual_execution
 from app.utils.auth_dependency import get_current_user
 from app.utils.feature_flags import feature_required
+from app.utils.safe_validation_route import SafeValidationRoute
 from app.utils.project_authorization import require_project_admin, require_project_member, user_id
 
 
@@ -24,6 +28,7 @@ async def require_development():
 router = APIRouter(
     prefix='/projects/{project_id}/approved-visual-runs',
     tags=['Approved Visual Run Admission'],
+    route_class=SafeValidationRoute,
     dependencies=[Depends(feature_required('approved_visual_run_admission')), Depends(require_development)],
 )
 
@@ -99,3 +104,29 @@ async def evidence(project_id: str, run_id: Annotated[str, Path(pattern=r'^[0-9a
     return Response(doc['evidence_png'], media_type='image/png', headers={
         'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
     })
+
+
+@router.post('/staging-bindings/preview', response_model=StagingBindingPreview)
+async def preview_staging_binding(project_id: str, payload: StagingBindingSelection, user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await StagingRunBindings(service()).preview(project_id, payload)
+
+
+@router.post('/staging-bindings', response_model=PreparedStagingBinding, status_code=201)
+async def save_staging_binding(project_id: str, payload: SaveStagingBinding, user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await StagingRunBindings(service()).save(project_id, actor_id(user), payload)
+
+
+@router.get('/staging-bindings/testcases/{testcase_id}', response_model=StagingBindingState | None)
+async def latest_staging_binding(project_id: str, testcase_id: Annotated[str, Path(pattern=r'^[A-Za-z0-9_-]{1,80}$')],
+                                 user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await StagingRunBindings(service()).latest(project_id, testcase_id)
+
+
+@router.get('/staging-bindings/{binding_id}', response_model=StagingBindingState)
+async def staging_binding_status(project_id: str, binding_id: Annotated[str, Path(pattern=r'^[0-9a-f]{64}$')],
+                                 user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await StagingRunBindings(service()).status(project_id, binding_id)

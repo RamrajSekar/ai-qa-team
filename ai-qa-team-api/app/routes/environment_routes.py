@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
+from app.utils.safe_validation_route import SafeValidationRoute
 
 from app.utils.auth_dependency import get_current_user
 from app.models.environment_model import (
@@ -14,7 +15,9 @@ from app.services.project_environment_service import (
     delete_environment,
 )
 
-router = APIRouter(prefix="/environments", tags=["Environments"])
+
+
+router = APIRouter(prefix="/environments", tags=["Environments"], route_class=SafeValidationRoute)
 
 # -------------------------------------------------------
 # CREATE ENVIRONMENT
