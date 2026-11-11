@@ -21,8 +21,11 @@ from app.ai.scenario_prompts import (
 )
 
 from app.services.ai.scenario_generator import generate_scenarios_from_prompt
+from app.services.ai.ai_configuration_service import public_error
+from app.services.ai.base_provider import LLMProviderError
 from app.services.subscription_services import decrement_usage
 from app.utils.feature_flags import feature_required
+from app.utils.project_authorization import require_project_member
 
 # ------------------------------------------------------
 # Router Setup
@@ -89,6 +92,7 @@ def _build_scenario_response(doc: dict) -> ScenarioResponse:
 # -------------------------------------------------------------------
 # 1. CREATE SCENARIO (manual)
 # -------------------------------------------------------------------
+@router.post("", response_model=ScenarioResponse, include_in_schema=False)
 @router.post("/", response_model=ScenarioResponse)
 async def create_scenario(
     scenario: ScenarioCreate,
@@ -115,7 +119,7 @@ async def create_scenario(
 
         # Normalize incoming steps (if any)
         normalized_steps = [
-            normalize_step_dict(step, idx)
+            normalize_step_dict(step.model_dump(), idx)
             for idx, step in enumerate(scenario.steps or [], start=1)
         ]
 
@@ -146,6 +150,7 @@ async def create_scenario(
 # -------------------------------------------------------------------
 # 2. LIST SCENARIOS for a story
 # -------------------------------------------------------------------
+@router.get("", response_model=List[ScenarioResponse], include_in_schema=False)
 @router.get("/", response_model=List[ScenarioResponse])
 async def list_scenarios(
     story_id: str = Query(...),
@@ -166,8 +171,50 @@ async def list_scenarios(
 
 
 # -------------------------------------------------------------------
-# 3. GET SINGLE SCENARIO
+# 3. PROJECT OVERVIEW AND SINGLE SCENARIO
 # -------------------------------------------------------------------
+@router.get("/project-list", response_model=List[ScenarioResponse],
+            dependencies=[Depends(feature_required("scenario_generation"))])
+async def project_scenarios(
+    project_id: str,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    current_user=Depends(get_current_user),
+):
+    await require_project_member(project_id, current_user)
+    cursor = db["scenarios"].find({"project_id": project_id}).sort("scenario_id", 1).skip(skip).limit(limit)
+    return [_build_scenario_response(doc) async for doc in cursor]
+
+
+@router.get("/project-overview")
+async def project_scenario_overview(
+    project_id: str,
+    current_user=Depends(get_current_user),
+    _: None = Depends(subscription_required("scenarios")),
+):
+    await require_project_member(project_id, current_user)
+    # Match the Stories screen's owner scope and bound the overview payload.
+    story_ids = await db["stories"].distinct(
+        "story_id", {"project_id": project_id, "created_by": current_user["email"]}
+    )
+    if not story_ids:
+        return {"total": 0, "recent": []}
+    summaries = await db["scenarios"].aggregate([
+        {"$match": {"project_id": project_id, "story_id": {"$in": story_ids}}},
+        {"$facet": {
+            "count": [{"$count": "total"}],
+            "recent": [
+                {"$sort": {"created_at": -1, "_id": -1}},
+                {"$limit": 5},
+                {"$project": {"_id": 0, "scenario_id": 1, "story_id": 1, "title": 1,
+                              "approved": 1, "complexity": 1}},
+            ],
+        }},
+    ]).to_list(1)
+    summary = summaries[0] if summaries else {"count": [], "recent": []}
+    return {"total": summary["count"][0]["total"] if summary["count"] else 0, "recent": summary["recent"]}
+
+
 @router.get("/{scenario_id}", response_model=ScenarioResponse)
 async def get_scenario(
     scenario_id: str,
@@ -200,11 +247,16 @@ async def update_scenario(
     if not existing:
         raise HTTPException(404, "Scenario not found or access denied.")
 
+    await require_project_member(existing["project_id"], current_user)
+
     update_data = {k: v for k, v in update.model_dump().items() if v is not None}
 
     # Preserve existing approval flag if not explicitly updated
     if "approved" not in update_data:
         update_data["approved"] = existing.get("approved", False)
+
+    if any(field in update_data for field in ("title", "description", "steps")):
+        update_data["approved"] = False
 
     # Normalize steps if updated
     if "steps" in update_data and update_data["steps"] is not None:
@@ -251,6 +303,15 @@ async def update_scenario(
 async def delete_scenario(scenario_id: str, current_user=Depends(get_current_user)):
     user_email = current_user["email"]
 
+    existing = await db["scenarios"].find_one({"scenario_id": scenario_id, "created_by": user_email})
+    if not existing:
+        raise HTTPException(404, "Scenario not found or access denied")
+    await require_project_member(existing["project_id"], current_user)
+    scope = {"project_id": existing["project_id"], "scenario_id": scenario_id}
+    for collection in ("testcases", "approved_visual_tests", "visual_test_spec_versions", "executions"):
+        if await db[collection].find_one(scope):
+            raise HTTPException(409, "This scenario has dependent tests, approvals or history and cannot be deleted.")
+
     result = await db["scenarios"].delete_one({
         "scenario_id": scenario_id,
         "created_by": user_email
@@ -296,7 +357,7 @@ async def generate_scenarios_from_story(
 
         ai_used = sub["usage"]["ai_gen_used"]
         ai_lim = sub["limits"]["ai_gen_limit"]
-        rem_ai = ai_lim - ai_used
+        rem_ai = count if ai_lim is None else ai_lim - ai_used
 
         allowed = min(count, rem_ai, rem_scen)
         if allowed <= 0:
@@ -365,8 +426,12 @@ async def generate_scenarios_from_story(
             ),
         )
 
-    except Exception as e:
-        raise HTTPException(500, str(e))
+    except LLMProviderError as exc:
+        raise public_error(exc) from None
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(500, "Scenario generation could not be completed.") from None
 
 
 # -------------------------------------------------------------------

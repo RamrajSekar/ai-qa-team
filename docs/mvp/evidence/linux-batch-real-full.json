@@ -1,0 +1,436 @@
+{
+  "environment": "Real isolated TLS Mongo + actual Podman/Robot/CfT + ASGI; authentication double, real project authorization",
+  "image": "b5d5e83e29ec11e6d2e34ce387f1e2f6f7108acdbd31bf22d96e4418a4dbb66c",
+  "checks": [
+    {
+      "check": "real Mongo duplicate enqueue",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "two slots allocated; third batch queued",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "cross-project status and cancel denial",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "independent cancellation and queue progression",
+      "passed": true,
+      "details": [
+        "cancelled",
+        "completed",
+        "completed"
+      ]
+    },
+    {
+      "check": "fresh sequential cases with independent evidence",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "private authorized screenshot and cross-project denial",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "ten-case batch boundary real execution",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "feature off rejects API and stops active container",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "coordinator recovery never replayed starts",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "capacity released after terminal containers",
+      "passed": true,
+      "details": null
+    }
+  ],
+  "batches": [
+    {
+      "batch_id": "2115f34c58884155a997cb21ca7d9cff",
+      "state": "cancelled",
+      "cases": [
+        {
+          "case_run_id": "25fb782b27ee489499a5e5f05a87b462",
+          "state": "cancelled",
+          "verdict": null,
+          "screenshots": [
+            "01-open",
+            "02-filled",
+            "03-confirmed"
+          ],
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Robot fixture coordinates and keyboard actions; no AI or business assertions.",
+            "Controlled sample opened.",
+            "Synthetic inputs entered.",
+            "Confirmation action sent; screenshot captured.",
+            "Closing browser and driver.",
+            "Browser smoke check cancelled."
+          ],
+          "diagnostic_code": "RuntimeError",
+          "started_at": "2026-11-02T17:46:33.534192Z",
+          "finished_at": "2026-11-02T17:46:41.453055Z"
+        },
+        {
+          "case_run_id": "fcd8165b98c342fe936a348c741ec7a1",
+          "state": "cancelled",
+          "verdict": null,
+          "screenshots": [],
+          "logs": [],
+          "diagnostic_code": null,
+          "started_at": null,
+          "finished_at": null
+        }
+      ]
+    },
+    {
+      "batch_id": "095de438c33f4b59aa91c3ca5266f7e0",
+      "state": "completed",
+      "cases": [
+        {
+          "case_run_id": "afe817a386114599bfc739a68a1bc644",
+          "state": "completed",
+          "verdict": null,
+          "screenshots": [
+            "01-open",
+            "02-filled",
+            "03-confirmed"
+          ],
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Robot fixture coordinates and keyboard actions; no AI or business assertions.",
+            "Controlled sample opened.",
+            "Synthetic inputs entered.",
+            "Confirmation action sent; screenshot captured.",
+            "Closing browser and driver.",
+            "Browser smoke check completed"
+          ],
+          "diagnostic_code": null,
+          "started_at": "2026-11-02T17:46:37.981133Z",
+          "finished_at": "2026-11-02T17:46:52.148669Z"
+        },
+        {
+          "case_run_id": "a16ff9edb9e64ae08f08791ff5da2c5f",
+          "state": "completed",
+          "verdict": null,
+          "screenshots": [
+            "01-open",
+            "02-filled",
+            "03-confirmed"
+          ],
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Robot fixture coordinates and keyboard actions; no AI or business assertions.",
+            "Controlled sample opened.",
+            "Synthetic inputs entered.",
+            "Confirmation action sent; screenshot captured.",
+            "Closing browser and driver.",
+            "Browser smoke check completed"
+          ],
+          "diagnostic_code": null,
+          "started_at": "2026-11-02T17:46:52.156988Z",
+          "finished_at": "2026-11-02T17:47:06.794126Z"
+        }
+      ]
+    },
+    {
+      "batch_id": "52f12e07217845f1a65b992e80cce6c2",
+      "state": "completed",
+      "cases": [
+        {
+          "case_run_id": "42c284e180c041d6b108e6ce0d2a438d",
+          "state": "completed",
+          "verdict": null,
+          "screenshots": [
+            "01-open",
+            "02-filled",
+            "03-confirmed"
+          ],
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Robot fixture coordinates and keyboard actions; no AI or business assertions.",
+            "Controlled sample opened.",
+            "Synthetic inputs entered.",
+            "Confirmation action sent; screenshot captured.",
+            "Closing browser and driver.",
+            "Browser smoke check completed"
+          ],
+          "diagnostic_code": null,
+          "started_at": "2026-11-02T17:46:54.112155Z",
+          "finished_at": "2026-11-02T17:47:08.797196Z"
+        }
+      ]
+    },
+    {
+      "batch_id": "3c4046f8aaff4227b82984038a191c48",
+      "state": "completed",
+      "cases": [
+        {
+          "case_run_id": "f9fc57860eef45899abf990c38d6d964",
+          "state": "completed",
+          "verdict": null,
+          "screenshots": [
+            "01-open",
+            "02-filled",
+            "03-confirmed"
+          ],
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Robot fixture coordinates and keyboard actions; no AI or business assertions.",
+            "Controlled sample opened.",
+            "Synthetic inputs entered.",
+            "Confirmation action sent; screenshot captured.",
+            "Closing browser and driver.",
+            "Browser smoke check completed"
+          ],
+          "diagnostic_code": null,
+          "started_at": "2026-11-02T17:47:18.121106Z",
+          "finished_at": "2026-11-02T17:47:32.905598Z"
+        },
+        {
+          "case_run_id": "61a24f450b8c47779049fca590a9fae8",
+          "state": "completed",
+          "verdict": null,
+          "screenshots": [
+            "01-open",
+            "02-filled",
+            "03-confirmed"
+          ],
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Robot fixture coordinates and keyboard actions; no AI or business assertions.",
+            "Controlled sample opened.",
+            "Synthetic inputs entered.",
+            "Confirmation action sent; screenshot captured.",
+            "Closing browser and driver.",
+            "Browser smoke check completed"
+          ],
+          "diagnostic_code": null,
+          "started_at": "2026-11-02T17:47:32.909094Z",
+          "finished_at": "2026-11-02T17:47:46.357314Z"
+        },
+        {
+          "case_run_id": "9b070996c797455e81ba117896fa2178",
+          "state": "completed",
+          "verdict": null,
+          "screenshots": [
+            "01-open",
+            "02-filled",
+            "03-confirmed"
+          ],
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Robot fixture coordinates and keyboard actions; no AI or business assertions.",
+            "Controlled sample opened.",
+            "Synthetic inputs entered.",
+            "Confirmation action sent; screenshot captured.",
+            "Closing browser and driver.",
+            "Browser smoke check completed"
+          ],
+          "diagnostic_code": null,
+          "started_at": "2026-11-02T17:47:46.362896Z",
+          "finished_at": "2026-11-02T17:48:00.989010Z"
+        },
+        {
+          "case_run_id": "1703f854a1d0428da015254ac724b867",
+          "state": "completed",
+          "verdict": null,
+          "screenshots": [
+            "01-open",
+            "02-filled",
+            "03-confirmed"
+          ],
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Robot fixture coordinates and keyboard actions; no AI or business assertions.",
+            "Controlled sample opened.",
+            "Synthetic inputs entered.",
+            "Confirmation action sent; screenshot captured.",
+            "Closing browser and driver.",
+            "Browser smoke check completed"
+          ],
+          "diagnostic_code": null,
+          "started_at": "2026-11-02T17:48:00.997917Z",
+          "finished_at": "2026-11-02T17:48:14.958434Z"
+        },
+        {
+          "case_run_id": "983ad1e78a014c9bad0793d638359f18",
+          "state": "completed",
+          "verdict": null,
+          "screenshots": [
+            "01-open",
+            "02-filled",
+            "03-confirmed"
+          ],
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Robot fixture coordinates and keyboard actions; no AI or business assertions.",
+            "Controlled sample opened.",
+            "Synthetic inputs entered.",
+            "Confirmation action sent; screenshot captured.",
+            "Closing browser and driver.",
+            "Browser smoke check completed"
+          ],
+          "diagnostic_code": null,
+          "started_at": "2026-11-02T17:48:14.969184Z",
+          "finished_at": "2026-11-02T17:48:27.881908Z"
+        },
+        {
+          "case_run_id": "198462266c2b43abb5aca21bc0691efc",
+          "state": "completed",
+          "verdict": null,
+          "screenshots": [
+            "01-open",
+            "02-filled",
+            "03-confirmed"
+          ],
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Robot fixture coordinates and keyboard actions; no AI or business assertions.",
+            "Controlled sample opened.",
+            "Synthetic inputs entered.",
+            "Confirmation action sent; screenshot captured.",
+            "Closing browser and driver.",
+            "Browser smoke check completed"
+          ],
+          "diagnostic_code": null,
+          "started_at": "2026-11-02T17:48:27.895431Z",
+          "finished_at": "2026-11-02T17:48:41.296043Z"
+        },
+        {
+          "case_run_id": "ecb94a54fc29460b90beadf50f49bd34",
+          "state": "completed",
+          "verdict": null,
+          "screenshots": [
+            "01-open",
+            "02-filled",
+            "03-confirmed"
+          ],
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Robot fixture coordinates and keyboard actions; no AI or business assertions.",
+            "Controlled sample opened.",
+            "Synthetic inputs entered.",
+            "Confirmation action sent; screenshot captured.",
+            "Closing browser and driver.",
+            "Browser smoke check completed"
+          ],
+          "diagnostic_code": null,
+          "started_at": "2026-11-02T17:48:41.309838Z",
+          "finished_at": "2026-11-02T17:48:54.780048Z"
+        },
+        {
+          "case_run_id": "68ed53f4083241a6839ee7a76684db28",
+          "state": "completed",
+          "verdict": null,
+          "screenshots": [
+            "01-open",
+            "02-filled",
+            "03-confirmed"
+          ],
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Robot fixture coordinates and keyboard actions; no AI or business assertions.",
+            "Controlled sample opened.",
+            "Synthetic inputs entered.",
+            "Confirmation action sent; screenshot captured.",
+            "Closing browser and driver.",
+            "Browser smoke check completed"
+          ],
+          "diagnostic_code": null,
+          "started_at": "2026-11-02T17:48:54.799217Z",
+          "finished_at": "2026-11-02T17:49:07.940801Z"
+        },
+        {
+          "case_run_id": "88ebc82c9e124c799795bd07c2b1b7f0",
+          "state": "completed",
+          "verdict": null,
+          "screenshots": [
+            "01-open",
+            "02-filled",
+            "03-confirmed"
+          ],
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Robot fixture coordinates and keyboard actions; no AI or business assertions.",
+            "Controlled sample opened.",
+            "Synthetic inputs entered.",
+            "Confirmation action sent; screenshot captured.",
+            "Closing browser and driver.",
+            "Browser smoke check completed"
+          ],
+          "diagnostic_code": null,
+          "started_at": "2026-11-02T17:49:07.969670Z",
+          "finished_at": "2026-11-02T17:49:21.615695Z"
+        },
+        {
+          "case_run_id": "ca4424c281554a2694ae1a455bb7cba4",
+          "state": "completed",
+          "verdict": null,
+          "screenshots": [
+            "01-open",
+            "02-filled",
+            "03-confirmed"
+          ],
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Robot fixture coordinates and keyboard actions; no AI or business assertions.",
+            "Controlled sample opened.",
+            "Synthetic inputs entered.",
+            "Confirmation action sent; screenshot captured.",
+            "Closing browser and driver.",
+            "Browser smoke check completed"
+          ],
+          "diagnostic_code": null,
+          "started_at": "2026-11-02T17:49:21.635439Z",
+          "finished_at": "2026-11-02T17:49:35.236743Z"
+        }
+      ]
+    },
+    {
+      "batch_id": "2b33a80d77eb44f68e88659eb0455ce7",
+      "state": "cancelled",
+      "cases": [
+        {
+          "case_run_id": "810a2f45290342ce80a145c437e04d38",
+          "state": "cancelled",
+          "verdict": null,
+          "screenshots": [],
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Closing browser and driver.",
+            "Browser smoke check cancelled."
+          ],
+          "diagnostic_code": "RuntimeError",
+          "started_at": "2026-11-02T17:49:40.506932Z",
+          "finished_at": "2026-11-02T17:49:43.329665Z"
+        },
+        {
+          "case_run_id": "775f8d79ff6b4a0cab1738dc080bde4f",
+          "state": "cancelled",
+          "verdict": null,
+          "screenshots": [],
+          "logs": [],
+          "diagnostic_code": null,
+          "started_at": null,
+          "finished_at": null
+        }
+      ]
+    }
+  ],
+  "peak_overlapping_case_intervals": 2,
+  "interpretation": "Case intervals include startup/cleanup; not an independent continuous browser-process census."
+}

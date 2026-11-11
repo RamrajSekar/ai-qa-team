@@ -1,4 +1,17 @@
 import Link from 'next/link';
+
 export default function Footer() {
-  return <><section className="lp-section lp-container lp-final"><p className="lp-eyebrow">Keep the tests. Expand the possibilities.</p><h2>Your Tests Already Know How to Test.<br/>Make Them Easier to Use.</h2><p className="lp-intro">Start with the automation you already own. We’re building AI QA Team to help reproduce bugs, prepare test states, and explore scenarios without rebuilding your suite.</p><div className="lp-actions"><Link className="lp-button" href="/auth?mode=signup">Get Started</Link><a className="lp-button lp-secondary" href="#how-it-works">See How It Works</a></div><p className="lp-note">Create an account using the existing sign-up flow. Planned workflows are not yet available.</p></section><footer className="lp-footer lp-container"><p>© {new Date().getFullYear()} AI QA Team</p><nav aria-label="Footer navigation"><a href="#product">Product</a><a href="#roadmap">Roadmap</a><Link href="/auth?mode=login">Sign In</Link></nav></footer></>;
+  return <>
+    <section className="lp-section lp-container lp-final">
+      <p className="lp-eyebrow">Build shared understanding before execution</p>
+      <h2>Your Product Knowledge.<br />Your Approved Expectations.</h2>
+      <p className="lp-intro">Start with projects, stories and acceptance criteria. Follow our progress toward recording-trained knowledge and supervised visual QA.</p>
+      <div className="lp-actions"><Link className="lp-button" href="/auth?mode=signup">Create Account</Link>
+        <a className="lp-button lp-secondary" href="#how-it-works">Explore the Workflow</a></div>
+      <p className="lp-note">Account creation opens the existing workspace. See delivery progress for current capabilities.</p>
+    </section>
+    <footer className="lp-footer lp-container"><p>© {new Date().getFullYear()} AI QA Team</p>
+      <nav aria-label="Footer navigation"><a href="#product">Product</a><a href="#roadmap">Progress</a><Link href="/auth?mode=login">Sign In</Link></nav>
+    </footer>
+  </>;
 }

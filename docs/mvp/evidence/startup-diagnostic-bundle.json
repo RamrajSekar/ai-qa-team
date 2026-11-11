@@ -1,0 +1,139 @@
+{
+  "date": "2026-10-31",
+  "scope": "bounded startup diagnostics; no startup fix or M1B",
+  "attempts": [
+    {
+      "run_id": "288d65493f7f4625b7f2b605203630cc",
+      "headed": false,
+      "state": "failed",
+      "first_attempt_success": false,
+      "duration_seconds": 6.563,
+      "stage": "browser_launch",
+      "reason": null,
+      "code": "ReadTimeout",
+      "stage_ms": {
+        "driver_version": 281,
+        "driver_launch": 360,
+        "driver_readiness": 15,
+        "session_creation": 0,
+        "browser_launch": 5016
+      },
+      "startup_diagnostics": {
+        "driver_version": "146.0.7680.31",
+        "driver_state": "running",
+        "driver_exit_code": null,
+        "browser_state": "running",
+        "devtools_port_file": "absent",
+        "session_created": false,
+        "cleanup": "driver_exited_job_closed",
+        "native_errors": [],
+        "cleanup_driver_exit_code": 0,
+        "cleanup_browser_state": "exited"
+      },
+      "cleanup": "no_survivors_observed",
+      "survivor_count": 0,
+      "number": 1
+    },
+    {
+      "run_id": "a27d7eecb9af4086bc01b3161a5180d4",
+      "headed": false,
+      "state": "completed",
+      "first_attempt_success": true,
+      "duration_seconds": 18.641,
+      "stage": "navigation",
+      "reason": null,
+      "code": null,
+      "stage_ms": {
+        "driver_version": 250,
+        "driver_launch": 313,
+        "driver_readiness": 15,
+        "session_creation": 16,
+        "browser_launch": 1156,
+        "devtools_connect": 313,
+        "session_handshake": 797,
+        "version_validation": 0,
+        "session_timeouts": 15,
+        "ready": 735,
+        "navigation": 12734
+      },
+      "startup_diagnostics": {
+        "driver_version": "146.0.7680.31",
+        "driver_state": "running",
+        "driver_exit_code": null,
+        "browser_state": "running",
+        "devtools_port_file": "present",
+        "session_created": true,
+        "cleanup": "driver_exited_job_closed",
+        "native_errors": [],
+        "cleanup_driver_exit_code": 0,
+        "cleanup_browser_state": "exited"
+      },
+      "cleanup": "no_survivors_observed",
+      "survivor_count": 0,
+      "number": 1
+    },
+    {
+      "run_id": "e14f40ddef9a48ab800ea7c465f45793",
+      "headed": false,
+      "state": "failed",
+      "first_attempt_success": false,
+      "duration_seconds": 9.391,
+      "stage": "browser_launch",
+      "reason": null,
+      "code": "ReadTimeout",
+      "stage_ms": {
+        "driver_version": 765,
+        "driver_launch": 1031,
+        "driver_readiness": 32,
+        "session_creation": 0,
+        "browser_launch": 5000
+      },
+      "startup_diagnostics": {
+        "driver_version": "146.0.7680.31",
+        "driver_state": "running",
+        "driver_exit_code": null,
+        "browser_state": "running",
+        "devtools_port_file": "absent",
+        "session_created": false,
+        "cleanup": "driver_exited_job_closed",
+        "native_errors": [],
+        "cleanup_driver_exit_code": 0,
+        "cleanup_browser_state": "exited"
+      },
+      "cleanup": "no_survivors_observed",
+      "survivor_count": 0,
+      "number": 1
+    }
+  ],
+  "fresh_completion": "0/2 across initial and final diagnostic code revisions",
+  "cached_comparison_completion": "1/1",
+  "versions": {
+    "configured_fresh_chrome_product_version": "146.0.7680.31",
+    "chromedriver": "146.0.7680.31",
+    "normal_user_chrome": "156.0.8078.75 (user-reported; not launched by runner)"
+  },
+  "cancellation": {
+    "case": "cancel",
+    "state": "cancelled",
+    "screenshots": [
+      "01-open"
+    ],
+    "cleanup": "no_surviving_child_processes_observed",
+    "run_id": "3e6c6c24b6c94eb4bd89bb30b5c4cf0c"
+  },
+  "checks": {
+    "runner_tests": "8 passed",
+    "api_lab_service_authorization_tests": "10 passed; service/auth doubles",
+    "feature_history_tests": "14 passed; doubles",
+    "ui_tests": "3 passed; intercepted API fixtures; separate existing Playwright/Edge tooling",
+    "typescript": "passed",
+    "focused_ui_lint": "passed",
+    "pip_check": "passed"
+  },
+  "limitations": [
+    "No real login/API/Mongo integration rerun for diagnostic fields",
+    "No fresh clean-download or full 10-headless/5-headed baseline rerun",
+    "Fresh startup cause remains unresolved",
+    "Process states are bounded observations, not proof no unobserved browser ever existed"
+  ]
+}

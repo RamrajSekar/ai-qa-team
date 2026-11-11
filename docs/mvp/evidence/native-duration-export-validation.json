@@ -1,0 +1,27 @@
+{
+  "date": "2026-11-02",
+  "exports": [
+    {
+      "file": "m1a-native-cached-duration.CSV",
+      "rows": 2255,
+      "identity_by_pid": "cached_driver_only_earlier",
+      "duration_available": true
+    },
+    {
+      "file": "m1a-native-fresh-duration.CSV",
+      "rows": 86556,
+      "identity_by_pid": "cached_success_full",
+      "duration_available": true
+    },
+    {
+      "file": "m1a-native-fresh1-duration.CSV",
+      "rows": 1976,
+      "identity_by_pid": "unknown",
+      "duration_available": true
+    }
+  ],
+  "valid_fresh_failed_duration_export": false,
+  "conclusion": "do not compare by filenames; fresh failed browser Duration data is missing",
+  "cached_observations": "long directory notifications are pending operations, not proof of blocked I/O; some profile writes/flushes take seconds but do not establish failure cause",
+  "runtime_changes": false
+}

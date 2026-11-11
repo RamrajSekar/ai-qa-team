@@ -1,0 +1,67 @@
+{
+  "read_times": [
+    {
+      "bundle": "copied_cached",
+      "seconds": 0.578,
+      "sha256": "7c46e68ff9f232bf0fd1d75645901dee905e2cc9fbf7a4ba3588f009fe954eba"
+    },
+    {
+      "bundle": "cached",
+      "seconds": 0.75,
+      "sha256": "7c46e68ff9f232bf0fd1d75645901dee905e2cc9fbf7a4ba3588f009fe954eba"
+    }
+  ],
+  "attempts": [
+    {
+      "bundle": "cached",
+      "order": 1,
+      "elapsed": 2.468,
+      "endpoint_file": true,
+      "exit_before_cleanup": null,
+      "browser_before_cleanup": "running",
+      "browser_after_cleanup": "exited"
+    },
+    {
+      "bundle": "copied_cached",
+      "order": 2,
+      "elapsed": 12.594,
+      "endpoint_file": true,
+      "exit_before_cleanup": null,
+      "browser_before_cleanup": "running",
+      "browser_after_cleanup": "exited"
+    },
+    {
+      "bundle": "copied_cached",
+      "order": 3,
+      "elapsed": 0.797,
+      "endpoint_file": true,
+      "exit_before_cleanup": null,
+      "browser_before_cleanup": "running",
+      "browser_after_cleanup": "exited"
+    },
+    {
+      "bundle": "cached",
+      "order": 4,
+      "elapsed": 2.671,
+      "endpoint_file": true,
+      "exit_before_cleanup": null,
+      "browser_before_cleanup": "running",
+      "browser_after_cleanup": "exited"
+    }
+  ],
+  "date": "2026-11-01",
+  "browser_volume": "C for original and new copy",
+  "profile_volume": "F for all attempts; distinct profiles under same task root",
+  "launch_order": "original, copy, copy, original",
+  "normal_user_browser_profile_used": false,
+  "security_changes": false,
+  "application_changes": false,
+  "limitations": [
+    "four observations do not establish warmup reliability",
+    "new directory inherits different parent permissions despite sandbox capability configuration",
+    "read/hash occurs before launch and warms file content",
+    "time-varying host load remains a confounder",
+    "direct endpoint-file observation does not establish full WebDriver/Robot success",
+    "no direct proof of antivirus or reputation scanning"
+  ]
+}

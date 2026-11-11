@@ -1,0 +1,84 @@
+{
+  "date": "2026-11-02",
+  "branch": "dev",
+  "commit": "2479de4017cd8e29516daa1ecf62d5763bc2b6b2",
+  "verdict": "implemented; five-browser qualification incomplete",
+  "runner_image": "b5d5e83e29ec11e6d2e34ce387f1e2f6f7108acdbd31bf22d96e4418a4dbb66c",
+  "chrome_driver_version": "146.0.7680.31",
+  "five_check_attempt": {
+    "completions": 0,
+    "attempts": 5,
+    "errors": "ReadTimeout",
+    "stage": "browser_launch",
+    "devtools_endpoint": "absent",
+    "session_created": false,
+    "overlap_qualified": false
+  },
+  "one_check_control": {
+    "completion": "not verified",
+    "error": "ENGINE_UNAVAILABLE",
+    "stage": "Podman container inspection",
+    "reason": "old wrapper combined process launch failure and command timeout"
+  },
+  "cleanup": [
+    {
+      "fixture": "m1a-parallel-five-attempt1",
+      "case_run_id": "706b0a6d4b444ae5b7fbee4c4b50bd84",
+      "status": "unverified"
+    },
+    {
+      "fixture": "m1a-parallel-five-attempt1",
+      "case_run_id": "9d11c5bf71e04859a7dcfd5360add087",
+      "status": "unverified"
+    },
+    {
+      "fixture": "m1a-parallel-five-attempt1",
+      "case_run_id": "ae408e42544d4a0a87ec8fd2e16fdc35",
+      "status": "unverified"
+    },
+    {
+      "fixture": "m1a-parallel-five-attempt1",
+      "case_run_id": "ee158416842d44c9a9150f6936647b95",
+      "status": "unverified"
+    },
+    {
+      "fixture": "m1a-parallel-five-attempt1",
+      "case_run_id": "fe68a82910f74133a276d4bd0c12ae28",
+      "status": "exited",
+      "pid_zero": true,
+      "exit_code": 1
+    },
+    {
+      "fixture": "m1a-parallel-one-control",
+      "case_run_id": "9f1a775cf85f4ffa9061cb8bb4fded13",
+      "status": "missing",
+      "pid_zero": false,
+      "exit_code": null
+    }
+  ],
+  "regressions": {
+    "batch_contract_auth_dispatch": "21 passed",
+    "legacy_visual_lab": "11 passed",
+    "feature_flags_history": "14 passed",
+    "typescript": "passed",
+    "focused_lint": "passed",
+    "export_drift": "passed",
+    "diff_check": "passed after final documentation",
+    "observer_syntax": "passed; new interval observer not real-engine executed"
+  },
+  "not_run": [
+    "five-check browser rerun after final hardening",
+    "normal-login UI/API/Mongo/Podman path",
+    "real per-check cancellation/restart/feature-off completion",
+    "new interval-based overlap observers",
+    "new runner dependency census (image unchanged)",
+    "M1B/cloud/customer execution"
+  ],
+  "unit_failure_history": "An added unstarted-cancellation test initially failed (18-test run); corrected code and final 21-test suite passed.",
+  "resource_observations": {
+    "podman_config": "4 CPUs; 2048 MiB",
+    "linux_guest_after_failure": "3803 MiB total;3292 MiB available; no swap used",
+    "causality": "resource cause not established; one inspected container OOMKilled=false"
+  },
+  "next": "Restore bounded reliable Podman inspect/control, obtain one successful isolated control, then rerun five checks with interval observations; do not replay old identities."
+}

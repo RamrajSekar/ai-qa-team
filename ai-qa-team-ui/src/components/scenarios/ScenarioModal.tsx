@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { X } from "lucide-react";
 import { apiFetch } from "@/utils/api";
-import type { Scenario } from "@/types/scenario";
+import type { Scenario, StepModel } from "@/types/scenario";
 
 interface ScenarioModalProps {
   open: boolean;
@@ -24,23 +24,11 @@ export default function ScenarioModal({
 }: ScenarioModalProps) {
   const isEdit = !!scenario;
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [status, setStatus] = useState("pending");
+  const [title, setTitle] = useState(scenario?.title ?? "");
+  const [description, setDescription] = useState(scenario?.description ?? "");
+  const [steps, setSteps] = useState<StepModel[]>(scenario?.steps ?? []);
   const [saving, setSaving] = useState(false);
-
-  /** Load scenario data when editing */
-  useEffect(() => {
-    if (scenario) {
-      setTitle(scenario.title || "");
-      setDescription(scenario.description || "");
-      setStatus(scenario.status || "pending");
-    } else {
-      setTitle("");
-      setDescription("");
-      setStatus("pending");
-    }
-  }, [scenario]);
+  const [error, setError] = useState("");
 
   if (!open) return null;
 
@@ -49,40 +37,38 @@ export default function ScenarioModal({
     if (!title.trim()) return;
 
     setSaving(true);
+    setError("");
 
     const payload = {
       story_id: storyId,
       title,
       description,
-      status,
-      steps: scenario?.steps || [], // keep existing steps for now
+      steps: steps.map(step => ({ ...step, action: step.action.trim(), expected: step.expected?.trim() || null })),
     };
 
     const url = isEdit
       ? `/scenarios/${scenario?.scenario_id}?project_id=${projectId}`
-      : `/scenarios?story_id=${storyId}&project_id=${projectId}`;
+      : "/scenarios";
 
     const method = isEdit ? "PATCH" : "POST";
 
-    const res = await apiFetch(url, {
-      method,
-      body: JSON.stringify(payload),
-    });
-
-    setSaving(false);
-
-    if (!res.ok) {
-      console.error("Scenario save failed", res);
-      return;
+    try {
+      const res = await apiFetch(url, { method, body: JSON.stringify(payload) });
+      if (!res.ok) throw new Error(typeof res.data?.detail === "string" ? res.data.detail : "Could not save scenario.");
+      await onSaved();
+      onClose();
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Could not save scenario.");
+    } finally {
+      setSaving(false);
     }
-
-    await onSaved();
-    onClose();
   }
+
+  const canSave = title.trim() && steps.every(step => step.action.trim());
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg w-full max-w-2xl p-6 shadow-xl relative">
+      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 shadow-xl relative">
         
         {/* Close button */}
         <button
@@ -100,8 +86,9 @@ export default function ScenarioModal({
           
           {/* Title */}
           <div>
-            <label className="font-medium text-sm">Title</label>
+            <label htmlFor="scenario-title" className="font-medium text-sm">Title</label>
             <input
+              id="scenario-title"
               className="w-full border p-2 rounded mt-1"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -111,8 +98,9 @@ export default function ScenarioModal({
 
           {/* Description */}
           <div>
-            <label className="font-medium text-sm">Description</label>
+            <label htmlFor="scenario-description" className="font-medium text-sm">Description</label>
             <textarea
+              id="scenario-description"
               className="w-full border p-2 rounded mt-1"
               rows={3}
               value={description}
@@ -120,21 +108,28 @@ export default function ScenarioModal({
             />
           </div>
 
-          {/* Status */}
-          <div>
-            <label className="font-medium text-sm">Status</label>
-            <select
-              className="w-full border p-2 rounded mt-1"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-            >
-              <option value="pending">Pending</option>
-              <option value="draft">Draft</option>
-              <option value="approved">Approved</option>
-            </select>
-          </div>
-
-          {/* FUTURE: Steps, Complexity, Approval flags */}
+          <fieldset disabled={saving} className="space-y-2">
+            <legend className="font-medium text-sm">Scenario steps</legend>
+            {steps.map((step, index) => (
+              <div className="space-y-1 border rounded p-2" key={step.step_id}>
+                <label className="block">Action {index + 1}
+                  <input className="w-full" value={step.action} onChange={event => setSteps(items =>
+                    items.map(item => item.step_id === step.step_id ? { ...item, action: event.target.value } : item))} />
+                </label>
+                <label className="block">Expected result {index + 1}
+                  <input className="w-full" value={step.expected ?? ""} onChange={event => setSteps(items =>
+                    items.map(item => item.step_id === step.step_id ? { ...item, expected: event.target.value } : item))} />
+                </label>
+                <button type="button" className="workspace-button"
+                  onClick={() => setSteps(items => items.filter(item => item.step_id !== step.step_id))}>Remove step</button>
+              </div>
+            ))}
+            <button type="button" className="workspace-button" onClick={() => {
+              const stepId = crypto.randomUUID();
+              setSteps(items => [...items, { step_id: stepId, category: "UI", action: "", expected: "" }]);
+            }}>Add step</button>
+          </fieldset>
+          {error && <p role="alert" className="text-red-700 text-sm">{error}</p>}
         </div>
 
         <div className="flex justify-end mt-6 gap-3">
@@ -144,9 +139,9 @@ export default function ScenarioModal({
 
           <button
             onClick={handleSave}
-            disabled={saving || !title.trim()}
+            disabled={saving || !canSave}
             className={`px-4 py-2 rounded text-white ${
-              saving || !title.trim()
+              saving || !canSave
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-purple-600 hover:bg-purple-700"
             }`}

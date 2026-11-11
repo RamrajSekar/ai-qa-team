@@ -1,0 +1,210 @@
+{
+  "date": "2026-11-02",
+  "browser_driver_version": "146.0.7680.31",
+  "browser_binary_location": "unchanged F fresh bundle",
+  "order": [
+    "F",
+    "C",
+    "C",
+    "F"
+  ],
+  "attempts": [
+    {
+      "run_id": "1dd5a25a0f9442f29866c5701fb05432",
+      "headed": false,
+      "state": "completed",
+      "first_attempt_success": true,
+      "duration_seconds": 25.11,
+      "stage": "screenshot",
+      "reason": null,
+      "code": null,
+      "stage_ms": {
+        "driver_version": 578,
+        "driver_launch": 860,
+        "driver_readiness": 15,
+        "session_creation": 16,
+        "browser_launch": 4156,
+        "devtools_connect": 969,
+        "session_handshake": 344,
+        "version_validation": 218,
+        "session_timeouts": 16,
+        "ready": 1234,
+        "navigation": 860,
+        "navigation_checkpoint": 406,
+        "screenshot": 8375
+      },
+      "startup_diagnostics": {
+        "driver_version": "146.0.7680.31",
+        "driver_state": "running",
+        "driver_exit_code": null,
+        "browser_state": "running",
+        "devtools_port_file": "present",
+        "session_created": true,
+        "cleanup": "driver_exited_job_closed",
+        "native_errors": [],
+        "cleanup_driver_exit_code": 0,
+        "cleanup_browser_state": "exited"
+      },
+      "cleanup": "no_survivors_observed",
+      "survivor_count": 0,
+      "profile_volume": "F",
+      "verified_profile_drive": "F:",
+      "screenshots": [
+        "01-open",
+        "02-filled",
+        "03-confirmed"
+      ]
+    },
+    {
+      "run_id": "4c4ee87883a5413ead0d972fcf4cbb2c",
+      "headed": false,
+      "state": "completed",
+      "first_attempt_success": true,
+      "duration_seconds": 15.719,
+      "stage": "screenshot",
+      "reason": null,
+      "code": null,
+      "stage_ms": {
+        "driver_version": 313,
+        "driver_launch": 422,
+        "driver_readiness": 0,
+        "session_creation": 15,
+        "browser_launch": 531,
+        "devtools_connect": 313,
+        "session_handshake": 62,
+        "version_validation": 0,
+        "session_timeouts": 16,
+        "ready": 125,
+        "navigation": 78,
+        "navigation_checkpoint": 422,
+        "screenshot": 8062
+      },
+      "startup_diagnostics": {
+        "driver_version": "146.0.7680.31",
+        "driver_state": "running",
+        "driver_exit_code": null,
+        "browser_state": "running",
+        "devtools_port_file": "present",
+        "session_created": true,
+        "cleanup": "driver_exited_job_closed",
+        "native_errors": [],
+        "cleanup_driver_exit_code": 0,
+        "cleanup_browser_state": "exited"
+      },
+      "cleanup": "no_survivors_observed",
+      "survivor_count": 0,
+      "profile_volume": "C",
+      "verified_profile_drive": "C:",
+      "screenshots": [
+        "01-open",
+        "02-filled",
+        "03-confirmed"
+      ]
+    },
+    {
+      "run_id": "797051f6e9e94f8db74d6bb682717346",
+      "headed": false,
+      "state": "completed",
+      "first_attempt_success": true,
+      "duration_seconds": 14.516,
+      "stage": "screenshot",
+      "reason": null,
+      "code": null,
+      "stage_ms": {
+        "driver_version": 343,
+        "driver_launch": 407,
+        "driver_readiness": 15,
+        "session_creation": 0,
+        "browser_launch": 469,
+        "devtools_connect": 313,
+        "session_handshake": 46,
+        "version_validation": 0,
+        "session_timeouts": 16,
+        "ready": 47,
+        "navigation": 62,
+        "navigation_checkpoint": 422,
+        "screenshot": 8109
+      },
+      "startup_diagnostics": {
+        "driver_version": "146.0.7680.31",
+        "driver_state": "running",
+        "driver_exit_code": null,
+        "browser_state": "running",
+        "devtools_port_file": "present",
+        "session_created": true,
+        "cleanup": "driver_exited_job_closed",
+        "native_errors": [],
+        "cleanup_driver_exit_code": 0,
+        "cleanup_browser_state": "exited"
+      },
+      "cleanup": "no_survivors_observed",
+      "survivor_count": 0,
+      "profile_volume": "C",
+      "verified_profile_drive": "C:",
+      "screenshots": [
+        "01-open",
+        "02-filled",
+        "03-confirmed"
+      ]
+    },
+    {
+      "run_id": "7cea5f8797b34386a9fe2bc42c2a29a4",
+      "headed": false,
+      "state": "completed",
+      "first_attempt_success": true,
+      "duration_seconds": 15.407,
+      "stage": "screenshot",
+      "reason": null,
+      "code": null,
+      "stage_ms": {
+        "driver_version": 297,
+        "driver_launch": 344,
+        "driver_readiness": 16,
+        "session_creation": 0,
+        "browser_launch": 531,
+        "devtools_connect": 312,
+        "session_handshake": 78,
+        "version_validation": 16,
+        "session_timeouts": 0,
+        "ready": 63,
+        "navigation": 484,
+        "navigation_checkpoint": 406,
+        "screenshot": 8250
+      },
+      "startup_diagnostics": {
+        "driver_version": "146.0.7680.31",
+        "driver_state": "running",
+        "driver_exit_code": null,
+        "browser_state": "running",
+        "devtools_port_file": "present",
+        "session_created": true,
+        "cleanup": "driver_exited_job_closed",
+        "native_errors": [],
+        "cleanup_driver_exit_code": 0,
+        "cleanup_browser_state": "exited"
+      },
+      "cleanup": "no_survivors_observed",
+      "survivor_count": 0,
+      "profile_volume": "F",
+      "verified_profile_drive": "F:",
+      "screenshots": [
+        "01-open",
+        "02-filled",
+        "03-confirmed"
+      ]
+    }
+  ],
+  "completion_counts": {
+    "F": "2/2",
+    "C": "2/2"
+  },
+  "normal_runtime_configuration_changed": false,
+  "security_changes": false,
+  "interpretation": "final F comparable to C; profile-location benefit not established",
+  "limitations": [
+    "small warm ordered sample",
+    "file/cache/host-load effects remain confounders",
+    "does not reproduce earlier failure or prove cold-install readiness",
+    "no full 10/5 or API/UI/Mongo rerun"
+  ]
+}

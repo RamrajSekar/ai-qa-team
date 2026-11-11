@@ -1,5 +1,15 @@
+const milestones = [
+  ['Available foundations', 'Projects, environments, stories, scenario review and test-case generation provide the existing authoring workflow. Feature availability depends on deployment configuration.'],
+  ['Current development', 'One approved synthetic sequence can run through the project UI with browser evidence. Visual targeting experiments and reliability qualification continue.'],
+  ['Next delivery gates', 'Recording ingestion, source-linked approved knowledge, versioned test traceability and authorized staging execution complete the next parts of the journey.'],
+];
+
 export default function Roadmap() {
-  return <section id="roadmap" className="lp-section lp-tint"><div className="lp-container"><p className="lp-eyebrow">Focused scope. Incremental delivery.</p><h2>Robot First. More Adapters Later.</h2><div className="lp-grid lp-three">{[['Robot Framework','Initial focus · Integration planned'],['Playwright','Planned repository adapter'],['Selenium','Planned repository adapter']].map(([name,status])=><article className="lp-card" key={name}><h3>{name}</h3><p>{status}</p></article>)}</div><div className="lp-roadmap"><h3>Where we’re heading</h3><p className="lp-note">Account, project, and environment foundations exist today. The capabilities below are roadmap work.</p><div className="lp-grid lp-three">{[
-    ['Current direction · Planned','Repository discovery, test contracts, capability discovery, bug interpretation, targeted resolution, and strategic test data.'],['Next','Local Robot execution, application-state preparation, normalized results, reproduction evidence, and partial manual handoff.'],['Later','Jira, Playwright/Selenium repository adapters, cloud execution, failure diagnostics, and human-approved self-healing.']
-  ].map(([title,copy])=><div key={title}><h4>{title}</h4><p>{copy}</p></div>)}</div></div></div></section>;
+  return <section id="roadmap" className="lp-section lp-tint"><div className="lp-container">
+    <p className="lp-eyebrow">Delivery progress</p><h2>A Focused Path to a Supervised QA Pilot</h2>
+    <p className="lp-intro">We’re working toward one application module, a small set of workflows and reviewed cases, with evidence and human control at each stage.</p>
+    <div className="lp-grid lp-three">{milestones.map(([title, copy]) =>
+      <article className="lp-card" key={title}><h3>{title}</h3><p>{copy}</p></article>)}</div>
+    <p className="lp-note">Parallel execution remains in the MVP plan. Browser reliability and concurrency qualification are ongoing.</p>
+  </div></section>;
 }

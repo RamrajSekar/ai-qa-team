@@ -1,0 +1,76 @@
+{
+  "browser_configuration": "Explicit existing cached CfT 146.0.7680.31; fresh isolated Python/driver; corrected OS environment",
+  "runs": [
+    {
+      "fixture": "m1a-real-20261031-091122",
+      "report": {
+        "environment": "real UI/login/API/TLS Mongo; synthetic accounts; existing local auth-cache fallback",
+        "checks": [
+          {
+            "check": "normal_signup_real_UI_login_project_access",
+            "result": "PASS",
+            "seconds": 21.853,
+            "project_id": "PRJ001"
+          },
+          {
+            "check": "headless_UI_completion_three_private_screenshots",
+            "result": "PASS",
+            "seconds": 24.565,
+            "run_id": "7e07a65de00346fa9476a108a7cb730d",
+            "screenshots": 3
+          },
+          {
+            "check": "separate_headed_UI_completion",
+            "result": "PASS",
+            "seconds": 22.978,
+            "run_id": "47b90c3726424d05b31c1ba2dcfa49e9"
+          },
+          {
+            "check": "page_refresh_retains_history",
+            "result": "PASS",
+            "seconds": 6.139,
+            "retained_state": "completed"
+          },
+          {
+            "check": "UI_cancel_terminal_cleanup",
+            "result": "PASS",
+            "seconds": 17.699,
+            "run_id": "18e1e66f04674d3fbf7aaef5841a1d08",
+            "state": "cancelled"
+          },
+          {
+            "check": "API_restart_preserves_metadata_and_artifacts",
+            "result": "PASS",
+            "seconds": 56.2
+          },
+          {
+            "check": "real_Mongo_concurrent_starts_single_lease",
+            "result": "PASS",
+            "seconds": 8.596,
+            "accepted": 1,
+            "rejected": 1
+          },
+          {
+            "check": "active_API_interruption_cleanup_reconciliation_no_replay_lease_recovery",
+            "result": "PASS",
+            "seconds": 38.848,
+            "interrupted_run": "f2fad8092fed4f33aae5ab619b9bd8da",
+            "later_run": "e7016686a38e4a0c94ff0ad5dbdcf4ae"
+          },
+          {
+            "check": "real_nonmember_denied_read_cancel_artifact",
+            "result": "PASS",
+            "seconds": 6.692,
+            "denied_operations": 4
+          },
+          {
+            "check": "feature_disabled_new_operations_active_run_cleanup",
+            "result": "PASS",
+            "seconds": 29.392,
+            "state_after_configuration_restart": "cancelled"
+          }
+        ]
+      }
+    }
+  ]
+}

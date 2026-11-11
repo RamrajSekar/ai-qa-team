@@ -1,0 +1,287 @@
+[
+  {
+    "run_id": "d90b739241364f01bc40c5ff677baf9d",
+    "headed": false,
+    "state": "failed",
+    "first_attempt_success": false,
+    "duration_seconds": 12.5,
+    "stage": "browser_launch",
+    "reason": null,
+    "code": "ReadTimeout",
+    "stage_ms": {
+      "driver_version": 1125,
+      "driver_launch": 1609,
+      "driver_readiness": 16,
+      "session_creation": 0
+    },
+    "cleanup": "no_survivors_observed",
+    "survivor_count": 0,
+    "number": 1
+  },
+  {
+    "run_id": "b13ccaa9654347f180a95452cd756b26",
+    "headed": false,
+    "state": "failed",
+    "first_attempt_success": false,
+    "duration_seconds": 6.765,
+    "stage": "browser_launch",
+    "reason": null,
+    "code": "ReadTimeout",
+    "stage_ms": {
+      "driver_version": 250,
+      "driver_launch": 469,
+      "driver_readiness": 0,
+      "session_creation": 16
+    },
+    "cleanup": "no_survivors_observed",
+    "survivor_count": 0,
+    "number": 2
+  },
+  {
+    "run_id": "2018d546401c48a0bd8713cec5f8f6f3",
+    "headed": false,
+    "state": "failed",
+    "first_attempt_success": false,
+    "duration_seconds": 6.765,
+    "stage": "browser_launch",
+    "reason": null,
+    "code": "ReadTimeout",
+    "stage_ms": {
+      "driver_version": 234,
+      "driver_launch": 391,
+      "driver_readiness": 15,
+      "session_creation": 0
+    },
+    "cleanup": "no_survivors_observed",
+    "survivor_count": 0,
+    "number": 3
+  },
+  {
+    "run_id": "68ea746d7a8447fea07eb6b5093a3f57",
+    "headed": false,
+    "state": "failed",
+    "first_attempt_success": false,
+    "duration_seconds": 6.797,
+    "stage": "browser_launch",
+    "reason": null,
+    "code": "ReadTimeout",
+    "stage_ms": {
+      "driver_version": 265,
+      "driver_launch": 438,
+      "driver_readiness": 16,
+      "session_creation": 0
+    },
+    "cleanup": "no_survivors_observed",
+    "survivor_count": 0,
+    "number": 4
+  },
+  {
+    "run_id": "16e8fbaaa888477586ad3483c36f23ba",
+    "headed": false,
+    "state": "failed",
+    "first_attempt_success": false,
+    "duration_seconds": 7.063,
+    "stage": "browser_launch",
+    "reason": null,
+    "code": "ReadTimeout",
+    "stage_ms": {
+      "driver_version": 313,
+      "driver_launch": 547,
+      "driver_readiness": 0,
+      "session_creation": 15
+    },
+    "cleanup": "no_survivors_observed",
+    "survivor_count": 0,
+    "number": 5
+  },
+  {
+    "run_id": "70a4a0129b5d4ba9b72bef96df5a66a4",
+    "headed": false,
+    "state": "failed",
+    "first_attempt_success": false,
+    "duration_seconds": 6.828,
+    "stage": "browser_launch",
+    "reason": null,
+    "code": "ReadTimeout",
+    "stage_ms": {
+      "driver_version": 328,
+      "driver_launch": 500,
+      "driver_readiness": 0,
+      "session_creation": 16
+    },
+    "cleanup": "no_survivors_observed",
+    "survivor_count": 0,
+    "number": 6
+  },
+  {
+    "run_id": "802f0c1d89d44838ae5d3f42330dac49",
+    "headed": false,
+    "state": "failed",
+    "first_attempt_success": false,
+    "duration_seconds": 6.953,
+    "stage": "browser_launch",
+    "reason": null,
+    "code": "ReadTimeout",
+    "stage_ms": {
+      "driver_version": 375,
+      "driver_launch": 641,
+      "driver_readiness": 15,
+      "session_creation": 0
+    },
+    "cleanup": "no_survivors_observed",
+    "survivor_count": 0,
+    "number": 7
+  },
+  {
+    "run_id": "7484eda6ed1b4c4092d66d20da1dc628",
+    "headed": false,
+    "state": "failed",
+    "first_attempt_success": false,
+    "duration_seconds": 6.547,
+    "stage": "browser_launch",
+    "reason": null,
+    "code": "ReadTimeout",
+    "stage_ms": {
+      "driver_version": 282,
+      "driver_launch": 328,
+      "driver_readiness": 15,
+      "session_creation": 0
+    },
+    "cleanup": "no_survivors_observed",
+    "survivor_count": 0,
+    "number": 8
+  },
+  {
+    "run_id": "eba0ff66526e4abf907053922f4c99df",
+    "headed": false,
+    "state": "failed",
+    "first_attempt_success": false,
+    "duration_seconds": 6.625,
+    "stage": "browser_launch",
+    "reason": null,
+    "code": "ReadTimeout",
+    "stage_ms": {
+      "driver_version": 313,
+      "driver_launch": 375,
+      "driver_readiness": 0,
+      "session_creation": 15
+    },
+    "cleanup": "no_survivors_observed",
+    "survivor_count": 0,
+    "number": 9
+  },
+  {
+    "run_id": "a0066f8b6b7949a5be3bed1fbfd72133",
+    "headed": false,
+    "state": "failed",
+    "first_attempt_success": false,
+    "duration_seconds": 6.641,
+    "stage": "browser_launch",
+    "reason": null,
+    "code": "ReadTimeout",
+    "stage_ms": {
+      "driver_version": 531,
+      "driver_launch": 531,
+      "driver_readiness": 0,
+      "session_creation": 0
+    },
+    "cleanup": "no_survivors_observed",
+    "survivor_count": 0,
+    "number": 10
+  },
+  {
+    "run_id": "d391575a2999498d9debd007f2f17aac",
+    "headed": true,
+    "state": "failed",
+    "first_attempt_success": false,
+    "duration_seconds": 6.563,
+    "stage": "browser_launch",
+    "reason": null,
+    "code": "ReadTimeout",
+    "stage_ms": {
+      "driver_version": 250,
+      "driver_launch": 344,
+      "driver_readiness": 31,
+      "session_creation": 16
+    },
+    "cleanup": "no_survivors_observed",
+    "survivor_count": 0,
+    "number": 1
+  },
+  {
+    "run_id": "7dfba82a9ab84056b9fa56bcff04a678",
+    "headed": true,
+    "state": "failed",
+    "first_attempt_success": false,
+    "duration_seconds": 6.141,
+    "stage": "browser_launch",
+    "reason": null,
+    "code": "ReadTimeout",
+    "stage_ms": {
+      "driver_version": 250,
+      "driver_launch": 297,
+      "driver_readiness": 16,
+      "session_creation": 0
+    },
+    "cleanup": "no_survivors_observed",
+    "survivor_count": 0,
+    "number": 2
+  },
+  {
+    "run_id": "ae49bc85ca8c4fbabc7327e472d13a95",
+    "headed": true,
+    "state": "failed",
+    "first_attempt_success": false,
+    "duration_seconds": 6.609,
+    "stage": "browser_launch",
+    "reason": null,
+    "code": "ReadTimeout",
+    "stage_ms": {
+      "driver_version": 281,
+      "driver_launch": 344,
+      "driver_readiness": 0,
+      "session_creation": 15
+    },
+    "cleanup": "no_survivors_observed",
+    "survivor_count": 0,
+    "number": 3
+  },
+  {
+    "run_id": "3abb90949686438aa8b243069bb3dac8",
+    "headed": true,
+    "state": "failed",
+    "first_attempt_success": false,
+    "duration_seconds": 6.687,
+    "stage": "browser_launch",
+    "reason": null,
+    "code": "ReadTimeout",
+    "stage_ms": {
+      "driver_version": 468,
+      "driver_launch": 375,
+      "driver_readiness": 0,
+      "session_creation": 16
+    },
+    "cleanup": "no_survivors_observed",
+    "survivor_count": 0,
+    "number": 4
+  },
+  {
+    "run_id": "05003f4719914e51be555c91373d6fb7",
+    "headed": true,
+    "state": "failed",
+    "first_attempt_success": false,
+    "duration_seconds": 6.563,
+    "stage": "browser_launch",
+    "reason": null,
+    "code": "ReadTimeout",
+    "stage_ms": {
+      "driver_version": 297,
+      "driver_launch": 406,
+      "driver_readiness": 0,
+      "session_creation": 16
+    },
+    "cleanup": "no_survivors_observed",
+    "survivor_count": 0,
+    "number": 5
+  }
+]

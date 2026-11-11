@@ -239,6 +239,7 @@ async def get_execution(
 # ----------------------------------------------------------
 # 4️⃣ List executions (dashboard)
 # ----------------------------------------------------------
+@router.get("", response_model=List[TestExecutionResponse], include_in_schema=False)
 @router.get("/", response_model=List[TestExecutionResponse])
 async def list_my_executions(
     skip: int = 0,

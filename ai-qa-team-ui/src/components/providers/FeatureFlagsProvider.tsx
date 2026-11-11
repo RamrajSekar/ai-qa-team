@@ -6,7 +6,8 @@ import { apiFetch } from "@/utils/api";
 
 export type FeatureName =
   | "story_management" | "scenario_generation" | "test_generation" | "recorder"
-  | "native_execution" | "jira_trigger" | "failure_diagnostics" | "self_healing"
+  | "native_execution" | "visual_runner_lab" | "visual_runner_batches" | "jira_trigger" | "failure_diagnostics" | "self_healing"
+  | "approved_visual_run_admission" | "approved_visual_run_execution" | "bug_reproduction_ui" | "repository_ui" | "reusable_workflows"
   | "playwright_repo_adapter" | "selenium_repo_adapter"
   | "repository_discovery" | "test_registry" | "test_data_generation";
 
@@ -60,8 +61,9 @@ export function FeatureRouteGuard({ children }: { children: ReactNode }) {
     ? pathname.split("/")[3]
     : pathname.split("/")[1];
   const required: Partial<Record<string, FeatureName>> = {
-    stories: "story_management", scenarios: "scenario_generation",
-    recorder: "recorder", ai: "test_generation",
+    stories: "story_management", scenarios: "scenario_generation", testcases: "test_generation",
+    recorder: "recorder", reproduce: "bug_reproduction_ui", repositories: "repository_ui",
+    "visual-lab": "visual_runner_lab",
   };
   const feature = required[segment];
   if (!feature) return children;

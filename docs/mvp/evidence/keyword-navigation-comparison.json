@@ -1,0 +1,145 @@
+{
+  "date": "2026-11-01",
+  "runs": [
+    {
+      "run_id": "1ae17007545c4da88f43a98639337adc",
+      "headed": false,
+      "state": "failed",
+      "first_attempt_success": false,
+      "duration_seconds": 19.594,
+      "stage": "navigation",
+      "reason": null,
+      "code": "ReadTimeout",
+      "stage_ms": {
+        "driver_version": 297,
+        "driver_launch": 296,
+        "driver_readiness": 16,
+        "session_creation": 16,
+        "browser_launch": 4187,
+        "devtools_connect": 656,
+        "session_handshake": 2500,
+        "version_validation": 0,
+        "session_timeouts": 16,
+        "ready": 47,
+        "navigation": 5797
+      },
+      "startup_diagnostics": {
+        "driver_version": "146.0.7680.31",
+        "driver_state": "running",
+        "driver_exit_code": null,
+        "browser_state": "running",
+        "devtools_port_file": "present",
+        "session_created": true,
+        "cleanup": "driver_exited_job_closed",
+        "native_errors": [],
+        "cleanup_driver_exit_code": 0,
+        "cleanup_browser_state": "exited"
+      },
+      "cleanup": "no_survivors_observed",
+      "survivor_count": 0,
+      "number": 1,
+      "screenshots": []
+    },
+    {
+      "run_id": "5bf748e530b644a8b55a92c69a9e5921",
+      "headed": false,
+      "state": "completed",
+      "first_attempt_success": true,
+      "duration_seconds": 16.25,
+      "stage": "screenshot",
+      "reason": null,
+      "code": null,
+      "stage_ms": {
+        "driver_version": 250,
+        "driver_launch": 344,
+        "driver_readiness": 0,
+        "session_creation": 0,
+        "browser_launch": 984,
+        "devtools_connect": 562,
+        "session_handshake": 172,
+        "version_validation": 141,
+        "session_timeouts": 0,
+        "ready": 62,
+        "navigation": 547,
+        "navigation_checkpoint": 407,
+        "screenshot": 8171
+      },
+      "startup_diagnostics": {
+        "driver_version": "146.0.7680.31",
+        "driver_state": "running",
+        "driver_exit_code": null,
+        "browser_state": "running",
+        "devtools_port_file": "present",
+        "session_created": true,
+        "cleanup": "driver_exited_job_closed",
+        "native_errors": [],
+        "cleanup_driver_exit_code": 0,
+        "cleanup_browser_state": "exited"
+      },
+      "cleanup": "no_survivors_observed",
+      "survivor_count": 0,
+      "number": 1,
+      "screenshots": [
+        "01-open",
+        "02-filled",
+        "03-confirmed"
+      ]
+    },
+    {
+      "run_id": "5d2db043c4d5472db406d78f63f60c81",
+      "headed": false,
+      "state": "completed",
+      "first_attempt_success": true,
+      "duration_seconds": 42.563,
+      "stage": "screenshot",
+      "reason": null,
+      "code": null,
+      "stage_ms": {
+        "driver_version": 281,
+        "driver_launch": 360,
+        "driver_readiness": 0,
+        "session_creation": 15,
+        "browser_launch": 4094,
+        "devtools_connect": 15516,
+        "session_handshake": 7843,
+        "version_validation": 0,
+        "session_timeouts": 16,
+        "ready": 78,
+        "navigation": 828,
+        "navigation_checkpoint": 406,
+        "screenshot": 8141
+      },
+      "startup_diagnostics": {
+        "driver_version": "146.0.7680.31",
+        "driver_state": "running",
+        "driver_exit_code": null,
+        "browser_state": "running",
+        "devtools_port_file": "present",
+        "session_created": true,
+        "cleanup": "driver_exited_job_closed",
+        "native_errors": [],
+        "cleanup_driver_exit_code": 0,
+        "cleanup_browser_state": "exited"
+      },
+      "cleanup": "no_survivors_observed",
+      "survivor_count": 0,
+      "number": 1,
+      "screenshots": [
+        "01-open",
+        "02-filled",
+        "03-confirmed"
+      ]
+    }
+  ],
+  "fresh_workflow_completions": "1/2",
+  "cached_workflow_completions": "1/1",
+  "tests": {
+    "runner": "10 passed",
+    "mocked_lab_api": "10 passed"
+  },
+  "limits": [
+    "first fresh attempt predates finer navigation labels; cannot distinguish POST URL from GET URL in that attempt",
+    "no real API/UI or full 10/5 series",
+    "startup/navigation latency cause remains unresolved"
+  ]
+}

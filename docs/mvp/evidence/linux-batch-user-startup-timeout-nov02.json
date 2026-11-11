@@ -1,0 +1,121 @@
+{
+  "date": "2026-11-02",
+  "source": "User-reported local UI failure; agent read retained synthetic IPC and actual stopped Podman container metadata",
+  "batch_id": "ad254f1a480842a68e94094eb73408de",
+  "case_run_id": "48e0951c87f8451db24417c2d0482e61",
+  "failed_case": {
+    "state": "failed",
+    "diagnostic_code": "ReadTimeout",
+    "startup_stage": "session_handshake",
+    "startup_reason": null,
+    "startup_timings_ms": {
+      "driver_version": 435,
+      "driver_launch": 447,
+      "driver_readiness": 55,
+      "session_creation": 4,
+      "browser_launch": 37667,
+      "devtools_connect": 5739,
+      "session_handshake": 1851
+    },
+    "startup_diagnostics": {
+      "driver_version": "146.0.7680.31",
+      "driver_state": "running",
+      "driver_exit_code": null,
+      "browser_state": "unavailable",
+      "devtools_port_file": "present",
+      "session_created": false,
+      "cleanup": "unverified",
+      "native_errors": [],
+      "cleanup_driver_exit_code": -9,
+      "cleanup_browser_state": "unavailable"
+    }
+  },
+  "container": {
+    "image": "b5d5e83e29ec11e6d2e34ce387f1e2f6f7108acdbd31bf22d96e4418a4dbb66c",
+    "status": "exited",
+    "exit_code": 1,
+    "pid": 0,
+    "oom_killed": false,
+    "memory_limit_bytes": 2147483648,
+    "cpu_limit": 2
+  },
+  "interpretation": "HTTPX session-creation read timeout, not an explicit ChromeDriver session-not-created response. DevTools file present but session_created false. No sample navigation/screenshots reached. Driver -9 is cleanup-related, not proof of a browser crash. Root cause unresolved.",
+  "neighboring_cases": [
+    {
+      "batch_id": "a37b9ae5e4b545df97ec26c236b7968e",
+      "case_run_id": "1f06e49f372a4bb3ac5d139db2fd4a89",
+      "state": "completed",
+      "startup_timings_ms": {
+        "driver_version": 5,
+        "driver_launch": 74,
+        "driver_readiness": 16,
+        "session_creation": 3,
+        "browser_launch": 340,
+        "devtools_connect": 101,
+        "session_handshake": 601,
+        "version_validation": 1,
+        "session_timeouts": 9,
+        "ready": 114,
+        "navigation": 382,
+        "navigation_checkpoint": 481,
+        "screenshot": 8070
+      },
+      "screenshots": [
+        "01-open",
+        "02-filled",
+        "03-confirmed"
+      ]
+    },
+    {
+      "batch_id": "a37b9ae5e4b545df97ec26c236b7968e",
+      "case_run_id": "409e90707c314eca9dfad69d44d56325",
+      "state": "completed",
+      "startup_timings_ms": {
+        "driver_version": 45,
+        "driver_launch": 186,
+        "driver_readiness": 22,
+        "session_creation": 4,
+        "browser_launch": 748,
+        "devtools_connect": 337,
+        "session_handshake": 608,
+        "version_validation": 5,
+        "session_timeouts": 5,
+        "ready": 136,
+        "navigation": 519,
+        "navigation_checkpoint": 498,
+        "screenshot": 8198
+      },
+      "screenshots": [
+        "01-open",
+        "02-filled",
+        "03-confirmed"
+      ]
+    },
+    {
+      "batch_id": "39daf69feaa645218f8252ae90880240",
+      "case_run_id": "2b0b427f9a8341728ecec0a82ab57417",
+      "state": "completed",
+      "startup_timings_ms": {
+        "driver_version": 17,
+        "driver_launch": 161,
+        "driver_readiness": 15,
+        "session_creation": 3,
+        "browser_launch": 276,
+        "devtools_connect": 963,
+        "session_handshake": 1610,
+        "version_validation": 1,
+        "session_timeouts": 8,
+        "ready": 194,
+        "navigation": 589,
+        "navigation_checkpoint": 412,
+        "screenshot": 8092
+      },
+      "screenshots": [
+        "01-open",
+        "02-filled",
+        "03-confirmed"
+      ]
+    }
+  ],
+  "changes": "No application, timeout, retry, image or security changes; no new browser runs."
+}

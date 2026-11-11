@@ -1,17 +1,7 @@
 import asyncio
 import json
 from datetime import datetime, timezone
-from motor.motor_asyncio import AsyncIOMotorClient
-from bson import ObjectId
-
-# MONGO_URI = "YOUR_MONGO_URI_HERE"
-# DB_NAME = "YOUR_DB_NAME_HERE"
-
-MONGO_URI="mongodb+srv://sramraj_db_user:jW7k1AtBTyzFNQRv@cluster0.czo2fqu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-MONGO_DB="Cluster0"
-
-client = AsyncIOMotorClient(MONGO_URI)
-db = client[MONGO_DB]
+from app.db.connection import db
 
 # ---------------------------------------------------------
 # NORMALIZERS
@@ -180,9 +170,6 @@ async def run_full_cleanup():
     print("\n✨ ALL CLEANUP COMPLETED SUCCESSFULLY ✨\n")
 
 
-import asyncio
-from app.db.connection import db
-
 async def add_approval_flag():
     cursor = db["scenarios"].find({})
     async for doc in cursor:
@@ -193,9 +180,6 @@ async def add_approval_flag():
             )
 
     print("✅ Backfill completed: added approved=False to all scenarios without the field.")
-
-asyncio.run(add_approval_flag())
-
 
 if __name__ == "__main__":
     asyncio.run(add_approval_flag())

@@ -1,0 +1,253 @@
+{
+  "environment": "Real private TLS Mongo, Podman, Robot, HTTPX/CfT; ASGI auth double; no normal UI login",
+  "image": "b5d5e83e29ec11e6d2e34ce387f1e2f6f7108acdbd31bf22d96e4418a4dbb66c",
+  "checks": [
+    {
+      "check": "duplicate requests create one parent",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "five independent one-case containers reserved",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "five first-attempt completions and fifteen screenshots",
+      "passed": false,
+      "details": [
+        {
+          "state": "failed",
+          "diagnostic_code": "ReadTimeout"
+        },
+        {
+          "state": "failed",
+          "diagnostic_code": "ReadTimeout"
+        },
+        {
+          "state": "failed",
+          "diagnostic_code": "ReadTimeout"
+        },
+        {
+          "state": "failed",
+          "diagnostic_code": "ReadTimeout"
+        },
+        {
+          "state": "failed",
+          "diagnostic_code": "ReadTimeout"
+        }
+      ]
+    }
+  ],
+  "samples": [
+    {
+      "case_run_id": "ee158416842d44c9a9150f6936647b95",
+      "observation": "unavailable"
+    },
+    {
+      "case_run_id": "ae408e42544d4a0a87ec8fd2e16fdc35",
+      "observation": "unavailable"
+    },
+    {
+      "case_run_id": "706b0a6d4b444ae5b7fbee4c4b50bd84",
+      "observation": "unavailable"
+    },
+    {
+      "case_run_id": "9d11c5bf71e04859a7dcfd5360add087",
+      "observation": "unavailable"
+    },
+    {
+      "case_run_id": "fe68a82910f74133a276d4bd0c12ae28",
+      "observation": "unavailable"
+    }
+  ],
+  "batches": [
+    {
+      "batch_id": "ad2d9e099a904b798ff2bb6d42764a66",
+      "state": "failed",
+      "cases": [
+        {
+          "case_run_id": "ee158416842d44c9a9150f6936647b95",
+          "state": "failed",
+          "verdict": null,
+          "screenshots": [],
+          "evidence_complete": false,
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Closing browser and driver.",
+            "Browser smoke check failed."
+          ],
+          "diagnostic_code": "ReadTimeout",
+          "startup_stage": "browser_launch",
+          "startup_reason": null,
+          "startup_timings_ms": {
+            "driver_version": 687,
+            "driver_launch": 2233,
+            "driver_readiness": 33,
+            "session_creation": 46,
+            "browser_launch": 46251
+          },
+          "startup_diagnostics": {
+            "driver_version": "146.0.7680.31",
+            "driver_state": "running",
+            "driver_exit_code": null,
+            "browser_state": "unavailable",
+            "devtools_port_file": "absent",
+            "session_created": false,
+            "cleanup": "unverified",
+            "cleanup_driver_exit_code": -9,
+            "cleanup_browser_state": "unavailable",
+            "native_errors": []
+          },
+          "started_at": "2026-11-02T21:12:16.120711Z",
+          "finished_at": "2026-11-02T21:13:19.135742Z"
+        },
+        {
+          "case_run_id": "ae408e42544d4a0a87ec8fd2e16fdc35",
+          "state": "failed",
+          "verdict": null,
+          "screenshots": [],
+          "evidence_complete": false,
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Closing browser and driver.",
+            "Browser smoke check failed."
+          ],
+          "diagnostic_code": "ReadTimeout",
+          "startup_stage": "browser_launch",
+          "startup_reason": null,
+          "startup_timings_ms": {
+            "driver_version": 443,
+            "driver_launch": 1653,
+            "driver_readiness": 116,
+            "session_creation": 230,
+            "browser_launch": 46569
+          },
+          "startup_diagnostics": {
+            "driver_version": "146.0.7680.31",
+            "driver_state": "running",
+            "driver_exit_code": null,
+            "browser_state": "unavailable",
+            "devtools_port_file": "absent",
+            "session_created": false,
+            "cleanup": "unverified",
+            "cleanup_driver_exit_code": -9,
+            "cleanup_browser_state": "unavailable",
+            "native_errors": []
+          },
+          "started_at": "2026-11-02T21:12:21.467417Z",
+          "finished_at": "2026-11-02T21:13:16.993003Z"
+        },
+        {
+          "case_run_id": "706b0a6d4b444ae5b7fbee4c4b50bd84",
+          "state": "failed",
+          "verdict": null,
+          "screenshots": [],
+          "evidence_complete": false,
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Closing browser and driver.",
+            "Browser smoke check failed."
+          ],
+          "diagnostic_code": "ReadTimeout",
+          "startup_stage": "browser_launch",
+          "startup_reason": null,
+          "startup_timings_ms": {
+            "driver_version": 732,
+            "driver_launch": 1659,
+            "driver_readiness": 223,
+            "session_creation": 5,
+            "browser_launch": 46746
+          },
+          "startup_diagnostics": {
+            "driver_version": "146.0.7680.31",
+            "driver_state": "running",
+            "driver_exit_code": null,
+            "browser_state": "unavailable",
+            "devtools_port_file": "absent",
+            "session_created": false,
+            "cleanup": "unverified",
+            "cleanup_driver_exit_code": -9,
+            "cleanup_browser_state": "unavailable",
+            "native_errors": []
+          },
+          "started_at": "2026-11-02T21:12:16.865070Z",
+          "finished_at": "2026-11-02T21:13:17.121728Z"
+        },
+        {
+          "case_run_id": "9d11c5bf71e04859a7dcfd5360add087",
+          "state": "failed",
+          "verdict": null,
+          "screenshots": [],
+          "evidence_complete": false,
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Closing browser and driver.",
+            "Browser smoke check failed."
+          ],
+          "diagnostic_code": "ReadTimeout",
+          "startup_stage": "browser_launch",
+          "startup_reason": null,
+          "startup_timings_ms": {
+            "driver_version": 267,
+            "driver_launch": 1849,
+            "driver_readiness": 141,
+            "session_creation": 4,
+            "browser_launch": 46403
+          },
+          "startup_diagnostics": {
+            "driver_version": "146.0.7680.31",
+            "driver_state": "running",
+            "driver_exit_code": null,
+            "browser_state": "unavailable",
+            "devtools_port_file": "absent",
+            "session_created": false,
+            "cleanup": "unverified",
+            "cleanup_driver_exit_code": -9,
+            "cleanup_browser_state": "unavailable",
+            "native_errors": []
+          },
+          "started_at": "2026-11-02T21:12:16.289563Z",
+          "finished_at": "2026-11-02T21:13:17.372573Z"
+        },
+        {
+          "case_run_id": "fe68a82910f74133a276d4bd0c12ae28",
+          "state": "failed",
+          "verdict": null,
+          "screenshots": [],
+          "evidence_complete": false,
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Closing browser and driver.",
+            "Browser smoke check failed."
+          ],
+          "diagnostic_code": "ReadTimeout",
+          "startup_stage": "browser_launch",
+          "startup_reason": null,
+          "startup_timings_ms": {
+            "driver_version": 242,
+            "driver_launch": 1661,
+            "driver_readiness": 45,
+            "session_creation": 215,
+            "browser_launch": 45441
+          },
+          "startup_diagnostics": {
+            "driver_version": "146.0.7680.31",
+            "driver_state": "running",
+            "driver_exit_code": null,
+            "browser_state": "unavailable",
+            "devtools_port_file": "absent",
+            "session_created": false,
+            "cleanup": "unverified",
+            "cleanup_driver_exit_code": -9,
+            "cleanup_browser_state": "unavailable",
+            "native_errors": []
+          },
+          "started_at": "2026-11-02T21:12:17.069728Z",
+          "finished_at": "2026-11-02T21:13:16.993029Z"
+        }
+      ]
+    }
+  ],
+  "overlap_observation_passed": false
+}

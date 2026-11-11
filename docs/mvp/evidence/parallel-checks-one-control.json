@@ -1,0 +1,50 @@
+{
+  "environment": "Real private TLS Mongo, Podman, Robot, HTTPX/CfT; ASGI auth double; no normal UI login",
+  "image": "b5d5e83e29ec11e6d2e34ce387f1e2f6f7108acdbd31bf22d96e4418a4dbb66c",
+  "checks": [
+    {
+      "check": "duplicate requests create one parent",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "independent one-case containers reserved",
+      "passed": true,
+      "details": {
+        "count": 1
+      }
+    }
+  ],
+  "samples": [
+    {
+      "case_run_id": "9f1a775cf85f4ffa9061cb8bb4fded13",
+      "observation": "unavailable"
+    }
+  ],
+  "batches": [
+    {
+      "batch_id": "7e164fe2e585492f81538287a9ea1947",
+      "state": "running",
+      "cases": [
+        {
+          "case_run_id": "9f1a775cf85f4ffa9061cb8bb4fded13",
+          "state": "starting",
+          "verdict": null,
+          "screenshots": [],
+          "evidence_complete": false,
+          "logs": [],
+          "diagnostic_code": null,
+          "startup_stage": null,
+          "startup_reason": null,
+          "startup_timings_ms": {},
+          "startup_diagnostics": null,
+          "started_at": null,
+          "finished_at": null
+        }
+      ]
+    }
+  ],
+  "overlap_observation_passed": false,
+  "cleanup_unverified": true,
+  "qualification": "incomplete: EngineError at engine container-exists inspection; old error wrapper did not distinguish timeout from OS process-launch failure"
+}

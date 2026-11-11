@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-02",
+  "csv_sha256": "e11b6d54d641f713725e3493a4d3ca1ac7518c12203364800790fbe2f6bea415",
+  "run_id": "09c6fe8184904a118eed97f1d904e62f",
+  "driver_pid": 17984,
+  "driver_pid_correlated": true,
+  "expected_cached_chrome_process_create_success": true,
+  "rows": 2255,
+  "processes": {
+    "chromedriver.exe": 2255
+  },
+  "chrome_renderer_events": 0,
+  "actual_workflow": "completed, three screenshots, external cleanup no survivors observed",
+  "native_comparison_limit": "cached Chrome events missing from supplied CSV; cannot compare browser ACL/renderer events or denied counts with complete fresh capture",
+  "root_cause": "unresolved",
+  "runtime_changes": false,
+  "next_step": "inspect cached PML filter for chrome.exe visibility before deciding whether another capture is necessary"
+}

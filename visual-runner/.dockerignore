@@ -1,0 +1,8 @@
+**
+!requirements.txt
+!lab/
+!lab/*.py
+!linux/
+!linux/*.py
+!linux/*.json
+!linux/Dockerfile

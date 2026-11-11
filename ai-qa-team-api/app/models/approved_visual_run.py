@@ -1,0 +1,121 @@
+"""Versioned contracts for synthetic approved visual run admission."""
+from datetime import datetime
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, ConfigDict, StringConstraints, Field
+
+
+Identifier = Annotated[str, StringConstraints(pattern=r'^[A-Za-z0-9_-]{1,80}$')]
+Digest = Annotated[str, StringConstraints(pattern=r'^[0-9a-f]{64}$')]
+RequestKey = Annotated[str, StringConstraints(pattern=r'^[0-9a-f]{32}$')]
+VisibleText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=240)]
+
+
+class Contract(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+
+class ApproveVisualTest(Contract):
+    button_label: VisibleText
+    expected_text: VisibleText
+
+
+class ApprovedVisualTest(ApproveVisualTest):
+    version_id: RequestKey
+    testcase_id: Identifier
+    story_id: Identifier
+    scenario_id: Identifier
+    knowledge_version: Literal['synthetic-fixture-knowledge-v1'] = 'synthetic-fixture-knowledge-v1'
+    source_digest: Digest
+    content_digest: Digest
+    approved_by: str
+    approved_at: datetime
+    steps: tuple[Literal['open'], Literal['click_visible_button'], Literal['assert_visible_text']] = (
+        'open', 'click_visible_button', 'assert_visible_text',
+    )
+
+
+class VisualRunSelection(Contract):
+    approved_test_version_id: RequestKey
+    environment_id: Identifier
+
+
+class StartApprovedVisualRun(VisualRunSelection):
+    preview_digest: Digest
+    idempotency_key: RequestKey
+
+
+class ApprovedVisualPreview(Contract):
+    schema_version: Literal['1.0'] = '1.0'
+    adapter: Literal['approved-visual-synthetic-v1'] = 'approved-visual-synthetic-v1'
+    target: Literal['server-owned-synthetic-fixture'] = 'server-owned-synthetic-fixture'
+    mode: Literal['synthetic-admission'] = 'synthetic-admission'
+    test: ApprovedVisualTest
+    environment_id: Identifier
+    environment_digest: Digest
+    preview_digest: Digest
+    max_browser_sessions: Literal[1] = 1
+    max_input_actions: Literal[1] = 1
+    # Keep the original admission contract readable. The synthetic bitmap
+    # executor consumes zero model calls from this allowance.
+    max_model_calls: Literal[1] = 1
+    timeout_seconds: Literal[90] = 90
+
+
+class AdmittedVisualRun(ApprovedVisualPreview):
+    run_id: Digest
+    state: Literal['admitted', 'running', 'cancelling', 'completed', 'cancelled'] = 'admitted'
+    verdict: Literal['passed', 'failed', 'blocked', 'needs_review', 'cancelled'] | None = None
+    observed_text: VisibleText | None = None
+    evidence_available: bool = False
+    reason: str | None = None
+    execution_adapter: Literal['browserstack-direct-webdriver-v1'] | None = None
+
+
+class VisualTestRunState(Contract):
+    approval: ApprovedVisualTest | None = None
+    latest_run: AdmittedVisualRun | None = None
+
+
+ApplicationRole = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
+
+
+class StagingBindingSelection(VisualRunSelection):
+    application_role: ApplicationRole
+
+
+class SaveStagingBinding(StagingBindingSelection):
+    binding_digest: Digest
+    idempotency_key: RequestKey
+
+
+class StagingBindingPreview(Contract):
+    schema_version: Literal["1.0"] = "1.0"
+    purpose: Literal["staging-login-preparation"] = "staging-login-preparation"
+    target_policy: Literal["salesforce-sandbox-preparation-v1"] = "salesforce-sandbox-preparation-v1"
+    execution_ready: Literal[False] = False
+    project_id: Identifier
+    testcase_id: Identifier
+    approved_test_version_id: RequestKey
+    approved_test_content_digest: Digest
+    source_digest: Digest
+    environment_id: Identifier
+    environment_revision: int = Field(ge=1)
+    environment_digest: Digest
+    target_url: str
+    target_origin: Literal["https://test.salesforce.com"] = "https://test.salesforce.com"
+    application_role: ApplicationRole
+    credential_id: Identifier
+    binding_digest: Digest
+
+
+class PreparedStagingBinding(StagingBindingPreview):
+    binding_id: Digest
+    prepared_by: str
+    prepared_at: datetime
+
+
+class StagingBindingState(Contract):
+    binding: PreparedStagingBinding
+    validation_state: Literal["current", "stale"]
+    reason: str | None = None

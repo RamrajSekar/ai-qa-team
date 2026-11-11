@@ -1,0 +1,40 @@
+{
+  "date": "2026-11-02",
+  "scope": "Display existing sanitized per-case startup diagnostics only",
+  "user_observation": "User reports the same check completed on rerun. Earlier failed startup remains unresolved, not erased or independently reverified.",
+  "changes": [
+    "Optional startup stage/reason/timings/diagnostics in CaseResult",
+    "Persist already-sanitized snapshot fields for future cases",
+    "Read-only fallback to retained sanitized local IPC for older cases; no Mongo backfill or engine calls",
+    "Generated TypeScript includes typed timing dictionaries",
+    "Expandable Startup diagnostics within View evidence, with explicit unknown legacy fallback"
+  ],
+  "checks": {
+    "batch_contract_api_tests": {
+      "passed": 11,
+      "environment": "isolated auth/DB/engine doubles; temporary-file sanitization and immutable compatibility check"
+    },
+    "presentation_tests": {
+      "passed": 2,
+      "environment": "React server rendering of trusted TSX, no browser/services"
+    },
+    "typescript": "passed",
+    "lint": "passed: zero errors/warnings",
+    "export_drift": "passed",
+    "git_diff_check": "passed; existing CRLF notices only"
+  },
+  "not_run": [
+    "New Linux startup/browser probes",
+    "Live UI/login/Mongo/Podman end-to-end rerun",
+    "New intercepted browser startup-display fixture test added but not executed this turn"
+  ],
+  "unchanged": [
+    "Runner image and code",
+    "45-second session deadline",
+    "Retry behavior",
+    "Project authorization",
+    "Customer URL restrictions",
+    "M1B gate"
+  ],
+  "compatibility": "Case-specific diagnostic subtype preserves missing session observations as null/Unknown and cleanup as unverified; legacy single-smoke schema unchanged."
+}

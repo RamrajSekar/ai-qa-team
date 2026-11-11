@@ -1,0 +1,147 @@
+{
+  "recorded_date": "2026-11-02",
+  "experiment_started": "2026-11-01",
+  "feed": {
+    "url": "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json",
+    "rechecked_date": "2026-11-02",
+    "timestamp": "2026-11-01T21:09:51.406Z",
+    "stable": "156.0.8078.80"
+  },
+  "setup": {
+    "isolated_install": "tmp/m1a-cft156-experiment",
+    "version": "156.0.8078.80",
+    "architecture": "win64",
+    "download_origin": "https://storage.googleapis.com/chrome-for-testing-public/156.0.8078.80/win64/",
+    "full_browser_driver_versions_matched": true,
+    "sandbox_directory_configured": true,
+    "old_install_preserved": true,
+    "application_default_pin_changed": false
+  },
+  "runs": [
+    {
+      "run_id": "6177ce509d034bce89e511adeeb132b5",
+      "headed": false,
+      "state": "failed",
+      "first_attempt_success": false,
+      "duration_seconds": 48.891,
+      "stage": "session_handshake",
+      "reason": null,
+      "code": "ReadTimeout",
+      "stage_ms": {
+        "driver_version": 281,
+        "driver_launch": 750,
+        "driver_readiness": 0,
+        "session_creation": 15,
+        "browser_launch": 16188,
+        "devtools_connect": 6875,
+        "session_handshake": 21937
+      },
+      "startup_diagnostics": {
+        "driver_version": "156.0.8078.80",
+        "driver_state": "running",
+        "driver_exit_code": null,
+        "browser_state": "running",
+        "devtools_port_file": "present",
+        "session_created": false,
+        "cleanup": "driver_exited_job_closed",
+        "native_errors": [],
+        "cleanup_driver_exit_code": 0,
+        "cleanup_browser_state": "exited"
+      },
+      "cleanup": "no_survivors_observed",
+      "survivor_count": 0,
+      "number": 1
+    },
+    {
+      "run_id": "ec4c49d573964ed0b5a0ebbbc3037f49",
+      "headed": false,
+      "state": "completed",
+      "first_attempt_success": true,
+      "duration_seconds": 25.734,
+      "stage": "screenshot",
+      "reason": null,
+      "code": null,
+      "stage_ms": {
+        "driver_version": 719,
+        "driver_launch": 969,
+        "driver_readiness": 16,
+        "session_creation": 15,
+        "browser_launch": 3453,
+        "devtools_connect": 578,
+        "session_handshake": 204,
+        "version_validation": 0,
+        "session_timeouts": 15,
+        "ready": 891,
+        "navigation": 1156,
+        "navigation_checkpoint": 547,
+        "screenshot": 8156
+      },
+      "startup_diagnostics": {
+        "driver_version": "146.0.7680.31",
+        "driver_state": "running",
+        "driver_exit_code": null,
+        "browser_state": "running",
+        "devtools_port_file": "present",
+        "session_created": true,
+        "cleanup": "driver_exited_job_closed",
+        "native_errors": [],
+        "cleanup_driver_exit_code": 0,
+        "cleanup_browser_state": "exited"
+      },
+      "cleanup": "no_survivors_observed",
+      "survivor_count": 0,
+      "number": 1
+    },
+    {
+      "run_id": "2a121a69edb34a5295688b4b12edbb12",
+      "headed": true,
+      "state": "failed",
+      "first_attempt_success": false,
+      "duration_seconds": 50.062,
+      "stage": "session_handshake",
+      "reason": null,
+      "code": "ReadTimeout",
+      "stage_ms": {
+        "driver_version": 782,
+        "driver_launch": 625,
+        "driver_readiness": 31,
+        "session_creation": 15,
+        "browser_launch": 12032,
+        "devtools_connect": 2093,
+        "session_handshake": 30875
+      },
+      "startup_diagnostics": {
+        "driver_version": "156.0.8078.80",
+        "driver_state": "running",
+        "driver_exit_code": null,
+        "browser_state": "running",
+        "devtools_port_file": "present",
+        "session_created": false,
+        "cleanup": "driver_exited_job_closed",
+        "native_errors": [],
+        "cleanup_driver_exit_code": 0,
+        "cleanup_browser_state": "exited"
+      },
+      "cleanup": "no_survivors_observed",
+      "survivor_count": 0,
+      "number": 1
+    }
+  ],
+  "checks": {
+    "resumed_runner_suite": "10 passed",
+    "pip_check": "passed",
+    "resumed_process_observation": "zero matching task processes"
+  },
+  "native_telemetry": {
+    "procmon_available": false,
+    "administrator_token": false,
+    "wpr_last_status": "not recording",
+    "kernel_capture_performed": false
+  },
+  "limitations": [
+    "cross-version upgrade comparison; not same-payload causality test",
+    "no normal Chrome modified",
+    "no UI/API/Mongo or full 10/5 rerun",
+    "latest stable did not eliminate the symptom; cause remains unresolved"
+  ]
+}

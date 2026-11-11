@@ -1,0 +1,50 @@
+{
+  "date": "2026-11-03",
+  "branch": "dev",
+  "baseline_commit": "2479de4017cd8e29516daa1ecf62d5763bc2b6b2",
+  "historical_prestart_failure": "not reproduced; original cause remains unknown",
+  "fixed_defects": [
+    "original engine error overwritten during interrupted reconciliation",
+    "child diagnostic omitted by parent aggregation"
+  ],
+  "real_environment": "Private TLS MongoDB + actual Podman/Robot/HTTPX/CfT; ASGI authentication double, real project membership queries",
+  "normal_controls": {
+    "completed": 2,
+    "attempted": 2
+  },
+  "five_case_attempt": {
+    "preparation_and_start_successes": 5,
+    "attempted": 5,
+    "workflow_completions": 4,
+    "browser_failure": "BROWSER_SESSION_NOT_CREATED; browser_launch; ChromeDriver reason browser_exited",
+    "five_session_overlap_qualified": false
+  },
+  "cancellation": {
+    "cancelled": 5,
+    "requested": 5,
+    "full_fixture_containers_terminal_pid_zero": 10,
+    "slots_released": true
+  },
+  "fault_injection": "Missing-image command_failed/image_lookup retained through real reconciliation and API; intentional fault, not historical reproduction",
+  "private_artifacts": "all three final-control PNGs authorized/no-store; cross-project artifact and cancel denied",
+  "checks": {
+    "preparation_unit_tests": 4,
+    "batch_contract_auth_tests": 21,
+    "legacy_visual_lab_tests": 11,
+    "feature_history_tests": 14,
+    "presentation_tests": 4,
+    "typescript": "passed after optional events fix",
+    "focused_lint": "passed",
+    "schema_export_drift": "passed",
+    "python_compile": "passed",
+    "git_diff_check": "passed (existing CRLF notices)"
+  },
+  "not_run": [
+    "normal-login UI end-to-end",
+    "full API process restart/hard kill",
+    "additional five-case retry",
+    "runner dependency census (image unchanged)",
+    "fresh Windows 10/5 baseline",
+    "CDP/M1B/cloud/customer execution"
+  ]
+}

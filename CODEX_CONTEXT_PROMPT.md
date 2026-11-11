@@ -1,838 +1,131 @@
-# AI QA Team — Codex Repository Change Prompt
+# AI QA Squad — Codex Repository Task Context
 
-You are working in the **AI QA Team** repository.
+Updated 2026-10-31. Use this context with a concrete task; it is not an instruction to build the whole roadmap in one session.
 
-Your job is to evolve the existing product into a **Dynamic Agentic Test Orchestrator & Test Data Engine** without throwing away the current implementation.
+## Objective and required reading
 
-## Primary objective
+Evolve the existing AI QA Team platform into a human-supervised, recording-trained visual QA SaaS. Read `AGENTS.md`, `AI_QA_TEAM_SKILL.md`, and `docs/mvp/{MVP_SPEC,REPO_GAP_ANALYSIS,IMPLEMENTATION_PLAN,DECISIONS}.md`. Current user instructions define the task. Scope documents define targets; inspected code and checks establish current implementation.
 
-AI QA Team is a non-invasive QA control plane over an enterprise's existing automation: **use the automation the customer already owns; do not rewrite or replace it unnecessarily.**
+The old repository-first orchestration/synthetic-data roadmap is optional preserved work. Recording-led priority is already accepted. Do not request reconfirmation or require repository import before training/testing. The earlier statement that root guides remain unchanged is historical; these guides have now been consolidated.
 
-Two entry modes share one platform:
-1. Bug reproduction / test-state preparation: "Help me reproduce/prepare this bug using automation I already own."
-2. QA exploration / strategic test data: "Help me explore this scenario using strategic datasets and automation I already own."
+Primary flow: Train product knowledge → review/clarify and approve knowledge → add story + acceptance criteria → generate/review/approve tests → execute → review evidence → approve corrections when needed.
 
-Robot Framework is the initial framework. Playwright and Selenium repository adapters are future work, not currently implemented orchestration.
+Recordings supply product knowledge; stories and acceptance criteria define test intent and expectations. Retain and adapt story-based Test Generation as the primary specification workflow. Flag conflicts with approved knowledge before generation; unresolved material conflicts block generation until reviewed. Every test version links to its story, specific acceptance criteria and approved knowledge version. Explicit approved expected results are required before execution. Corrections create reviewed successor versions, flag affected tests and preserve prior approvals and historical run references. Teach-back is optional within knowledge review; any browser demonstration still requires approved bounded actions and expectations.
 
-```text
-Existing Repository → Repository Scanner → Persistent Test Registry
-→ TestContract + Capabilities → Intent / Reproduction Planning
-→ Data Resolution / Data Engine → Execution Orchestrator
-→ Existing Automation → Results / Evidence
-```
+Account onboarding is not product knowledge training. Do not claim those new capabilities exist just because project setup is implemented.
 
-This is the target architecture, not a claim of current implementation. Start with pasted bug description, Steps to Reproduce, Expected Result, and Actual Result. Jira URL/API/webhook integration is a later input adapter, never a prerequisite for MVP validation.
+## Non-negotiable implementation constraints
 
-Detailed product contracts and acceptance examples are maintained in `AI_QA_TEAM_SKILL.md`; both documents describe future behavior unless explicitly marked current foundation.
+- Preserve Next.js/TypeScript, FastAPI/Pydantic, Mongo and useful Redis services. Avoid a stack rewrite.
+- New isolated execution: Robot core → custom Python visual library → HTTPX direct WebDriver → ChromeDriver → matched Chrome for Testing.
+- No Selenium/Playwright/Puppeteer client dependency, direct or transitive, in the new runtime. Preserve legacy Playwright separately; existing static scanners remain valid assets.
+- UI target identification is screenshot/computer vision based, with natural-language specifications. No hidden DOM/selector fallback, arbitrary JavaScript, generated code or unrestricted Robot keywords.
+- Backend coordinates specialized AI tasks; no swarm, new agent framework, Obsidian, MAK4I or graph database requirement.
+- Models propose; trusted code authorizes bounded actions, permissions, network rules, secrets and budgets.
+- Human approval applies to knowledge, optional teach-back demonstration actions and test versions. Runs pin immutable approved snapshots. Never infer correctness from observed UI alone or silently weaken assertions.
+- All required assertions must be evaluated to pass. Verdicts are Passed, Failed, Blocked, Needs review, Cancelled; lifecycle is separate.
+- Final SaaS uses cloud execution without customer installation. Local Windows proof precedes WSL/Linux and early GCP spike. Cloud defaults to headless; headed debugging uses a separately started session.
 
-### Greenfield path — existing functionality, disabled initially
+## Scope boundaries
 
-```text
-Story
-  ↓
-Scenario Builder
-  ↓
-Test Generator
-  ↓
-Generated Test
-  ↓
-Execution
-```
+Pilot: one module, 3–5 workflows, two roles maximum, 10–20 cases, English recordings up to 30 minutes, one supported Chrome/Linux configuration, batches of up to 10 approved cases, with checks within and across batches eligible for concurrent execution in a shared configurable pool (initial development default: five active checks). One isolated container/browser per active check; excess checks queue. Within-batch parallel execution is accepted MVP scope (2026-11-02), superseding the earlier two sequential-batch-container design; the default-off synthetic backend and Lab UI implement its mechanical subset, not approved customer/business tests. See docs/mvp/EXECUTION_CONTRACTS.md and M1A evidence. One active browser session per check container; fresh sessions for independent cases, per-case evidence/outcomes and per-case/batch budgets. Batch cancellation stops all its active check containers and cancels queued checks; never replay an interrupted batch or uncertain action. Enforce atomic global/account/project/environment slots, independent cancellation/evidence, budgets and shared-data conflict serialization; drain existing sequential batch/singleton work before the check pool launches; preserve legacy histories. Scheduled execution and high concurrency remain deferred. Managed AI first. Supported-provider/model BYOK and controlled evaluation follow core gates.
 
-The greenfield features already exist in the repository and must be retained behind feature flags.
+Defer live meetings, BrowserStack/Sauce Labs, customer/private runners, general MFA/CAPTCHA, advanced native/file/drag-drop interaction, mobile, broad browsers, schedules/high concurrency, arbitrary model endpoints, autonomous release decisions and full billing.
 
----
+Do not advance matcher/planner/four-layer-data-engine work unless explicitly assigned. Keep old discovery, bug interpretation, recorder, Story/Scenario and execution assets. No broad feature deletion, dependency removal, schema rewrite or automatic fallback.
 
-## Existing feature flags — implemented
+## Evidence-aware starting point
 
-The source of truth is `ai-qa-team-api/app/config.py`: Pydantic `Settings.features` / `FeatureFlags`, with nested environment settings. The shared dependency/helper is `app/utils/feature_flags.py`; `GET /features` returns a read-only boolean map. Do not introduce a second configuration service or reimplement flags.
+The previous audit used `dev` at `2479de4017cd8e29516daa1ecf62d5763bc2b6b2`. Recheck the actual branch/commit and relevant source. The attached documentation review did not rerun the repository.
 
-Actual code defaults:
+Reuse candidates: auth/project membership, environments, feature flags, subscriptions/usage, prompt versioning, provider gateway, encrypted BYOK store, static scanners and registry. BugInterpreter/TestIntentV1 already exist as interpretation/review; matcher/planner and durable product learning do not. Provider requests were text-only despite vision catalog labels.
 
-```python
-FEATURES = {
-    "story_management": False,
-    "scenario_generation": False,
-    "test_generation": False,
-    "recorder": False,
-    "native_execution": False,
-    "jira_trigger": False,
-    "failure_diagnostics": False,
-    "self_healing": False,
-    "playwright_repo_adapter": False,
-    "selenium_repo_adapter": False,
-    "repository_discovery": True,
-    "test_registry": True,
-    "test_data_generation": True,
-}
-```
+Prior audit findings requiring safe verification: testcase authorization, plaintext application credentials in environment/queue/response paths, sensitive logs, mutable approval booleans, pass stubs/incomplete assertions, destructive queue handling, possible double usage accounting, cloud runner stub and dependency drift. Do not label source findings reproduced, fixed or production-safe without evidence.
 
-True policy switches do not prove these product areas are implemented or production-ready. The scanner, persistent Test Registry, new contracts, planners, data engine, and adapters below are planned work. Do not enable disabled features casually or delete their source.
+## Next milestone and release gates
 
-Current guards block disabled requests before generation/usage/write/enqueue side effects. Disabled UI paths/actions are gated. With native execution disabled, new executions/enqueueing are blocked and the worker exits before consuming jobs; execution history reads remain available. Redis, Mongo execution persistence, worker, Playwright runner, and StepEngine code are preserved. The legacy Playwright import requires adapter, Story, Scenario, and Test Generation flags, so it cannot bypass those gates.
+Unless a different implementation task is supplied, recommend the isolated M1 visual proof; do not automatically execute the entire roadmap. In a documentation/review task, remain documentation-only.
 
----
+M1 uses a controlled synthetic app and no real credentials. Prove approved specification → screenshot observation → bounded action → independent assertion through the prescribed execution stack. Include form input, basic dropdown, scrolling, calculated total and confirmation; test a deliberately wrong result, ambiguous target, timeout after submit, cancellation and cleanup. A screenshot/driver smoke test alone is insufficient.
 
-## MVP phases and shared architecture
+Immediately afterward schedule an explicitly scoped Linux/GCP feasibility spike, not only final M6 qualification. Distinguish these gates:
+- Synthetic proof: bounded executor evidence and isolated dependency graph.
+- Customer-app access: tenant isolation, secret references, safe logs, network restrictions and version approval.
+- Paid pilot: complete workflow, durable runs/evidence, measured reliability/cost and retention.
+- Public self-service: additional abuse controls, entitlements and safe evaluation scope.
 
-Phase 1 plans Robot discovery (`robot.parsing`), persistent Mongo registry, contracts with ownership/capabilities/confidence, pasted-bug intent interpretation, reproduction planning, targeted data resolution, bounded strategy planning, four-layer data engine, and immutable dataset/state-plan preview and CSV/JSON export. No autonomous execution is required.
+Do not block a safe synthetic proof on every production subsystem, but do not use proof success to bypass the customer-data gate. If the approved execution approach fails, report it and propose a scoped decision; never silently substitute Playwright/Selenium.
 
-Phase 2 adds ExecutionContext → Execution Orchestrator → RunnerAdapter → RobotRunnerAdapter, an isolated workspace, sequential local execution, Robot output.xml/log.html parsing, generated-ID capture, normalized results, and manual handoff. Preserve Mongo execution history and reuse Redis queue infrastructure safely. Actual application-state creation requires this phase.
+## Required engineering checks
 
-The shared policy gate considers match confidence, environment restrictions, role/access, and review where required. Secrets, audit, observability, PII masking, and artifact retention remain cross-cutting concerns. Jira/pipeline triggers, diagnostics, and other framework adapters come after core workflow validation.
+- Inspect git status and relevant code before editing; preserve existing user changes.
+- Identify reusable boundaries and implement the smallest coherent change.
+- Scope every API/query/object/job reference to project membership; platform roles do not bypass it.
+- Resolve secrets trusted-side. Never print `.env`, credentials, cookies, raw sensitive prompts or secret-bearing screenshots.
+- Reuse AIUsageService → LLMGateway → ProviderRegistry → Provider; extend bounded operation policies and multimodal capability tests.
+- Count retries, tokens/images/transcription/browser usage; enforce configurable budgets. Existing credits are not a proven dollar cap.
+- Keep model proposals schema-bound; validate fresh screenshot identity, coordinates, scale, action permissions and postconditions.
+- Pin exact knowledge/test/configuration versions; additionally pin source commit only for repository-derived work.
+- Separate visual dispatch/queues from legacy worker consumption. No blind retries after uncertain consequential actions; reconcile duplicate/crashed/cancelled work.
+- Keep artifacts private, durable and retention-aware, with explicit incomplete evidence reporting.
+- Preserve histories and additive compatibility; do not convert legacy booleans into approved versions or legacy passes into evidence-backed passes.
+- Verify API/worker/UI feature gates separately; no second flag service. Do not enable old native execution as a shortcut.
+- Run meaningful focused tests. Use isolated fixtures/services because startup initializes Mongo indexes. Never use production for routine checks.
+- Diagnose rather than conceal the previously stalled `test_feature_flags.py`. Prior audit's eight ownership tests and TypeScript check are historical, not current test results.
+- Do not casually regenerate divergent dependency manifests. Verify the new runner's full installed dependency graph and licenses separately.
 
-## TestIntent and ReproductionPlanner (conceptual)
+## Feature-disposition audit
 
-TestIntent preserves the user's reproduction or exploration goal, reported steps, expected/actual behavior, exact values, constraints, and selected project/environment context. Bug-to-test mapping is not always 1:1.
+For existing features outside the new journey, record:
 
-Place ReproductionPlanner between intent interpretation and execution. It maps steps and inputs to existing capabilities, prefers one complete existing test/workflow, identifies reusable setup/preconditions and missing steps, records matching confidence, distinguishes bug-required inputs from automation-owned data, and produces a reviewable plan.
+| Feature/path | Current evidence | Disposition | Dependencies/data/callers | Proposed change | Risk and effort |
+| --- | --- | --- | --- | --- | --- |
+| Populate from inspected repository | Implemented / partial / stub / unknown | Keep/reuse / adapt / preserve behind flags / defer / investigate removal | Include API, worker and storage impact | Separate recommendation from implementation | Range and assumptions |
 
-Coverage is separate from confidence:
-- **FULL:** existing automation sufficiently covers the workflow. Match → resolve only required external/bug inputs → review → execute → compare observed/reported/expected behavior → BugReproductionResult.
-- **PARTIAL:** execute covered setup/preconditions to create useful application state; capture references and hand remaining steps to the tester. This is a valid MVP outcome, not complete reproduction.
-- **NONE:** report insufficient automation coverage; do not pretend a weak match is executable coverage.
+Out of scope is not synonymous with unused. Do not remove anything based only on a hidden menu or static search. Removal needs a scoped migration/caller assessment, retained history/export path and rollback. Preserve customer automation input ownership and exact values if legacy integration is touched.
 
-Never silently convert partial coverage into generated automation. Do not build MVP around an AI browser agent inventing missing steps. AI-assisted gap execution is post-MVP.
+## Deliverables for an assigned task
 
-A reproduction plan should identify matched automation, covered/missing steps, coverage, confidence/evidence, required inputs and their provenance, setup outputs, review needs, and remaining manual steps. Exact schema and matching thresholds remain to be decided during implementation.
+Report:
+1. Actual branch/commit and inspected scope.
+2. What was reused and what changed, with paths.
+3. Behavior before/after and acceptance evidence.
+4. Compatibility, permissions, data migration, dependencies and operational impact.
+5. Tests/checks run, outcomes and explicit unverified areas.
+6. Feature dispositions and deferred work relevant to this task.
+7. Remaining effort in engineer-days/weeks with assumptions and uncertainty; no invented reuse percentages or precise line-count forecasts.
+8. The next bounded task and any genuine unresolved decision.
 
-## Input ownership, provenance, and resolution
+Update affected MVP docs and these guides when an authorized implementation changes the facts. Do not preserve contradictory claims by appending another historical paragraph. Keep detailed scope/estimates in `docs/mvp/`; keep this prompt focused on execution discipline. Documentation changes do not authorize commit/push/deploy or unassigned application changes.
 
-Existing automation owns everything it already knows how to resolve. Inject or override only values required by user intent or genuinely required externally by that test. A discovered variable is not automatically a generation target.
 
-| Ownership/authority | Required behavior |
-| --- | --- |
-| BUG_LOCKED | Preserve exact bug value, e.g. TOUR_CODE = BA; AI cannot change it. |
-| BUG_CONSTRAINED | Resolve within the bug constraint, e.g. November 2026; never relax it silently. |
-| EXTERNAL_INPUT | Resolve/generate an externally required input when appropriate. |
-| INTERNALLY_GENERATED | Preserve the test's own Faker/name/email generation; no override by default. |
-| GENERATED_RUNTIME | Capture execution output such as CONTACT_ID; never seed it. |
-| ENVIRONMENT | Resolve from ProjectEnvironment, e.g. QA base URL. |
-| CREDENTIAL / SECRET | Secure runtime reference only; never generate with AI or expose to LLMs, logs, API responses, or plaintext queue payloads. |
-| UNKNOWN | Investigate/review; block execution when a required dependency cannot be resolved safely. Never blindly override. |
-
-Keep ownership/authority distinct from discovery location (argument/resource/variable file) and discovery confidence. Preserve source, constraints, and provenance for resolved values. For example:
-
-```text
-TOUR_CODE: value=BA, source=BUG, authority=LOCKED
-DEPARTURE_DATE: value=2026-11-12, source=ENVIRONMENT/EXISTING_TEST_DATA,
-                constraint=November 2026 (only if a valid BA departure exists)
-FIRST_NAME: source=INTERNALLY_GENERATED, action=NONE
-```
-
-Conceptual source priority: exact bug value → bug constraint → existing test/repository data → QA environment data → deterministic synthetic generation → user review/input if unresolved. A constraint restricts all subsequent lookup/generation; it is not itself a concrete data source. Missing locked values or unavailable constrained inventory must be surfaced, not replaced with invented data.
-
-Distinguish **GENERATE** synthetic data (e.g. an externally required first name) from **RESOLVE** existing valid data (e.g. a BA departure in November 2026). Do not regenerate an internally owned first name in either mode.
-
-## Two data engine modes
-
-**Targeted Replay:** one surgical dataset or application-state preparation plan for a bug. Resolve only the required overrides, such as BA and a valid November 2026 departure; existing automation retains contact generation and setup.
-
-**Strategy Matrix:** explore coverage with a bounded StrategyPlan. For "Generate boundary tests for customer registration," a plan might allocate Happy 2, Boundary 4, Negative 2, Cross-field 2. Strategy Planner decides WHAT cases are needed; Data Engine creates and validates the 10 actual rows. Recommendations alone are not generated datasets. Deliberately negative cases must be checked against their intended rule violations rather than silently repaired into positive cases; detailed validation policy remains an implementation decision.
-
-## Application-state seeding
-
-Test data may be an application state, not just CSV/JSON fields. Existing Create Itinerary automation can create Contact → Itinerary with BA, a valid November 2026 departure, Room, Protection Plan, and Bedding. CONTACT_ID and ITINERARY_ID are execution outputs/reproduction artifacts, not pre-seeded inputs.
-
-For PARTIAL coverage, return environment, created record/reference IDs, data used, setup status, and remaining manual reproduction steps. Successful state preparation is valuable even when the bug remains unverified. Preview must distinguish planned state from state actually created during Phase 2.
-
-## BugReproductionResult (conceptual)
-
-Bug statuses: **REPRODUCED / NOT_REPRODUCED / INCONCLUSIVE / BLOCKED**.
-
-These are separate from runner PASSED/FAILED/ERROR. A Search Tour test expecting results may FAIL because the reported unexpected error occurred; evidence can support bug REPRODUCED. Never derive bug status solely from runner PASS/FAIL. Compare reported, expected, and observed behavior with execution evidence, coverage, and confidence. A successful PARTIAL setup alone does not prove reproduction. Exact status thresholds and manual confirmation policy remain open.
-
-## Canonical acceptance examples (future behavior)
-
-### Full coverage — Search Tour
-
-Pasted bug: (1) log in to Salesforce QA, (2) create a Contact, (3) open Tour Search, (4) enter BA and a November 2026 departure, (5) Search, (6) observe an error.
-
-Assume existing Search Tour automation logs in, generates Contact first/last name/email, creates the Contact, navigates, searches, and validates results. Coverage is FULL. Do not regenerate Contact data. Preserve TOUR_CODE=BA as BUG_LOCKED and departure-in-November-2026 as BUG_CONSTRAINED. Only if valid inventory/test data supplies it, use 2026-11-12. Review and execute the existing test with only these required inputs/overrides.
-
-Return matched automation, confidence, resolved bug inputs, execution result, observed error/result, BugReproductionResult, and evidence/log reference. Runner failure can support REPRODUCED when evidence matches the reported error; failure alone is insufficient.
-
-### Partial coverage — Modify Booking
-
-Pasted bug: (1) log in to Salesforce QA, (2) create Contact, (3) open Tour Search, (4) enter BA and November 2026 departure, (5) Search, (6) select package, (7) select mandatory Room, Protection Plan, Bedding, (8) Create, (9) observe itinerary created, (10) click MODIFY BOOKING, (11) see an error instead of modification options.
-
-Repository contains Create Itinerary covering steps 1–9, but no Modify Booking capability. Coverage is PARTIAL. Do not claim full reproduction or generate Modify Booking automation. Run the existing setup workflow with required resolved inputs.
-
-Example handoff: Setup Automation=Create Itinerary; Setup Result=PASSED; created Contact ID and Itinerary ID; covered steps 1–9; environment and data/evidence references. Remaining manual steps: (10) open/click MODIFY BOOKING, (11) check whether the reported error occurs. Hand the tester the created state and enough information to continue. AI gap execution is future work.
-
----
-
-## Canonical domain contracts
-
-### TestContract
-
-Use a framework-neutral model similar to:
-
-```python
-class TestContract:
-    test_id: str
-    project_id: str
-    repository_id: str
-    framework: str
-    suite: str | None
-    test_name: str
-    file_path: str
-    tags: list[str]
-
-    inputs: list[InputContract]
-    runtime_dependencies: list[RuntimeDependency]
-    capabilities: list  # Steps and supporting discovery evidence
-    assertions: list  # Expected behaviors
-
-    confidence_score: float | None
-
-    source_commit_sha: str
-    registry_version: str
-    parser_version: str
-```
-
-### InputContract
-
-```python
-class InputContract:
-    name: str
-    data_type: str | None
-    required: bool
-
-    source: str  # Discovery location; distinct from ownership
-    ownership: str  # See input ownership/provenance above
-    provenance: dict
-    seedable: bool
-    confidence: str
-
-    constraints: dict
-    generation_strategy: str | None
-```
-
-Possible source classifications:
-
-```text
-explicit_argument
-resource_file
-variable_file
-environment
-credential
-secret
-generated_runtime
-unknown_runtime
-```
-
-Unknown/secret dependencies must not be generated by AI. They may still be mandatory for execution.
-
----
-
-## Discovery confidence rules
-
-Use:
-
-```text
-HIGH
-MEDIUM
-UNKNOWN
-```
-
-Interpretation:
-- HIGH: explicit test/keyword arguments.
-- MEDIUM: inferred via imported resources or variable files.
-- UNKNOWN: dynamic runtime dependency.
-
-Do not treat UNKNOWN as "ignore entirely".
-
-Instead classify dependency purpose:
-- seedable input;
-- environment dependency;
-- credential dependency;
-- secret dependency;
-- generated runtime value;
-- unresolved runtime dependency.
-
-Only externally required/user-intent seedable inputs are candidates for synthetic generation; preserve internally generated data even if discoverable.
-
----
-
-## Four-layer data engine
-
-### Layer 1 — Schema Contract
-Support:
-- type;
-- required/nullability;
-- min/max;
-- enum;
-- length;
-- regex/pattern.
-
-### Layer 2 — Field Contracts
-Support:
-- Faker;
-- fixed values;
-- min/max boundary;
-- just-below/just-above boundary;
-- null;
-- invalid format;
-- duplicate;
-- special characters;
-- regex-derived values.
-
-### Layer 3 — Cross-Field Rules
-Examples:
-
-```text
-IF country == "US" THEN state required
-IF age < 18 THEN guardian required
-IF account_type == "BUSINESS" THEN ein required
-```
-
-Cross-field validation must be deterministic.
-
-### Layer 4 — Relational Graph
-Support:
-- parent-child dependency ordering;
-- foreign-key propagation;
-- captured generated IDs;
-- future cleanup policy.
-
-Potential cleanup policies:
-
-```text
-KEEP
-DELETE_ON_PASS
-DELETE_ALWAYS
-MANUAL
-```
-
-Do not overbuild cleanup in Phase 1.
-
----
-
-## Strategy planner
-
-Prevent combinatorial explosion.
-
-Natural-language requests must yield a bounded plan.
-
-Example:
-
-```json
-{
-  "max_cases": 30,
-  "strategies": {
-    "happy": 5,
-    "boundary": 8,
-    "negative": 7,
-    "cross_field": 5,
-    "relational": 5
-  }
-}
-```
-
-Targeted Replay starts with a pasted bug and normally resolves one surgical dataset or state-preparation plan. Jira is a later input adapter. Strategy recommendations must be materialized as actual validated rows by the Data Engine.
-
----
-
-## Persistent registry
-
-MongoDB is the registry source of truth.
-
-Redis is cache/queue only.
-
-Every registry version must be tied to:
-- repository;
-- branch when applicable;
-- commit SHA;
-- parser version;
-- registry version;
-- discovery timestamp.
-
-Never assume a registry generated from commit A is safe to execute against commit B.
-
----
-
-## Repository safety
-
-Treat customer repositories as read-only by default.
-
-Do not modify committed CSV/JSON/Excel/test files to inject generated data.
-
-Generated data belongs in an isolated artifact workspace, for example:
-
-```text
-/workspace/runs/{execution_id}/
-    data/
-    logs/
-    reports/
-    metadata.json
-```
-
-Use a configurable path rather than hardcoding a POSIX location into business logic.
-
-Track dataset provenance:
-- dataset ID;
-- seed;
-- generator version;
-- contract/rule version;
-- repository commit;
-- registry version.
-
----
-
-## ProjectEnvironment
-
-Preserve existing environment functionality. The fields and role-aware credential references below are target guidance, not a claim that credential safety remediation is complete.
-
-Environment means target application environment:
-
-```text
-DEV
-QA
-UAT
-STAGING
-PROD
-```
-
-Environment is not the same as runner/execution target.
-
-Keep separate:
-
-```text
-environment_id -> QA/UAT/etc.
-runner_type    -> robot-local/playwright-local/cloud/BrowserStack
-browser        -> chromium/firefox/webkit where applicable
-headed         -> true/false where applicable
-```
-
-Recommended environment fields:
-
-```text
-environment_id
-project_id
-name
-environment_type
-base_url
-api_base_url
-default_browser
-default_headed
-default_timeout_ms
-ignore_https_errors
-variables
-is_default
-is_active
-created_by
-created_at
-updated_by
-updated_at
-```
-
-Environment type should allow:
-
-```text
-local
-dev
-qa
-uat
-staging
-prod
-custom
-```
-
----
-
-## Role-based credentials and secrets
-
-An environment may have multiple credential profiles for role-based testing.
-
-Never put plaintext passwords/tokens into:
-- API responses;
-- execution history;
-- Redis job payloads;
-- logs;
-- LLM prompts.
-
-Redis jobs should carry only a reference such as:
-
-```text
-credential_profile_id
-```
-
-The target design resolves secrets in the worker at execution time. Existing credential safety remediation remains the next separately scoped task; do not describe it as implemented.
-
-Do not expand any existing plaintext-secret pattern.
-
----
-
-## ExecutionContext
-
-Before Phase 2 execution, construct one canonical context.
-
-```python
-class ExecutionContext:
-    execution_id: str
-
-    project_id: str
-    repository_id: str
-    source_commit_sha: str
-    registry_version: str
-
-    test_id: str
-
-    environment_id: str
-    role: str | None
-    credential_profile_id: str | None
-
-    dataset_id: str
-    artifact_root: str
-
-    runner_type: str
-    browser: str | None
-    headed: bool | None
-    timeout_ms: int
-```
-
-Do not pass large mutable environment blobs or raw secrets through Redis.
-
----
-
-## RunnerAdapter
-
-Do not spread `if framework == ...` logic through execution services.
-
-Use an adapter contract:
-
-```python
-class RunnerAdapter:
-    async def prepare(self, context): ...
-    async def execute(self, context): ...
-    async def collect_results(self, context): ...
-    async def cleanup(self, context): ...
-```
-
-Phase 2 implements:
-
-```text
-RobotRunnerAdapter
-```
-
-Future adapters may include:
-
-```text
-PlaywrightRunnerAdapter
-SeleniumRunnerAdapter
-```
-
-Do not implement future adapters until requested. Avoid direct `robot.run()` coupling throughout services.
-
-Conceptual execution modes: SEQUENTIAL, FRAMEWORK_MANAGED, PLATFORM_PARALLEL (future). Default local Phase 2 to sequential execution when managing individual rows. Preserve a single framework-managed invocation when the existing test consumes a whole CSV/JSON dataset and performs its own iteration. Initial local MVP does not implement platform parallel execution.
-
----
-
-## ExecutionResult normalization
-
-Do not expose Robot XML semantics directly to the UI/API.
-
-Normalize runner output into a framework-neutral result.
-
-Suggested statuses:
-
-```text
-queued
-running
-passed
-failed
-error
-cancelled
-timed_out
-```
-
-Suggested deterministic failure classes:
-
-```text
-ASSERTION_FAILURE
-DATA_FAILURE
-ENVIRONMENT_FAILURE
-AUTH_FAILURE
-TEST_CODE_FAILURE
-LOCATOR_FAILURE
-INFRA_FAILURE
-UNKNOWN
-```
-
-Only use an LLM for diagnostics after deterministic parsing/classification.
-
----
-
-## Output extraction
-
-Do not hardcode Salesforce IDs inside runner logic.
-
-Use configurable extractors, such as:
-- RegexExtractor;
-- JSONPathExtractor;
-- framework-specific parser;
-- custom extractor.
-
-Salesforce record IDs can be one configured use case, not a platform assumption.
-
----
-
-## Jira / external trigger safety
-
-Jira execution is post-MVP unless explicitly requested.
-
-Future flow:
-
-```text
-Jira
-  ↓
-Intent match
-  ↓
-Candidate existing test
-  ↓
-Candidate dataset
-  ↓
-Confidence
-  ↓
-Policy gate
-      ├── auto-run if safe
-      └── review-and-run otherwise
-```
-
-Support idempotency/external trigger IDs to prevent duplicate webhook runs.
-
----
-
-## Self-healing
-
-Self-healing is disabled for MVP.
-
-When reintroduced:
-
-```text
-locator failure
-→ proposed fix
-→ confidence
-→ human approval
-→ patch/update
-```
-
-A proposed fix must not change a failed execution to passed.
-
-For customer-owned repositories, prefer Git patch/branch/PR generation over direct mutation.
-
----
-
-## Existing code to preserve
-
-Reuse:
-- FastAPI;
-- authentication;
-- subscriptions/usage;
-- MongoDB;
-- Redis Cloud;
-- projects;
-- ProjectEnvironment work;
-- execution history;
-- current Playwright code where it can later become an adapter;
-- agent identities where useful.
-
-Do not perform a big-bang rewrite.
-
----
-
-## Preserved legacy functionality
-
-Feature-flag gating is already implemented; the actual defaults and behavior are documented above. Retain existing Story, Scenario/Test Generation, Recorder, native execution, Playwright runner, worker, StepEngine, and persistence code. Do not re-enable or rewrite it as part of context alignment. Unfinished WebSocket/live-log functionality is not an MVP deliverable; do not infer a dedicated flag that does not exist.
-
----
-
-## Implementation order
-
-Completed/current foundation: authentication, projects, environments, subscriptions/usage, MongoDB, Redis, centralized feature flags, and preserved disabled legacy code. Existing Playwright execution infrastructure remains available in source for future adapter migration; it is not an implemented Playwright repository orchestration adapter.
-
-Next, incrementally:
-1. Credential safety remediation.
-2. Robot repository scanner.
-3. Persistent Test Registry.
-4. Canonical TestContract.
-5. Input ownership + confidence classification.
-6. Capability/step discovery.
-7. TestIntent / pasted-bug interpreter.
-8. ReproductionPlanner.
-9. Targeted Replay Data Resolver.
-10. Strategy Planner.
-11. Four-layer Data Engine.
-12. Dataset/application-state preview.
-13. CSV/JSON export.
-
-Phase 2:
-14. ExecutionContext.
-15. RunnerAdapter.
-16. RobotRunnerAdapter.
-17. Sequential local execution.
-18. Application-state / generated ID capture.
-19. Normalized ExecutionResult.
-20. BugReproductionResult.
-21. Partial-reproduction/manual handoff UI.
-
-After core workflow validation:
-22. Jira URL/API connector.
-23. Jira webhook/pipeline automation.
-24. Playwright repository adapter.
-25. Selenium repository adapter.
-26. Cloud runners / CI integration.
-27. AI failure diagnostics.
-28. Human-approved self-healing / Max.
-
-This order is not authorization to implement all items at once or enable flags. Credential safety is unresolved follow-up, not a completed redesign. Application-state planning/preview belongs to Phase 1; actual state creation and ID capture require Phase 2 execution.
-
----
-
-## Coding rules
-
-1. Follow the repository's existing style and module layout.
-2. Extend existing routes/services when appropriate instead of duplicating them.
-3. Keep worker logic thin.
-4. Put framework-specific behavior behind adapters.
-5. Keep secrets out of response models and queue payloads.
-6. Use `Field(default_factory=list)` / `Field(default_factory=dict)` instead of mutable defaults.
-7. Use timezone-aware timestamps.
-8. Verify project ownership/access for repository, environment, registry, test, and execution operations.
-9. Add/update tests for behavioral changes.
-10. Prefer tolerant backward-compatible reads over mass rewrites of old Mongo documents.
-11. Do not execute against a repository commit different from the registry commit without an explicit re-scan.
-12. Do not silently replace deterministic validation with LLM reasoning.
-
----
-
-## Working method
-
-Before editing:
-1. inspect relevant files;
-2. summarize current implementation;
-3. identify reusable components;
-4. propose the smallest safe change;
-5. implement;
-6. run relevant tests;
-7. report impact.
-
-For every meaningful change, report:
-
-```text
-Files changed
-Why
-Behavior before
-Behavior after
-Backward-compatibility impact
-Tests run
-Remaining follow-up
-```
-
-The immediate goal is **not** to implement the entire architecture. It is to safely turn the existing repository toward this architecture while preserving working code.
-## Project membership and authorization
-
-Authorization is project-scoped through `project_memberships`. Roles are `ADMIN` and `TESTER`, with `INVITED` or `ACTIVE` status. Creation assigns the creator as ADMIN; legacy `projects.created_by` remains the billing/compatibility owner and supports safe lazy backfill. Optional onboarding team setup and Project Settings → Team share the same membership APIs. Centralized `require_project_member` and `require_project_admin` checks protect project-level LLM/BYOK configuration.
-
-## Project-level LLM configuration
-
-The implemented provider-neutral path is `AI feature → LLMGateway → ProviderRegistry → LLMProvider`. MVP adapters are OpenAI and Azure OpenAI. A shared provider catalog describes safe configuration fields and lightweight capability metadata for the API and reusable project Settings UI.
-
-Project ADMIN members manage one active/default `AIConfiguration`; TESTER members receive safe provider/status metadata without management controls. Managed mode resolves the server-managed `OPENAI_API_KEY`. BYOK mode stores only a `credential_ref` in `ai_configurations`. Actual keys are held by `EncryptedMongoSecretStore` using AES-256-GCM and the server-only `LLM_SECRET_MASTER_KEY` (URL-safe base64 encoding of exactly 32 random bytes). The master key must remain stable across deployments and must not be stored in Mongo.
-
-Test Connection returns normalized provider errors without raw responses or credentials. Switching validates the proposed provider before persisting it, retains the current active provider on validation failure, and deletes the old encrypted credential only after successful activation. Disabled legacy generation remains disabled; its compatibility factory is not the preferred path for new AI features.
-
-## Platform control plane
-
-Platform administration uses the dedicated `users.platform_role` values `OWNER`, `ADMIN`, and `NONE`. Existing users without the field resolve to `NONE`. The server-only `PLATFORM_OWNER_EMAIL` bootstrap persists `OWNER` after trusted authentication and never synchronizes or demotes past owners. Platform authorization and ProjectMembership authorization are independent: Platform OWNER has no implicit customer-project access, and Project ADMIN has no platform access. Never add a platform-owner bypass to normal project APIs.
-
-The implemented platform namespace is `/platform-admin`, currently containing the dashboard shell and Prompt Management. Future Customers, Customer Onboarding, Subscriptions, Usage, Projects Overview, and Platform Settings modules remain unimplemented.
-
-## Platform Prompt Registry
-
-`BUG_INTERPRETER` is the only managed prompt. Its definition names `TestIntentV1` as future output-contract metadata; no TestIntent model or BugInterpreter execution exists yet. A single `prompt_definitions` Mongo document embeds prompt versions so activation and `active_version` change atomically. DRAFT versions are editable; ACTIVE and INACTIVE history are immutable. Activation supports rollback and permits at most one ACTIVE version.
-
-Fallback-first initialization performs no startup writes. `PromptRegistry.get_active("BUG_INTERPRETER")` returns the canonical `CODE_DEFAULT_V1` source when no persisted active version exists. Platform OWNER/ADMIN can create a draft from the fallback, edit it, activate it, and reactivate history. Prompt records contain instructions only: no credentials, project overrides, provider selection, model configuration, schemas, analytics, or evaluations.
-
-Next phase integration, not yet implemented:
-
-```text
-Project ADMIN / TESTER → Paste Bug → BugInterpreter
-→ PromptRegistry.get_active("BUG_INTERPRETER")
-→ LLMGateway → TestIntentV1 → Review
-```
-
-## AI usage guard and metering foundation
-
-The provider-neutral path for every new production AI feature is:
-
-```text
-AI Feature
-  → AIUsageService
-  → LLMGateway
-  → ProviderRegistry
-  → OpenAIProvider / AzureOpenAIProvider
-```
-
-`AIUsageService` owns the operation policy, input and output bounds, project/user authorization, server-resolved Managed/BYOK mode, monthly credit reservation, Redis rate and concurrency limits, provider invocation, token telemetry, and usage finalization. Feature services must not implement those concerns or call the gateway directly.
-
-Credits represent operations, not tokens. The established `ai_gen_used`/`ai_gen_limit` subscription fields are reused as the canonical monthly customer allowance. Calendar-month metadata supports lazy atomic reset. Successful calls consume reserved credits. Safely identifiable pre-inference provider failures refund them; ambiguous timeout/provider failures consume them. Redis limiter keys are scoped by project, user, and operation and expire automatically.
-
-Provider adapters normalize actual input/output/total token counts. Unavailable usage remains null. `ai_usage_records` stores no prompt/body or credentials. Managed records are marked eligible for future cost calculation, while estimated cost stays null until reliable centralized pricing exists. No dollar ceiling is claimed yet. Commercial allowances and all initial `BUG_INTERPRETER` limits remain configurable.
-
-Phase C must use:
-
-```text
-BugInterpreter
-  → PromptRegistry.get_active("BUG_INTERPRETER")
-  → AIUsageService.execute(BUG_INTERPRETER, ...)
-  → LLMGateway
-  → TestIntentV1
-```
-
-The AI usage foundation originally stopped at this boundary; Phase C now implements the TestIntent model and BugInterpreter described below.
-
-## Phase C — TestIntentV1 and Reproduce Bug review
-
-Phase C now implements:
-
-```text
-Paste Bug
-  → BugInterpreter
-  → PromptRegistry.get_active("BUG_INTERPRETER")
-  → AIUsageService.execute(BUG_INTERPRETER, ...)
-  → LLMGateway structured response
-  → TestIntentV1
-  → deterministic validation
-  → Review UI
-```
-
-Project ADMIN and TESTER members can use `POST /projects/{project_id}/bugs/interpret`. The request accepts only `bug_text`; provider, model, credentials, limits, cost, and prompt version remain server controlled. Prompt Registry fallback and active database versions both work. The prompt is sent with system authority, while the pasted bug is isolated as untrusted user content.
-
-`TestIntentV1` is framework-neutral and answers **what should be tested**. It does not decide how existing automation will satisfy the intent. Ordered workflow steps retain raw evidence. Explicit values are `EXACT` and must be preserved by later components. Conditions and ranges are `CONSTRAINED`; later components may resolve a value only within the constraint. `UNSPECIFIED` marks a relevant input without a supplied value or constraint and must not be treated as generated data.
-
-Explicit environment evidence is retained without inferring URLs, IDs, browsers, users, or credentials. Optional `user_context` separately represents a supplied role, profile, persona, or actor: one role is `EXACT`, alternatives stated with OR are `ANY_OF`, and absent evidence remains null or `UNSPECIFIED`. Actor context is not a business `IntentInput`, and Phase C never selects a role or resolves a credential profile.
-
-Expected, actual, and reported behavior remain distinct. When expected behavior is absent, deterministic processing adds one INFO ambiguity unless an equivalent ambiguity already exists. Confidence is HIGH/MEDIUM/LOW, and useful uncertainty is carried as INFO/WARNING ambiguities. JSON, Pydantic, date-range, workflow-order, evidence, and duplicate-input rules are enforced before returning a complete intent. Invalid raw model output is never returned.
-
-The UI supports Paste Bug, Interpret Bug, review, source editing, and Interpret Again. There is no TestIntent persistence, repository search, Test Matcher, FULL/PARTIAL/NONE determination, ReproductionPlanner, data generation, or execution in this phase.
-
-## Canonical Test Registry — TestContract Step 1
-
-The existing `discovered_tests` Mongo collection now serves as the single canonical Test Registry. Robot static discovery deterministically creates framework-neutral `TestContract` version `1` records containing stable test identity, project/repository identity, exact source commit SHA, framework, file/line/name, tags, scanner version, registry version, and timestamps. Inputs, runtime dependencies, capabilities, and assertions are deliberately empty; confidence is null. No AI participates in construction.
-
-Test IDs include repository ID, commit SHA, relative path, and test name. A same-commit rescan replaces that commit snapshot and removes tests no longer discovered. A new commit creates a separate snapshot; older commit rows remain available for future historical binding, while the existing repository tests API returns only contracts matching the repository's current commit. Legacy discovered-test rows are upgraded tolerantly at the API boundary without rewriting Mongo.
-
-TestContract Step 2 deterministically records ordered Robot keyword calls and their raw arguments, statically safe Resource imports, and referenced user-keyword definitions with immediate nested calls. Resource graphs are traversed transitively with cycle protection and cannot escape the repository root or load remote/dynamic resources. Keyword status is explicit: resolved, unresolved, built-in/library, or ambiguous. Inputs, dependencies, capabilities, assertions, and confidence remain unenriched; no AI, matching, planning, or execution is involved.
-
-TestContract Step 2B adds static Playwright Test discovery for TypeScript and JavaScript through Python Tree-sitter. Framework detection requires Playwright import/call evidence rather than filenames alone. Ordered calls, raw arguments, static source imports, functions, async functions, and Page Object methods map into generic call/source/callable references. Static `describe` ancestry distinguishes equal leaf test names. Robot retains its Resource and keyword representations. Both scanners are registered behind the repository scan boundary and persist only canonical commit-bound contracts in `discovered_tests`.
-
-TestContract Step 2C adds deterministic Selenium Java scanning through Python Tree-sitter Java. Discovery supports JUnit 4, JUnit 5, and TestNG only when test annotations and Selenium evidence are both present. Java package/class/method identity, imports, local methods, Page Objects, simple inheritance, and ordered calls map into existing generic TestContract concepts. Overloads, polymorphism, unresolved calls, Selenium APIs, and assertion-library calls retain conservative structural statuses. This is the final framework adapter before framework-neutral intelligence work.
-## TestContract Step 3A — deterministic value provenance
-
-TestContract Step 3A adds deterministic, bounded value provenance to the same canonical contracts for Robot, Playwright TypeScript/JavaScript, and Selenium Java. Parser-specific adapters extract declarations, assignments, call results, parameter relationships, member references, and environment-access expressions; a framework-neutral builder maps that evidence into a flat graph connected by `source_ids`. Provenance remains tied to the parent repository ID and exact source commit. Traversal is capped at depth 8 and 256 nodes and preserves partial, ambiguous, unresolved, or dynamic status rather than guessing. Legacy documents normalize to an empty provenance list. This is structural evidence only: inputs, runtime dependencies, capabilities, and assertions remain empty, confidence remains null, and no ownership classification, AI, matcher, planner, data generation, or execution is introduced.
-
-## TestContract Step 3B — deterministic value ownership
-
-TestContract Step 3B adds a separate `value_ownership` classification graph for reachable call arguments. The generic classifier follows only same-contract Step 3A `source_ids`: literal origins become `STATIC_INTERNAL`, call results become `GENERATED_RUNTIME`, and structural environment access becomes `ENVIRONMENT`. Wrapper records propagate origin ownership; same-category branches preserve ambiguity, while conflicting, unresolved, dynamic, and traversal-limited evidence remains `UNKNOWN` with explicit status and reason codes. There is currently no deterministic external-boundary evidence or repository-to-execution-credential reference, so `EXTERNAL_INPUT` and `CREDENTIAL` remain reserved. The classifier does not inspect names, consume TestIntent, read runtime configuration, use AI, or perform matching/planning. Contract and registry versions are `5` and `test-registry-5`; framework scanner versions remain unchanged.
+Per-check pool revision (2026-11-02): parallel checks within a batch are accepted
+MVP scope. One container per active check; configurable shared pool defaults to five,
+not two sequential batch containers. Preserve/drain old batch history and ownership.
+Implementation is present, but five-browser qualification is incomplete: first real
+attempt 0/5 (browser-launch ReadTimeout), separate control ENGINE_UNAVAILABLE.
+See EXECUTION_CONTRACTS.md/M1A for evidence and cleanup uncertainty. Do not claim
+five-way readiness from configuration/unit tests. Bounded Linux M1B may proceed
+under the current accepted scope; this does not qualify M1A or five-way reliability.
+
+
+## Current Linux M1B scope amendment (2026-11-03)
+
+Retain five concurrent Linux check slots as MVP target/configurable development
+capacity, one isolated container per check. Do not reduce the target/default to
+two. The user reports a successful parallel two-check UI batch; this is reported
+evidence, not independent five-way qualification. Windows fresh-install reliability
+and Linux five-way reliability (latest measured 4/5 workflows) remain open.
+
+A bounded Linux-only M1B experiment may proceed alongside those issues; their
+resolution is no longer a prerequisite for that experiment. See DECISIONS A14 and
+IMPLEMENTATION_PLAN's current M1B task for acceptance and limits. Start with one
+screenshot-identified visible button, trusted action and safe ambiguity stop;
+then add bounded wait/scroll, independent positive/negative assertions, selective
+evidence and latency/usage budgets. Preserve Robot/direct WebDriver, sample-only
+network restrictions, project authorization, cancellation, five-slot scheduling and
+no-replay behavior. Temporary observations are bounded and discarded; retain required
+checkpoint/assertion/failure evidence. No DOM/JS targeting fallback or fixed-coordinate
+claim of visual targeting. Customer execution, production/cloud deployment and
+full MVP readiness remain gated. This amendment records scope only; it does not
+implement M1B or authorize model calls in a documentation task.

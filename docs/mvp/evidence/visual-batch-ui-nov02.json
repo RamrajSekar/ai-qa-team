@@ -1,0 +1,44 @@
+{
+  "date": "2026-11-02",
+  "scope": "Batch UI in existing Visual Runner Lab; synthetic fixture only",
+  "environment": "Local Next 16.1.6 webpack + existing external Playwright 1.62.1/Edge; API and auth intercepted fixtures",
+  "ui_checks": [
+    "1-10 bounded synthetic input; no URL/code; single history preserved",
+    "Two active and third queued display; independent cancellation and reload history",
+    "Lost response persists member/project-scoped idempotency key; explicit resolution creates no duplicate fixture batch",
+    "Lazy authorized artifact URLs, incomplete-evidence warning and terminal polling stops",
+    "Batch flag off preserves single-smoke controls and sends no batch requests",
+    "Access/load error visible rather than false empty history",
+    "Legacy single smoke start/cancel and separate headed session choice",
+    "Lab disabled prevents route/API mount",
+    "Legacy bounded startup diagnostics render"
+  ],
+  "results": {
+    "unique_ui_checks_passed": 9,
+    "first_prepared_suite": {
+      "passed": 8,
+      "failed": 1
+    },
+    "focused_recheck": {
+      "passed": 1,
+      "failed": 0
+    },
+    "contract_api_tests_with_generated_typescript_drift": 10
+  },
+  "retained_failures": [
+    "Initial navigation before fixture readiness timed out; Next later reported Ready in 183.2s and route returned 200. No application timeout/security configuration changed.",
+    "Evidence test initially expected exactly three transport attempts; React Strict Mode started/aborted image effects twice. Corrected assertion checks three unique protected artifact identities; lazy-before-open invariant passed."
+  ],
+  "not_run": [
+    "Real login/UI to FastAPI/Mongo/Podman path for new batch UI",
+    "Customer URL or approved business-test execution",
+    "New Linux browser baseline, cloud, billing or multi-host tests"
+  ],
+  "compatibility": "No runtime backend/runner/dependency changes in this UI task; old single-smoke UI preserved when batch flag off",
+  "static_checks": {
+    "typescript_final": "passed",
+    "focused_lint_final": "passed: zero errors/warnings",
+    "contract_export_drift": "passed",
+    "git_diff_check": "passed; existing line-ending warnings only"
+  }
+}

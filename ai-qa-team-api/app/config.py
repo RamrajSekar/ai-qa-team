@@ -8,6 +8,13 @@ class FeatureFlags(BaseModel):
     test_generation: bool = False
     recorder: bool = False
     native_execution: bool = False
+    visual_runner_lab: bool = False
+    visual_runner_batches: bool = False
+    approved_visual_run_admission: bool = False
+    approved_visual_run_execution: bool = False
+    bug_reproduction_ui: bool = False
+    repository_ui: bool = False
+    reusable_workflows: bool = False
     jira_trigger: bool = False
     failure_diagnostics: bool = False
     self_healing: bool = False
@@ -34,6 +41,7 @@ class Settings(BaseSettings):
     ai_usage: AIUsageSettings = Field(default_factory=AIUsageSettings)
     mongo_uri: str
     mongo_db: str
+    mongo_tls_ca_file: str | None = None
 
     redis_host: str
     redis_port: int
@@ -43,9 +51,22 @@ class Settings(BaseSettings):
     ai_provider: str = "openai"
     openai_api_key: str | None = None
     llm_secret_master_key: str | None = None
+    environment_secret_master_key: str | None = None
     app_env: str = "development"
     app_port: int = 8000
     enable_local_repositories: bool = False
+    # Developer-owned paths only; never accepted from HTTP input.
+    visual_runner_python: str | None = None
+    visual_runner_chrome: str | None = None
+    visual_runner_driver: str | None = None
+    visual_runner_timeout_seconds: int = Field(default=90, ge=15, le=120)
+    visual_batch_podman: str | None = None
+    visual_batch_image: str | None = None  # Immutable local image ID, never a request field.
+    visual_batch_global_slots: int = Field(default=5, ge=1, le=10)
+    visual_batch_account_slots: int = Field(default=5, ge=1, le=10)
+    visual_batch_project_slots: int = Field(default=5, ge=1, le=10)
+    browserstack_username: str | None = None
+    browserstack_access_key: str | None = None
 
     session_secret_key: str
     jwt_secret_key: str

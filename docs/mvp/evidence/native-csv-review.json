@@ -1,0 +1,35 @@
+{
+  "date": "2026-11-02",
+  "source": "private local CSV; raw contents not republished",
+  "rows": 1046,
+  "process_names": {
+    "chromedriver.exe": 1046
+  },
+  "version_probe": {
+    "pid": 16412,
+    "parent_pid": 12612,
+    "exit_code": 0
+  },
+  "driver_process": {
+    "pid": 28056,
+    "parent_pid": 12612,
+    "lifetime_seconds": 21.67,
+    "largest_observed_event_gap_seconds": 21.111,
+    "exit_code": 0
+  },
+  "access_denied": {
+    "count": 1,
+    "operation": "RegOpenKey",
+    "requested_access": "All Access",
+    "target": "private registry path omitted",
+    "causation": "not established"
+  },
+  "chrome_events": 0,
+  "correlation": {
+    "last_agent_probe_supervisor_pid": 13784,
+    "capture_parent_matches": false,
+    "matching_persisted_driver_pid": false
+  },
+  "conclusion": "trace cannot be attributed to the intended failing browser probe; no renderer or Chrome events available; no root-cause or fix established",
+  "next_capture": "single Image Path begins-with include covering both controlled browser and driver directories; correlate fresh run IDs/PIDs locally before interpretation"
+}

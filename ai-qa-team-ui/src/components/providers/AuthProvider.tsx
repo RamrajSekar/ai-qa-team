@@ -7,11 +7,16 @@ import {
   useCallback,
   useEffect,
 } from "react";
+import type { User } from "@/types/user";
 import { apiFetch } from "@/utils/api";
 
+type AuthUser = User & { platform_role?: string };
+
+type AuthResponse = Awaited<ReturnType<typeof apiFetch>>;
+
 interface AuthContextValue {
-  user: any;
-  setUser: (u: any) => void;
+  user: AuthUser | null;
+  setUser: React.Dispatch<React.SetStateAction<AuthUser | null>>;
 
   authOpen: boolean;
   openAuth: (mode?: "login" | "signup") => void;
@@ -20,8 +25,8 @@ interface AuthContextValue {
   mode: "login" | "signup";
   switchMode: (m: "login" | "signup") => void;
 
-  loginWithEmail: (email: string, password: string) => Promise<any>;
-  signupWithEmail: (name: string, email: string, password: string) => Promise<any>;
+  loginWithEmail: (email: string, password: string) => Promise<AuthResponse>;
+  signupWithEmail: (name: string, email: string, password: string) => Promise<AuthResponse>;
   loginWithGoogle: () => void;
 
   logout: () => Promise<void>;
@@ -34,7 +39,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [mode, setMode] = useState<"login" | "signup">("login");
 
@@ -56,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await apiFetch("/auth/me");
       if (res.ok && res.data?.user) setUser(res.data.user);
-    } catch (_) {}
+    } catch { /* Keep the current session when refresh is unavailable. */ }
   }, []);
 
   const logout = async () => {
@@ -91,9 +96,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Load user at startup
   useEffect(() => {
-    apiFetch("/auth/me").then((res) => {
-      if (res.ok) setUser(res.data.user);
-    });
+    const controller = new AbortController();
+    apiFetch("/auth/me?refresh_usage=false", { signal: controller.signal }).then(res => {
+      if (!controller.signal.aborted && res.ok && res.data?.user) {
+        setUser((current) => current ?? res.data.user);
+      }
+    }).catch(() => { /* The sign-in form remains available on connection failure. */ });
+    return () => controller.abort();
   }, []);
 
   // FINAL FIX — Properly closed function now

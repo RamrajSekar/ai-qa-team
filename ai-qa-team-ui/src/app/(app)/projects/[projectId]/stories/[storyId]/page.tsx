@@ -1,7 +1,7 @@
 "use client";
 import { useFeatures, FeatureGate } from "@/components/providers/FeatureFlagsProvider";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -40,23 +40,25 @@ export default function StoryDetailsPage() {
   const [scenarioModalOpen, setScenarioModalOpen] = useState(false);
   const [editingScenario, setEditingScenario] = useState<Scenario | undefined>();
   const [viewScenario, setViewScenario] = useState<Scenario | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [scenarioError, setScenarioError] = useState("");
 
   // -----------------------------
   // LOAD STORY
   // -----------------------------
-  async function loadStory() {
+  const loadStory = useCallback(async () => {
     try {
       const res = await apiFetch(`/stories/${storyId}?project_id=${projectId}`);
       if (res.ok) setStory(res.data);
     } catch (err) {
       console.error("Failed to load story:", err);
     }
-  }
+  }, [storyId, projectId]);
 
   // -----------------------------
   // LOAD RECORDINGS
   // -----------------------------
-  async function loadRecordings() {
+  const loadRecordings = useCallback(async () => {
     if (!recorderEnabled) return;
     try {
       const res = await apiFetch(`/recorder/by-story/${storyId}`);
@@ -65,21 +67,46 @@ export default function StoryDetailsPage() {
       console.error("Failed to load recordings:", err);
       setRecordings([]);
     }
-  }
+  }, [recorderEnabled, storyId]);
 
   // -----------------------------
   // LOAD SCENARIOS
   // -----------------------------
-  async function loadScenarios() {
+  const loadScenarios = useCallback(async () => {
     if (!scenariosEnabled) return;
     try {
       const res = await apiFetch(
-        `/scenarios?story_id=${storyId}&project_id=${projectId}`
+        `/scenarios?story_id=${encodeURIComponent(storyId)}&project_id=${encodeURIComponent(projectId)}`
       );
-      setScenarios(res.data || []);
+      if (!res.ok || !Array.isArray(res.data)) throw new Error("Could not load scenarios.");
+      setScenarios(res.data);
+      setScenarioError("");
     } catch (err) {
-      console.error("Failed to load scenarios:", err);
       setScenarios([]);
+      setScenarioError(err instanceof Error ? err.message : "Could not load scenarios.");
+    }
+  }, [scenariosEnabled, storyId, projectId]);
+
+  async function generateScenario() {
+    setGenerating(true);
+    setScenarioError("");
+    try {
+      const response = await apiFetch(`/scenarios/generate-from-story?story_id=${encodeURIComponent(storyId)}&count=1&complexity=basic`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        const detail = response.data?.detail;
+        if (detail?.code === "AUTHENTICATION_ERROR") {
+          throw new Error("The active AI provider rejected its credentials. Ask a project administrator to check Workspace → AI Configuration.");
+        }
+        throw new Error(typeof detail === "string" ? detail : detail?.message || "Could not generate a scenario.");
+      }
+      if (!response.data?.scenarios?.length) throw new Error(response.data?.summary?.message || "No scenarios were generated.");
+      await loadScenarios();
+    } catch (failure) {
+      setScenarioError(failure instanceof Error ? failure.message : "Could not generate a scenario.");
+    } finally {
+      setGenerating(false);
     }
   }
 
@@ -94,7 +121,7 @@ export default function StoryDetailsPage() {
     Promise.all([loadStory(), loadRecordings(), loadScenarios()]).finally(() =>
       setLoading(false)
     );
-  }, [storyId, recorderEnabled, scenariosEnabled]);
+  }, [storyId, loadStory, loadRecordings, loadScenarios]);
 
   if (loading) return <div className="p-6">Loading story…</div>;
 
@@ -152,9 +179,13 @@ export default function StoryDetailsPage() {
 
       {/* SCENARIOS SECTION */}
       <FeatureGate names={["scenario_generation"]}><div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-xl font-semibold">Scenarios</h2>
-
+          <div className="flex flex-wrap gap-2">
+          <button type="button" className="workspace-button" disabled={generating || !story.acceptance_criteria?.trim()}
+            onClick={() => void generateScenario()}>
+            {generating ? "Generating scenario…" : "Generate scenario with AI"}
+          </button>
           <button
             onClick={() => {
               setEditingScenario(undefined);
@@ -164,7 +195,11 @@ export default function StoryDetailsPage() {
           >
             + Add Scenario
           </button>
+          </div>
         </div>
+        <p className="text-sm">Open a scenario to review its steps, approve it, and generate a test case.</p>
+        {!story.acceptance_criteria?.trim() && <p className="text-sm">Add story acceptance criteria to generate a scenario with AI.</p>}
+        {scenarioError && <p role="alert" className="text-sm text-red-700">{scenarioError}</p>}
 
         <ScenarioTable
           scenarios={scenarios}
@@ -210,21 +245,27 @@ export default function StoryDetailsPage() {
       {/* VIEW SCENARIO MODAL */}
       {scenariosEnabled && viewScenario && (
         <ScenarioViewer
+          key={viewScenario.scenario_id}
           open={true}
           scenario={viewScenario}
           onClose={() => setViewScenario(null)}
+          onApproved={updated => {
+            setViewScenario(updated);
+            setScenarios(items => items.map(item => item.scenario_id === updated.scenario_id ? updated : item));
+          }}
         />
       )}
 
       {/* CREATE / EDIT SCENARIO MODAL */}
-      <FeatureGate names={["scenario_generation"]}><ScenarioModal
-        open={scenarioModalOpen}
+      {scenariosEnabled && scenarioModalOpen && <ScenarioModal
+        key={editingScenario?.scenario_id ?? "new"}
+        open={true}
         onClose={() => setScenarioModalOpen(false)}
         onSaved={loadScenarios}
         projectId={projectId}
         storyId={storyId}
         scenario={editingScenario}
-      /></FeatureGate>
+      />}
 
       {/* RECORDER OVERLAY */}
       {recorderEnabled && openRecorder && (

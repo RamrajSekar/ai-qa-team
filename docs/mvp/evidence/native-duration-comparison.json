@@ -1,0 +1,181 @@
+{
+  "date": "2026-11-02",
+  "fresh": {
+    "source_sha256": "a306cbc4383bae1be02218628610d5fdd9a9c91f6c0abd84874740d0fc36aa4e",
+    "run_id": "ef2c00d11b4e4b1893b44ee54efbd760",
+    "driver_pid": 17108,
+    "browser_pid": 2844,
+    "rows": 68317,
+    "outcome": "first screenshot ReadTimeout"
+  },
+  "cached": {
+    "source_sha256": "194df12f005ec492ada85b5967452d56c493ecb4d85f87bf57d67a38771bd6d1",
+    "run_id": "f29ea133f45e405ca67910fad1a182e6",
+    "driver_pid": 14844,
+    "browser_pid": 29624,
+    "rows": 86556,
+    "outcome": "completed three screenshots",
+    "filename_label_does_not_identify_run": true
+  },
+  "slow_operation_groups": {
+    "fresh": [
+      {
+        "operation": "WriteFile",
+        "target_leaf": "Network Action Predictor-journal",
+        "count": 6,
+        "max_seconds": 3.8519187
+      },
+      {
+        "operation": "WriteFile",
+        "target_leaf": "DataSharingDB-journal",
+        "count": 6,
+        "max_seconds": 3.3344602
+      },
+      {
+        "operation": "ReadFile",
+        "target_leaf": "chrome.dll",
+        "count": 318,
+        "max_seconds": 2.2722072
+      },
+      {
+        "operation": "FlushBuffersFile",
+        "target_leaf": "DataSharingDB-journal",
+        "count": 2,
+        "max_seconds": 1.1617434
+      },
+      {
+        "operation": "FlushBuffersFile",
+        "target_leaf": "Trust Tokens-journal",
+        "count": 6,
+        "max_seconds": 1.1018262
+      },
+      {
+        "operation": "FlushBuffersFile",
+        "target_leaf": "db-journal",
+        "count": 5,
+        "max_seconds": 1.0762403
+      },
+      {
+        "operation": "FlushBuffersFile",
+        "target_leaf": "Safe Browsing Cookies-journal",
+        "count": 8,
+        "max_seconds": 1.075642
+      },
+      {
+        "operation": "WriteFile",
+        "target_leaf": "Network Action Predictor",
+        "count": 6,
+        "max_seconds": 1.0191521
+      },
+      {
+        "operation": "FlushBuffersFile",
+        "target_leaf": "QuotaManager-journal",
+        "count": 3,
+        "max_seconds": 0.9854928
+      },
+      {
+        "operation": "WriteFile",
+        "target_leaf": "DataSharingDB",
+        "count": 4,
+        "max_seconds": 0.9379865
+      },
+      {
+        "operation": "FlushBuffersFile",
+        "target_leaf": "Cookies",
+        "count": 3,
+        "max_seconds": 0.8178782
+      },
+      {
+        "operation": "FlushBuffersFile",
+        "target_leaf": "Cookies-journal",
+        "count": 8,
+        "max_seconds": 0.763028
+      }
+    ],
+    "cached": [
+      {
+        "operation": "WriteFile",
+        "target_leaf": "MessageDB",
+        "count": 10,
+        "max_seconds": 3.2700574
+      },
+      {
+        "operation": "WriteFile",
+        "target_leaf": "heavy_ad_intervention_opt_out.db",
+        "count": 6,
+        "max_seconds": 3.1063407
+      },
+      {
+        "operation": "WriteFile",
+        "target_leaf": "MessageDB-journal",
+        "count": 6,
+        "max_seconds": 2.7184064
+      },
+      {
+        "operation": "FlushBuffersFile",
+        "target_leaf": "heavy_ad_intervention_opt_out.db-journal",
+        "count": 5,
+        "max_seconds": 2.2574359
+      },
+      {
+        "operation": "WriteFile",
+        "target_leaf": "Network Action Predictor-journal",
+        "count": 6,
+        "max_seconds": 1.8258815
+      },
+      {
+        "operation": "WriteFile",
+        "target_leaf": "DataSharingDB",
+        "count": 12,
+        "max_seconds": 1.5520759
+      },
+      {
+        "operation": "WriteFile",
+        "target_leaf": "Network Action Predictor",
+        "count": 28,
+        "max_seconds": 1.5458217
+      },
+      {
+        "operation": "WriteFile",
+        "target_leaf": "DataSharingDB-journal",
+        "count": 6,
+        "max_seconds": 1.5183523
+      },
+      {
+        "operation": "FlushBuffersFile",
+        "target_leaf": "DataSharingDB-journal",
+        "count": 6,
+        "max_seconds": 1.1224482
+      },
+      {
+        "operation": "FlushBuffersFile",
+        "target_leaf": "MANIFEST-000001",
+        "count": 7,
+        "max_seconds": 1.0107599
+      },
+      {
+        "operation": "FlushBuffersFile",
+        "target_leaf": "MessageDB-journal",
+        "count": 3,
+        "max_seconds": 0.9119061
+      },
+      {
+        "operation": "ReadFile",
+        "target_leaf": "<private file>",
+        "count": 1,
+        "max_seconds": 0.9004497
+      }
+    ]
+  },
+  "finding": "multi-second successful file operations observed; no causal component attribution",
+  "limitations": [
+    "overlapping/nested operation durations cannot be summed into wall time",
+    "NotifyChangeDirectory pending duration excluded from slow I/O comparison",
+    "profile writes can be background activity and do not prove main-thread screenshot blocking",
+    "tracing itself can perturb timing",
+    "binary locations differ; profiles for both were under F runtime root",
+    "no stacks or security filter attribution exported"
+  ],
+  "next_candidate_experiment": "same browser/driver/environment/flags; vary only isolated profile location between repository F root and task-owned C temporary root",
+  "runtime_changes": false
+}

@@ -1,0 +1,621 @@
+{
+  "date": "2026-11-01",
+  "acl": {
+    "fresh": {
+      "checked": 317,
+      "missingCapabilityEntries": [],
+      "keyFiles": [
+        {
+          "name": "chrome.exe",
+          "capabilities": [
+            {
+              "sid": "S-1-15-3-1024-3424233489-972189580-2057154623-747635277-1604371224-316187997-3786583170-1043257646",
+              "rights": "ReadAndExecute, Synchronize",
+              "inherited": true
+            },
+            {
+              "sid": "S-1-15-3-1024-2302894289-466761758-1166120688-1039016420-2430351297-4240214049-4028510897-3317428798",
+              "rights": "ReadAndExecute, Synchronize",
+              "inherited": true
+            }
+          ],
+          "streams": [
+            ":$DATA"
+          ]
+        },
+        {
+          "name": "chrome.dll",
+          "capabilities": [
+            {
+              "sid": "S-1-15-3-1024-3424233489-972189580-2057154623-747635277-1604371224-316187997-3786583170-1043257646",
+              "rights": "ReadAndExecute, Synchronize",
+              "inherited": true
+            },
+            {
+              "sid": "S-1-15-3-1024-2302894289-466761758-1166120688-1039016420-2430351297-4240214049-4028510897-3317428798",
+              "rights": "ReadAndExecute, Synchronize",
+              "inherited": true
+            }
+          ],
+          "streams": [
+            ":$DATA"
+          ]
+        },
+        {
+          "name": "chrome_elf.dll",
+          "capabilities": [
+            {
+              "sid": "S-1-15-3-1024-3424233489-972189580-2057154623-747635277-1604371224-316187997-3786583170-1043257646",
+              "rights": "ReadAndExecute, Synchronize",
+              "inherited": true
+            },
+            {
+              "sid": "S-1-15-3-1024-2302894289-466761758-1166120688-1039016420-2430351297-4240214049-4028510897-3317428798",
+              "rights": "ReadAndExecute, Synchronize",
+              "inherited": true
+            }
+          ],
+          "streams": [
+            ":$DATA"
+          ]
+        }
+      ]
+    },
+    "cached": {
+      "checked": 326,
+      "missingCapabilityEntries": [],
+      "keyFiles": [
+        {
+          "name": "chrome.exe",
+          "capabilities": [
+            {
+              "sid": "S-1-15-3-1024-3424233489-972189580-2057154623-747635277-1604371224-316187997-3786583170-1043257646",
+              "rights": "ReadAndExecute, Synchronize",
+              "inherited": true
+            },
+            {
+              "sid": "S-1-15-3-1024-2302894289-466761758-1166120688-1039016420-2430351297-4240214049-4028510897-3317428798",
+              "rights": "ReadAndExecute, Synchronize",
+              "inherited": true
+            }
+          ],
+          "streams": [
+            ":$DATA"
+          ]
+        },
+        {
+          "name": "chrome.dll",
+          "capabilities": [
+            {
+              "sid": "S-1-15-3-1024-3424233489-972189580-2057154623-747635277-1604371224-316187997-3786583170-1043257646",
+              "rights": "ReadAndExecute, Synchronize",
+              "inherited": true
+            },
+            {
+              "sid": "S-1-15-3-1024-2302894289-466761758-1166120688-1039016420-2430351297-4240214049-4028510897-3317428798",
+              "rights": "ReadAndExecute, Synchronize",
+              "inherited": true
+            }
+          ],
+          "streams": [
+            ":$DATA"
+          ]
+        },
+        {
+          "name": "chrome_elf.dll",
+          "capabilities": [
+            {
+              "sid": "S-1-15-3-1024-3424233489-972189580-2057154623-747635277-1604371224-316187997-3786583170-1043257646",
+              "rights": "ReadAndExecute, Synchronize",
+              "inherited": true
+            },
+            {
+              "sid": "S-1-15-3-1024-2302894289-466761758-1166120688-1039016420-2430351297-4240214049-4028510897-3317428798",
+              "rights": "ReadAndExecute, Synchronize",
+              "inherited": true
+            }
+          ],
+          "streams": [
+            ":$DATA"
+          ]
+        }
+      ]
+    }
+  },
+  "filesystems": {
+    "C": "NTFS",
+    "F": "NTFS"
+  },
+  "defender_history": "query unavailable; not evidence of no scanning",
+  "supervised_fresh": [
+    {
+      "run_id": "64b4cb9fe16f46d292808d1b3915556f",
+      "headed": false,
+      "state": "failed",
+      "first_attempt_success": false,
+      "duration_seconds": 49.063,
+      "stage": "session_handshake",
+      "reason": null,
+      "code": "ReadTimeout",
+      "stage_ms": {
+        "driver_version": 1641,
+        "driver_launch": 750,
+        "driver_readiness": 0,
+        "session_creation": 62,
+        "browser_launch": 16031,
+        "devtools_connect": 9797,
+        "session_handshake": 19125
+      },
+      "startup_diagnostics": {
+        "driver_version": "146.0.7680.31",
+        "driver_state": "running",
+        "driver_exit_code": null,
+        "browser_state": "running",
+        "devtools_port_file": "present",
+        "session_created": false,
+        "cleanup": "driver_exited_job_closed",
+        "native_errors": [],
+        "cleanup_driver_exit_code": 0,
+        "cleanup_browser_state": "exited"
+      },
+      "cleanup": "failed_or_unverified",
+      "survivor_count": 1,
+      "number": 1
+    }
+  ],
+  "followup_cleanup": "zero matching Chrome/driver/runner processes observed; initial possible survivor retained",
+  "library_comparison": [
+    {
+      "layer": "runner",
+      "browser": "fresh",
+      "read_timeout_seconds": 45,
+      "events": [
+        {
+          "seconds": 0.032,
+          "stage": "driver_version",
+          "reason": null
+        },
+        {
+          "seconds": 0.61,
+          "stage": "driver_launch",
+          "reason": null
+        },
+        {
+          "seconds": 1.0,
+          "stage": "driver_readiness",
+          "reason": null
+        },
+        {
+          "seconds": 1.016,
+          "stage": "session_creation",
+          "reason": null
+        },
+        {
+          "seconds": 1.016,
+          "stage": "post_session"
+        },
+        {
+          "seconds": 12.438,
+          "stage": "version_validation",
+          "reason": null
+        },
+        {
+          "seconds": 12.438,
+          "stage": "session_timeouts",
+          "reason": null
+        },
+        {
+          "seconds": 12.438,
+          "stage": "ready",
+          "reason": null
+        },
+        {
+          "seconds": 12.438,
+          "stage": "snapshot",
+          "driver_version": "146.0.7680.31",
+          "driver_state": "running",
+          "driver_exit_code": null,
+          "browser_state": "running",
+          "devtools_port_file": "present",
+          "session_created": true,
+          "cleanup": "not_started",
+          "native_errors": []
+        },
+        {
+          "seconds": 12.438,
+          "stage": "session_created"
+        },
+        {
+          "seconds": 12.438,
+          "stage": "before_cleanup",
+          "browser_state": "running",
+          "devtools_file": true
+        },
+        {
+          "seconds": 12.438,
+          "stage": "cleanup_begin"
+        },
+        {
+          "seconds": 12.438,
+          "stage": "snapshot",
+          "driver_version": "146.0.7680.31",
+          "driver_state": "running",
+          "driver_exit_code": null,
+          "browser_state": "running",
+          "devtools_port_file": "present",
+          "session_created": true,
+          "cleanup": "not_started",
+          "native_errors": []
+        },
+        {
+          "seconds": 14.36,
+          "stage": "snapshot",
+          "cleanup": "driver_exited_job_closed",
+          "cleanup_driver_exit_code": 0,
+          "cleanup_browser_state": "exited",
+          "native_errors": []
+        },
+        {
+          "seconds": 14.563,
+          "stage": "cleanup_observation",
+          "browser_state": "not_observed"
+        }
+      ]
+    },
+    {
+      "layer": "runner",
+      "browser": "cached",
+      "read_timeout_seconds": 45,
+      "events": [
+        {
+          "seconds": 0.0,
+          "stage": "driver_version",
+          "reason": null
+        },
+        {
+          "seconds": 0.36,
+          "stage": "driver_launch",
+          "reason": null
+        },
+        {
+          "seconds": 0.86,
+          "stage": "driver_readiness",
+          "reason": null
+        },
+        {
+          "seconds": 1.219,
+          "stage": "session_creation",
+          "reason": null
+        },
+        {
+          "seconds": 1.219,
+          "stage": "post_session"
+        },
+        {
+          "seconds": 3.0,
+          "stage": "version_validation",
+          "reason": null
+        },
+        {
+          "seconds": 3.0,
+          "stage": "session_timeouts",
+          "reason": null
+        },
+        {
+          "seconds": 3.0,
+          "stage": "ready",
+          "reason": null
+        },
+        {
+          "seconds": 3.0,
+          "stage": "snapshot",
+          "driver_version": "146.0.7680.31",
+          "driver_state": "running",
+          "driver_exit_code": null,
+          "browser_state": "running",
+          "devtools_port_file": "present",
+          "session_created": true,
+          "cleanup": "not_started",
+          "native_errors": []
+        },
+        {
+          "seconds": 3.0,
+          "stage": "session_created"
+        },
+        {
+          "seconds": 3.016,
+          "stage": "before_cleanup",
+          "browser_state": "running",
+          "devtools_file": true
+        },
+        {
+          "seconds": 3.016,
+          "stage": "cleanup_begin"
+        },
+        {
+          "seconds": 3.016,
+          "stage": "snapshot",
+          "driver_version": "146.0.7680.31",
+          "driver_state": "running",
+          "driver_exit_code": null,
+          "browser_state": "running",
+          "devtools_port_file": "present",
+          "session_created": true,
+          "cleanup": "not_started",
+          "native_errors": []
+        },
+        {
+          "seconds": 6.375,
+          "stage": "snapshot",
+          "cleanup": "driver_exited_job_closed",
+          "cleanup_driver_exit_code": 0,
+          "cleanup_browser_state": "exited",
+          "native_errors": []
+        },
+        {
+          "seconds": 6.579,
+          "stage": "cleanup_observation",
+          "browser_state": "not_observed"
+        }
+      ]
+    }
+  ],
+  "driver_events": {
+    "fresh": [
+      {
+        "timestamp": 1793506515.129,
+        "event": "COMMAND InitSession"
+      },
+      {
+        "timestamp": 1793506515.134,
+        "event": "Launching chrome:"
+      },
+      {
+        "timestamp": 1793506526.161,
+        "event": "DevTools WebSocket Command: Target.getTargets"
+      },
+      {
+        "timestamp": 1793506526.162,
+        "event": "DevTools WebSocket Response: Target.getTargets"
+      },
+      {
+        "timestamp": 1793506526.162,
+        "event": "DevTools WebSocket Command: Target.attachToTarget"
+      },
+      {
+        "timestamp": 1793506526.163,
+        "event": "DevTools WebSocket Event: Target.attachedToTarget"
+      },
+      {
+        "timestamp": 1793506526.163,
+        "event": "DevTools WebSocket Response: Target.attachToTarget"
+      },
+      {
+        "timestamp": 1793506526.163,
+        "event": "DevTools WebSocket Command: Target.setAutoAttach"
+      },
+      {
+        "timestamp": 1793506526.165,
+        "event": "DevTools WebSocket Event: Target.attachedToTarget"
+      },
+      {
+        "timestamp": 1793506526.165,
+        "event": "DevTools WebSocket Command: Page.enable"
+      },
+      {
+        "timestamp": 1793506526.166,
+        "event": "DevTools WebSocket Command: Page.addScriptToEvaluateOnNewDocument"
+      },
+      {
+        "timestamp": 1793506526.166,
+        "event": "DevTools WebSocket Command: Runtime.evaluate"
+      },
+      {
+        "timestamp": 1793506526.166,
+        "event": "DevTools WebSocket Command: Log.enable"
+      },
+      {
+        "timestamp": 1793506526.166,
+        "event": "DevTools WebSocket Command: Target.setAutoAttach"
+      },
+      {
+        "timestamp": 1793506526.167,
+        "event": "DevTools WebSocket Response: Target.setAutoAttach"
+      },
+      {
+        "timestamp": 1793506526.533,
+        "event": "DevTools WebSocket Event: Page.frameStartedLoading"
+      },
+      {
+        "timestamp": 1793506526.537,
+        "event": "DevTools WebSocket Event: Page.frameStoppedLoading"
+      },
+      {
+        "timestamp": 1793506526.538,
+        "event": "DevTools WebSocket Response: Page.enable"
+      },
+      {
+        "timestamp": 1793506526.538,
+        "event": "DevTools WebSocket Response: Page.addScriptToEvaluateOnNewDocument"
+      },
+      {
+        "timestamp": 1793506526.538,
+        "event": "DevTools WebSocket Response: Runtime.evaluate"
+      },
+      {
+        "timestamp": 1793506526.538,
+        "event": "DevTools WebSocket Response: Log.enable"
+      },
+      {
+        "timestamp": 1793506526.538,
+        "event": "DevTools WebSocket Response: Target.setAutoAttach"
+      },
+      {
+        "timestamp": 1793506526.538,
+        "event": "DevTools WebSocket Command: Runtime.enable"
+      },
+      {
+        "timestamp": 1793506526.538,
+        "event": "DevTools WebSocket Event: Page.frameResized"
+      },
+      {
+        "timestamp": 1793506526.54,
+        "event": "DevTools WebSocket Event: Runtime.executionContextCreated"
+      },
+      {
+        "timestamp": 1793506526.54,
+        "event": "DevTools WebSocket Event: Runtime.executionContextCreated"
+      },
+      {
+        "timestamp": 1793506526.54,
+        "event": "DevTools WebSocket Response: Runtime.enable"
+      },
+      {
+        "timestamp": 1793506526.54,
+        "event": "DevTools WebSocket Command: Runtime.enable"
+      },
+      {
+        "timestamp": 1793506526.541,
+        "event": "DevTools WebSocket Response: Runtime.enable"
+      },
+      {
+        "timestamp": 1793506526.542,
+        "event": "RESPONSE InitSession"
+      },
+      {
+        "timestamp": 1793506526.551,
+        "event": "DevTools WebSocket Command: Browser.close"
+      }
+    ],
+    "cached": [
+      {
+        "timestamp": 1793506529.902,
+        "event": "COMMAND InitSession"
+      },
+      {
+        "timestamp": 1793506529.909,
+        "event": "Launching chrome:"
+      },
+      {
+        "timestamp": 1793506531.479,
+        "event": "DevTools WebSocket Command: Target.getTargets"
+      },
+      {
+        "timestamp": 1793506531.48,
+        "event": "DevTools WebSocket Response: Target.getTargets"
+      },
+      {
+        "timestamp": 1793506531.48,
+        "event": "DevTools WebSocket Command: Target.attachToTarget"
+      },
+      {
+        "timestamp": 1793506531.481,
+        "event": "DevTools WebSocket Event: Target.attachedToTarget"
+      },
+      {
+        "timestamp": 1793506531.481,
+        "event": "DevTools WebSocket Response: Target.attachToTarget"
+      },
+      {
+        "timestamp": 1793506531.481,
+        "event": "DevTools WebSocket Command: Target.setAutoAttach"
+      },
+      {
+        "timestamp": 1793506531.484,
+        "event": "DevTools WebSocket Event: Target.attachedToTarget"
+      },
+      {
+        "timestamp": 1793506531.484,
+        "event": "DevTools WebSocket Command: Page.enable"
+      },
+      {
+        "timestamp": 1793506531.484,
+        "event": "DevTools WebSocket Command: Page.addScriptToEvaluateOnNewDocument"
+      },
+      {
+        "timestamp": 1793506531.485,
+        "event": "DevTools WebSocket Command: Runtime.evaluate"
+      },
+      {
+        "timestamp": 1793506531.485,
+        "event": "DevTools WebSocket Command: Log.enable"
+      },
+      {
+        "timestamp": 1793506531.485,
+        "event": "DevTools WebSocket Command: Target.setAutoAttach"
+      },
+      {
+        "timestamp": 1793506531.485,
+        "event": "DevTools WebSocket Response: Target.setAutoAttach"
+      },
+      {
+        "timestamp": 1793506531.671,
+        "event": "DevTools WebSocket Event: Page.frameStartedLoading"
+      },
+      {
+        "timestamp": 1793506531.673,
+        "event": "DevTools WebSocket Event: Page.frameStoppedLoading"
+      },
+      {
+        "timestamp": 1793506531.673,
+        "event": "DevTools WebSocket Response: Page.enable"
+      },
+      {
+        "timestamp": 1793506531.673,
+        "event": "DevTools WebSocket Response: Page.addScriptToEvaluateOnNewDocument"
+      },
+      {
+        "timestamp": 1793506531.673,
+        "event": "DevTools WebSocket Response: Runtime.evaluate"
+      },
+      {
+        "timestamp": 1793506531.673,
+        "event": "DevTools WebSocket Response: Log.enable"
+      },
+      {
+        "timestamp": 1793506531.673,
+        "event": "DevTools WebSocket Response: Target.setAutoAttach"
+      },
+      {
+        "timestamp": 1793506531.673,
+        "event": "DevTools WebSocket Command: Runtime.enable"
+      },
+      {
+        "timestamp": 1793506531.683,
+        "event": "DevTools WebSocket Event: Runtime.executionContextCreated"
+      },
+      {
+        "timestamp": 1793506531.683,
+        "event": "DevTools WebSocket Event: Runtime.executionContextCreated"
+      },
+      {
+        "timestamp": 1793506531.683,
+        "event": "DevTools WebSocket Response: Runtime.enable"
+      },
+      {
+        "timestamp": 1793506531.683,
+        "event": "DevTools WebSocket Command: Runtime.enable"
+      },
+      {
+        "timestamp": 1793506531.685,
+        "event": "DevTools WebSocket Response: Runtime.enable"
+      },
+      {
+        "timestamp": 1793506531.685,
+        "event": "RESPONSE InitSession"
+      },
+      {
+        "timestamp": 1793506531.695,
+        "event": "DevTools WebSocket Command: Browser.close"
+      }
+    ]
+  },
+  "confounders": [
+    "library inherits parent environment; supervised runner filters it",
+    "private driver log redirects verbose output; runtime consumes stderr pipe",
+    "unique profile differs per attempt; same root",
+    "capability ACE presence does not establish effective restricted-token access"
+  ],
+  "candidate_fix": null,
+  "full_10_5_run": false
+}

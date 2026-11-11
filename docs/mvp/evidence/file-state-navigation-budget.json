@@ -1,0 +1,172 @@
+{
+  "date": "2026-11-01",
+  "direct_probe": {
+    "read_times": [
+      {
+        "bundle": "copied_cached",
+        "seconds": 3.093,
+        "sha256": "7c46e68ff9f232bf0fd1d75645901dee905e2cc9fbf7a4ba3588f009fe954eba"
+      },
+      {
+        "bundle": "fresh",
+        "seconds": 4.36,
+        "sha256": "7c46e68ff9f232bf0fd1d75645901dee905e2cc9fbf7a4ba3588f009fe954eba"
+      },
+      {
+        "bundle": "cached",
+        "seconds": 0.828,
+        "sha256": "7c46e68ff9f232bf0fd1d75645901dee905e2cc9fbf7a4ba3588f009fe954eba"
+      }
+    ],
+    "attempts": [
+      {
+        "bundle": "fresh",
+        "order": 1,
+        "elapsed": 4.063,
+        "endpoint_file": true,
+        "exit_before_cleanup": null,
+        "browser_before_cleanup": "running",
+        "browser_after_cleanup": "exited"
+      },
+      {
+        "bundle": "cached",
+        "order": 2,
+        "elapsed": 2.14,
+        "endpoint_file": true,
+        "exit_before_cleanup": null,
+        "browser_before_cleanup": "running",
+        "browser_after_cleanup": "exited"
+      },
+      {
+        "bundle": "copied_cached",
+        "order": 3,
+        "elapsed": 15.703,
+        "endpoint_file": true,
+        "exit_before_cleanup": null,
+        "browser_before_cleanup": "running",
+        "browser_after_cleanup": "exited"
+      },
+      {
+        "bundle": "copied_cached",
+        "order": 4,
+        "elapsed": 11.063,
+        "endpoint_file": true,
+        "exit_before_cleanup": null,
+        "browser_before_cleanup": "running",
+        "browser_after_cleanup": "exited"
+      },
+      {
+        "bundle": "cached",
+        "order": 5,
+        "elapsed": 0.515,
+        "endpoint_file": true,
+        "exit_before_cleanup": null,
+        "browser_before_cleanup": "running",
+        "browser_after_cleanup": "exited"
+      },
+      {
+        "bundle": "fresh",
+        "order": 6,
+        "elapsed": 22.391,
+        "endpoint_file": true,
+        "exit_before_cleanup": null,
+        "browser_before_cleanup": "running",
+        "browser_after_cleanup": "exited"
+      }
+    ]
+  },
+  "candidate_smokes": [
+    {
+      "run_id": "7ced2fd7a20444f886cdc5041e3569ca",
+      "headed": false,
+      "state": "completed",
+      "first_attempt_success": true,
+      "duration_seconds": 21.282,
+      "stage": "screenshot",
+      "reason": null,
+      "code": null,
+      "stage_ms": {
+        "driver_version": 782,
+        "driver_launch": 359,
+        "driver_readiness": 16,
+        "session_creation": 15,
+        "browser_launch": 1531,
+        "devtools_connect": 500,
+        "session_handshake": 391,
+        "version_validation": 0,
+        "session_timeouts": 0,
+        "ready": 844,
+        "navigation": 640,
+        "navigation_checkpoint": 422,
+        "screenshot": 8156
+      },
+      "startup_diagnostics": {
+        "driver_version": "146.0.7680.31",
+        "driver_state": "running",
+        "driver_exit_code": null,
+        "browser_state": "running",
+        "devtools_port_file": "present",
+        "session_created": true,
+        "cleanup": "driver_exited_job_closed",
+        "native_errors": [],
+        "cleanup_driver_exit_code": 0,
+        "cleanup_browser_state": "exited"
+      },
+      "cleanup": "no_survivors_observed",
+      "survivor_count": 0,
+      "number": 1
+    },
+    {
+      "run_id": "b3bf2a2853df412cbf3b165928b54f01",
+      "headed": false,
+      "state": "completed",
+      "first_attempt_success": true,
+      "duration_seconds": 17.328,
+      "stage": "screenshot",
+      "reason": null,
+      "code": null,
+      "stage_ms": {
+        "driver_version": 281,
+        "driver_launch": 282,
+        "driver_readiness": 15,
+        "session_creation": 16,
+        "browser_launch": 609,
+        "devtools_connect": 313,
+        "session_handshake": 15,
+        "version_validation": 0,
+        "session_timeouts": 0,
+        "ready": 469,
+        "navigation": 2344,
+        "navigation_checkpoint": 750,
+        "screenshot": 8140
+      },
+      "startup_diagnostics": {
+        "driver_version": "146.0.7680.31",
+        "driver_state": "running",
+        "driver_exit_code": null,
+        "browser_state": "running",
+        "devtools_port_file": "present",
+        "session_created": true,
+        "cleanup": "driver_exited_job_closed",
+        "native_errors": [],
+        "cleanup_driver_exit_code": 0,
+        "cleanup_browser_state": "exited"
+      },
+      "cleanup": "no_survivors_observed",
+      "survivor_count": 0,
+      "number": 1
+    }
+  ],
+  "cancellation": {
+    "result": "cancelled",
+    "cleanup": "no_surviving_children_observed",
+    "run_id": "8345ba138fba4787b3b9443661b80f39"
+  },
+  "limitations": [
+    "copy was on F while original cache was on C: volume and path are confounded",
+    "hash timing includes read and SHA256; not proof of scanning",
+    "hash reads warmed files before probes",
+    "no cold reinstall, real API/UI rerun or full 10/5 baseline",
+    "successful navigation samples below five seconds do not empirically prove longer deadline fixed tail latency"
+  ]
+}

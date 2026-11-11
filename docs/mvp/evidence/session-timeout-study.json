@@ -1,0 +1,409 @@
+{
+  "comparison": [
+    {
+      "layer": "direct",
+      "browser": "fresh",
+      "read_timeout_seconds": 45,
+      "events": [
+        {
+          "seconds": 0.016,
+          "stage": "launch"
+        },
+        {
+          "seconds": 16.063,
+          "stage": "observation",
+          "running": true,
+          "exit_code": null,
+          "devtools_file": true
+        },
+        {
+          "seconds": 16.063,
+          "stage": "before_cleanup",
+          "browser_state": "running",
+          "devtools_file": true
+        },
+        {
+          "seconds": 16.063,
+          "stage": "cleanup_begin"
+        },
+        {
+          "seconds": 16.266,
+          "stage": "cleanup_observation",
+          "browser_state": "exited"
+        }
+      ]
+    },
+    {
+      "layer": "direct",
+      "browser": "cached",
+      "read_timeout_seconds": 45,
+      "events": [
+        {
+          "seconds": 0.0,
+          "stage": "launch"
+        },
+        {
+          "seconds": 0.937,
+          "stage": "observation",
+          "running": true,
+          "exit_code": null,
+          "devtools_file": true
+        },
+        {
+          "seconds": 0.937,
+          "stage": "before_cleanup",
+          "browser_state": "running",
+          "devtools_file": true
+        },
+        {
+          "seconds": 0.937,
+          "stage": "cleanup_begin"
+        },
+        {
+          "seconds": 1.141,
+          "stage": "cleanup_observation",
+          "browser_state": "exited"
+        }
+      ]
+    },
+    {
+      "layer": "minimal",
+      "browser": "fresh",
+      "read_timeout_seconds": 45,
+      "events": [
+        {
+          "seconds": 1.843,
+          "stage": "driver_ready"
+        },
+        {
+          "seconds": 1.843,
+          "stage": "post_session"
+        },
+        {
+          "seconds": 46.859,
+          "stage": "error",
+          "exception": "ReadTimeout"
+        },
+        {
+          "seconds": 46.859,
+          "stage": "before_cleanup",
+          "browser_state": "running",
+          "devtools_file": true
+        },
+        {
+          "seconds": 46.859,
+          "stage": "cleanup_begin"
+        },
+        {
+          "seconds": 47.062,
+          "stage": "cleanup_observation",
+          "browser_state": "exited"
+        }
+      ]
+    },
+    {
+      "layer": "minimal",
+      "browser": "cached",
+      "read_timeout_seconds": 45,
+      "events": [
+        {
+          "seconds": 1.047,
+          "stage": "driver_ready"
+        },
+        {
+          "seconds": 1.047,
+          "stage": "post_session"
+        },
+        {
+          "seconds": 2.5,
+          "stage": "session_response",
+          "status": 200,
+          "error": null,
+          "browser_version": "146.0.7680.31"
+        },
+        {
+          "seconds": 2.5,
+          "stage": "before_cleanup",
+          "browser_state": "running",
+          "devtools_file": true
+        },
+        {
+          "seconds": 2.5,
+          "stage": "cleanup_begin"
+        },
+        {
+          "seconds": 2.703,
+          "stage": "cleanup_observation",
+          "browser_state": "exited"
+        }
+      ]
+    },
+    {
+      "layer": "runner",
+      "browser": "fresh",
+      "read_timeout_seconds": 45,
+      "events": [
+        {
+          "seconds": 0.032,
+          "stage": "driver_version",
+          "reason": null
+        },
+        {
+          "seconds": 0.594,
+          "stage": "driver_launch",
+          "reason": null
+        },
+        {
+          "seconds": 1.188,
+          "stage": "driver_readiness",
+          "reason": null
+        },
+        {
+          "seconds": 1.547,
+          "stage": "session_creation",
+          "reason": null
+        },
+        {
+          "seconds": 1.547,
+          "stage": "post_session"
+        },
+        {
+          "seconds": 1.563,
+          "stage": "browser_launch",
+          "reason": null
+        },
+        {
+          "seconds": 14.579,
+          "stage": "devtools_connect",
+          "reason": null
+        },
+        {
+          "seconds": 15.204,
+          "stage": "session_handshake",
+          "reason": null
+        },
+        {
+          "seconds": 25.985,
+          "stage": "version_validation",
+          "reason": null
+        },
+        {
+          "seconds": 25.985,
+          "stage": "session_timeouts",
+          "reason": null
+        },
+        {
+          "seconds": 25.985,
+          "stage": "ready",
+          "reason": null
+        },
+        {
+          "seconds": 25.985,
+          "stage": "snapshot",
+          "driver_version": "146.0.7680.31",
+          "driver_state": "running",
+          "driver_exit_code": null,
+          "browser_state": "running",
+          "devtools_port_file": "present",
+          "session_created": true,
+          "cleanup": "not_started",
+          "native_errors": []
+        },
+        {
+          "seconds": 25.985,
+          "stage": "session_created"
+        },
+        {
+          "seconds": 25.985,
+          "stage": "before_cleanup",
+          "browser_state": "not_observed",
+          "devtools_file": true
+        },
+        {
+          "seconds": 25.985,
+          "stage": "cleanup_begin"
+        },
+        {
+          "seconds": 25.985,
+          "stage": "snapshot",
+          "driver_version": "146.0.7680.31",
+          "driver_state": "running",
+          "driver_exit_code": null,
+          "browser_state": "running",
+          "devtools_port_file": "present",
+          "session_created": true,
+          "cleanup": "not_started",
+          "native_errors": []
+        },
+        {
+          "seconds": 36.641,
+          "stage": "snapshot",
+          "cleanup": "driver_exited_job_closed",
+          "cleanup_driver_exit_code": 0,
+          "cleanup_browser_state": "exited",
+          "native_errors": []
+        },
+        {
+          "seconds": 36.844,
+          "stage": "cleanup_observation",
+          "browser_state": "not_observed"
+        }
+      ]
+    },
+    {
+      "layer": "runner",
+      "browser": "cached",
+      "read_timeout_seconds": 45,
+      "events": [
+        {
+          "seconds": 0.015,
+          "stage": "driver_version",
+          "reason": null
+        },
+        {
+          "seconds": 0.5,
+          "stage": "driver_launch",
+          "reason": null
+        },
+        {
+          "seconds": 1.125,
+          "stage": "driver_readiness",
+          "reason": null
+        },
+        {
+          "seconds": 1.5,
+          "stage": "session_creation",
+          "reason": null
+        },
+        {
+          "seconds": 1.5,
+          "stage": "post_session"
+        },
+        {
+          "seconds": 1.515,
+          "stage": "browser_launch",
+          "reason": null
+        },
+        {
+          "seconds": 2.562,
+          "stage": "devtools_connect",
+          "reason": null
+        },
+        {
+          "seconds": 3.0,
+          "stage": "session_handshake",
+          "reason": null
+        },
+        {
+          "seconds": 4.781,
+          "stage": "version_validation",
+          "reason": null
+        },
+        {
+          "seconds": 4.781,
+          "stage": "session_timeouts",
+          "reason": null
+        },
+        {
+          "seconds": 4.859,
+          "stage": "ready",
+          "reason": null
+        },
+        {
+          "seconds": 4.859,
+          "stage": "snapshot",
+          "driver_version": "146.0.7680.31",
+          "driver_state": "running",
+          "driver_exit_code": null,
+          "browser_state": "running",
+          "devtools_port_file": "present",
+          "session_created": true,
+          "cleanup": "not_started",
+          "native_errors": []
+        },
+        {
+          "seconds": 4.859,
+          "stage": "session_created"
+        },
+        {
+          "seconds": 4.859,
+          "stage": "before_cleanup",
+          "browser_state": "not_observed",
+          "devtools_file": true
+        },
+        {
+          "seconds": 4.859,
+          "stage": "cleanup_begin"
+        },
+        {
+          "seconds": 4.859,
+          "stage": "snapshot",
+          "driver_version": "146.0.7680.31",
+          "driver_state": "running",
+          "driver_exit_code": null,
+          "browser_state": "running",
+          "devtools_port_file": "present",
+          "session_created": true,
+          "cleanup": "not_started",
+          "native_errors": []
+        },
+        {
+          "seconds": 8.734,
+          "stage": "snapshot",
+          "cleanup": "driver_exited_job_closed",
+          "cleanup_driver_exit_code": 0,
+          "cleanup_browser_state": "exited",
+          "native_errors": []
+        },
+        {
+          "seconds": 8.937,
+          "stage": "cleanup_observation",
+          "browser_state": "not_observed"
+        }
+      ]
+    }
+  ],
+  "supervised_after_narrow_change": [
+    {
+      "run_id": "40ae72c1ab594752aa703944707a0951",
+      "headed": false,
+      "state": "failed",
+      "first_attempt_success": false,
+      "duration_seconds": 49.718,
+      "stage": "session_handshake",
+      "reason": null,
+      "code": "ReadTimeout",
+      "stage_ms": {
+        "driver_version": 531,
+        "driver_launch": 1344,
+        "driver_readiness": 0,
+        "session_creation": 0,
+        "browser_launch": 11406,
+        "devtools_connect": 407,
+        "session_handshake": 33187
+      },
+      "startup_diagnostics": {
+        "driver_version": "146.0.7680.31",
+        "driver_state": "running",
+        "driver_exit_code": null,
+        "browser_state": "running",
+        "devtools_port_file": "present",
+        "session_created": false,
+        "cleanup": "driver_exited_job_closed",
+        "native_errors": [],
+        "cleanup_driver_exit_code": 0,
+        "cleanup_browser_state": "exited"
+      },
+      "cleanup": "no_survivors_observed",
+      "survivor_count": 0,
+      "number": 1
+    }
+  ],
+  "limitations": [
+    "runner comparison used DirectWebDriver directly, not Robot/supervisor; subsequent smoke used actual supervisor",
+    "outer empty-job not_observed samples in runner comparison do not describe browser; use snapshot events",
+    "normal user desktop terminal and real API/UI were not exercised",
+    "direct/minimal cases have reduced flags; differences are not attributed to Job Object",
+    "all cases retained Job Object and browser sandbox"
+  ]
+}

@@ -1,9 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CredentialFields from "./CredentialFields";
 import VariablesEditor from "./VariablesEditor";
+import { apiFetch } from "@/utils/api";
+import type { Environment, EnvironmentFormState } from "@/types/environment";
+
+type UpdateField = <K extends keyof EnvironmentFormState>(key: K, value: EnvironmentFormState[K]) => void;
+interface ModalProps {
+  open: boolean;
+  onClose: () => void;
+  mode: "create" | "edit";
+  projectId: string;
+  env?: Environment | null;
+  onSaved: () => void | Promise<void>;
+}
+interface TabProps { form: EnvironmentFormState; updateField: UpdateField }
+
 
 // ----------------------------------------
 // TABS
@@ -13,107 +27,50 @@ const TABS = ["General", "Auth", "Credentials", "Variables", "Execution"];
 // ----------------------------------------
 // MAIN MODAL COMPONENT
 // ----------------------------------------
-export default function EnvironmentModal({
-  open,
-  onClose,
-  mode,            // "create" | "edit"
-  projectId,
-  env,
-  onSaved
-}: any) {
+export default function EnvironmentModal(props: ModalProps) {
+  if (!props.open) return null;
+  return <EnvironmentEditor key={`${props.mode}:${props.env?.env_id || "new"}:${props.env?.revision || 0}`} {...props} />;
+}
 
-  // -------------------------------
-  // Unified form object
-  // -------------------------------
-  const [form, setForm] = useState({
-    env_type: "",
-    base_url: "",
-    api_base_url: "",
-    auth_type: "none",
+function EnvironmentEditor({ onClose, mode, projectId, env, onSaved }: ModalProps) {
+  const initial = mode === "edit" ? env : null;
+  const [form, setForm] = useState<EnvironmentFormState>(() => ({
+    env_type: initial?.env_type || "",
+    base_url: initial?.base_url || "",
+    api_base_url: initial?.api_base_url || "",
+    auth_type: initial?.auth_type || "none",
     auth_token: "",
-    credentials: [],
-    variables: {},
-    default_browser: "chromium",
-    default_headed: false,
-    default_timeout_ms: 10000,
-  });
-
+    auth_token_configured: initial?.auth_token_configured || false,
+    credentials: (initial?.credentials || []).map(credential => ({ ...credential, password: "" })),
+    variables: initial?.variables || {},
+    default_browser: initial?.default_browser || "chromium",
+    default_headed: initial?.default_headed || false,
+    default_timeout_ms: initial?.default_timeout_ms || 10000,
+    revision: initial?.revision,
+  }));
   const [activeTab, setActiveTab] = useState("General");
-
-  // -----------------------------------
-  // Sync form values when editing
-  // -----------------------------------
-  useEffect(() => {
-    if (open && mode === "edit" && env) {
-      setForm({
-        env_type: env.env_type || "",
-        base_url: env.base_url || "",
-        api_base_url: env.api_base_url || "",
-        auth_type: env.auth_type || "none",
-        auth_token: env.auth_token || "",
-        credentials: env.credentials || [],
-        variables: env.variables || {},
-        default_browser: env.default_browser || "chromium",
-        default_headed: env.default_headed || false,
-        default_timeout_ms: env.default_timeout_ms || 10000,
-      });
-      setActiveTab("General");
-    }
-
-    if (open && mode === "create") {
-      setForm({
-        env_type: "",
-        base_url: "",
-        api_base_url: "",
-        auth_type: "none",
-        auth_token: "",
-        credentials: [],
-        variables: {},
-        default_browser: "chromium",
-        default_headed: false,
-        default_timeout_ms: 10000,
-      });
-      setActiveTab("General");
-    }
-  }, [open, mode, env]);
-
-  if (!open) return null;
-
-  // -----------------------------------
-  // Update form fields
-  // -----------------------------------
-  function updateField(key: string, value: any) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const updateField: UpdateField = (key, value) => setForm(previous => ({ ...previous, [key]: value }));
 
   // -----------------------------------
   // Save
   // -----------------------------------
   async function handleSave() {
-    const payload = {
-      project_id: projectId,
-      ...form,
-      auth_token: form.auth_type === "bearer" ? form.auth_token : null,
-    };
-
-    const url =
-      mode === "edit"
-        ? `/environments/${env.env_id}`
-        : `/environments`;
-
-    const method = mode === "edit" ? "PATCH" : "POST";
-
-    const res = await fetch(process.env.NEXT_PUBLIC_API_URL + url, {
-      method,
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (res.ok) {
-      onSaved();
+    setSaving(true);
+    setError("");
+    try {
+      const url = mode === "edit" ? `/environments/${env?.env_id}` : "/environments";
+      const response = await apiFetch(url, {
+        method: mode === "edit" ? "PATCH" : "POST",
+        body: JSON.stringify({ project_id: projectId, ...form }),
+      });
+      if (!response.ok) throw new Error(typeof response.data?.detail === "string" ? response.data.detail : "Check the environment fields and try again.");
+      await onSaved();
       onClose();
-    }
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Could not save environment.");
+    } finally { setSaving(false); }
   }
 
   return (
@@ -168,7 +125,7 @@ export default function EnvironmentModal({
             {activeTab === "Credentials" && (
               <CredentialFields
                 credentials={form.credentials}
-                setCredentials={(v: any) => updateField("credentials", v)}
+                setCredentials={(v) => updateField("credentials", v)}
               />
             )}
 
@@ -176,7 +133,7 @@ export default function EnvironmentModal({
             {activeTab === "Variables" && (
               <VariablesEditor
                 variables={form.variables}
-                setVariables={(v: any) => updateField("variables", v)}
+                setVariables={value => setForm(previous => ({ ...previous, variables: typeof value === "function" ? value(previous.variables) : value }))}
               />
             )}
 
@@ -187,6 +144,7 @@ export default function EnvironmentModal({
           </AnimatePresence>
         </div>
 
+        {error && <p role="alert" className="px-6 text-red-700">{error}</p>}
         {/* FOOTER */}
         <div className="flex justify-end gap-4 px-6 py-4 border-t bg-gray-50">
           <button onClick={onClose} className="px-4 py-2 border rounded">
@@ -195,7 +153,7 @@ export default function EnvironmentModal({
 
           <button
             onClick={handleSave}
-            disabled={!form.env_type || !form.base_url}
+            disabled={saving || !form.env_type || !form.base_url}
             className={`px-4 py-2 rounded text-white 
               ${
                 form.env_type && form.base_url
@@ -203,7 +161,7 @@ export default function EnvironmentModal({
                   : "bg-gray-400 cursor-not-allowed"
               }`}
           >
-            Save Environment
+            {saving ? "Saving…" : "Save Environment"}
           </button>
         </div>
       </motion.div>
@@ -217,7 +175,7 @@ export default function EnvironmentModal({
 // ------------------------------------------------------
 //
 
-function TabGeneral({ form, updateField }: any) {
+function TabGeneral({ form, updateField }: TabProps) {
   return (
     <motion.div
       key="general"
@@ -259,7 +217,7 @@ function TabGeneral({ form, updateField }: any) {
   );
 }
 
-function TabAuth({ form, updateField }: any) {
+function TabAuth({ form, updateField }: TabProps) {
   return (
     <motion.div
       key="auth"
@@ -272,7 +230,7 @@ function TabAuth({ form, updateField }: any) {
 
       <select
         value={form.auth_type}
-        onChange={(e) => updateField("auth_type", e.target.value)}
+        onChange={(e) => updateField("auth_type", e.target.value as EnvironmentFormState["auth_type"])}
         className="border p-2 rounded"
       >
         <option value="none">None</option>
@@ -280,21 +238,25 @@ function TabAuth({ form, updateField }: any) {
         <option value="bearer">Bearer Token</option>
       </select>
 
-      {form.auth_type === "bearer" && (
+      {form.auth_type !== "none" && (
         <div>
-          <label className="text-sm font-medium">Bearer Token</label>
+          <label className="text-sm font-medium">{form.auth_type === "bearer" ? "Bearer token" : "Basic authorization token"}</label>
           <input
-            value={form.auth_token}
+            type="password"
+            autoComplete="new-password"
+            placeholder={form.auth_token_configured ? "Saved — leave blank to keep" : "Enter token"}
+            value={form.auth_token || ""}
             onChange={(e) => updateField("auth_token", e.target.value)}
             className="w-full border p-2 rounded mt-1"
           />
+          <label className="block"><input type="checkbox" checked={!!form.clear_auth_token} onChange={event => updateField("clear_auth_token", event.target.checked)} /> Remove saved token</label>
         </div>
       )}
     </motion.div>
   );
 }
 
-function TabExecution({ form, updateField }: any) {
+function TabExecution({ form, updateField }: TabProps) {
   return (
     <motion.div
       key="exec"
@@ -308,7 +270,7 @@ function TabExecution({ form, updateField }: any) {
           <label className="text-sm font-medium">Default Browser</label>
           <select
             value={form.default_browser}
-            onChange={(e) => updateField("default_browser", e.target.value)}
+            onChange={(e) => updateField("default_browser", e.target.value as EnvironmentFormState["default_browser"])}
             className="border p-2 rounded w-full mt-1"
           >
             <option value="chromium">Chromium</option>

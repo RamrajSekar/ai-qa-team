@@ -1,0 +1,205 @@
+{
+  "environment": "Real private TLS Mongo, Podman, Robot, HTTPX/CfT; ASGI auth double; no normal UI login",
+  "image": "b5d5e83e29ec11e6d2e34ce387f1e2f6f7108acdbd31bf22d96e4418a4dbb66c",
+  "checks": [
+    {
+      "check": "duplicate requests create one parent",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "independent one-case containers reserved",
+      "passed": true,
+      "details": {
+        "count": 1
+      }
+    },
+    {
+      "check": "first-attempt completions and three screenshots per check",
+      "passed": true,
+      "details": [
+        {
+          "state": "completed",
+          "diagnostic_code": null
+        }
+      ]
+    },
+    {
+      "check": "established browser sessions observed together",
+      "passed": true,
+      "details": {
+        "successful_observations": 1,
+        "overlap_seconds": 11.05221152305603,
+        "sampling_interval_seconds": 0.1
+      }
+    }
+  ],
+  "samples": [
+    {
+      "case_run_id": "20f0543e101d4845ad0477c7cc4ec7a6",
+      "first_seen": 1793731442.4418492,
+      "last_seen": 1793731453.4940608,
+      "samples": 107
+    }
+  ],
+  "batches": [
+    {
+      "batch_id": "5a627a85a98f4f7ab1a79712be7de811",
+      "state": "completed",
+      "cases": [
+        {
+          "case_run_id": "20f0543e101d4845ad0477c7cc4ec7a6",
+          "state": "completed",
+          "verdict": null,
+          "screenshots": [
+            "01-open",
+            "02-filled",
+            "03-confirmed"
+          ],
+          "evidence_complete": true,
+          "logs": [
+            "Starting isolated mechanical browser smoke check.",
+            "Robot fixture coordinates and keyboard actions; no AI or business assertions.",
+            "Controlled sample opened.",
+            "Synthetic inputs entered.",
+            "Confirmation action sent; screenshot captured.",
+            "Closing browser and driver.",
+            "Browser smoke check completed"
+          ],
+          "diagnostic_code": null,
+          "preparation": {
+            "stage": "container_start",
+            "error_stage": null,
+            "reason": null,
+            "timings_ms": {
+              "workspace": 16,
+              "image_lookup": 1016,
+              "volume_create": 500,
+              "container_create": 500,
+              "manifest_copy": 1141,
+              "parent_authorization": 0,
+              "launch_intent": 0,
+              "container_start": 1421
+            },
+            "events": [
+              {
+                "stage": "workspace",
+                "phase": "started",
+                "at": "2026-11-03T18:43:52.830065Z"
+              },
+              {
+                "stage": "workspace",
+                "phase": "completed",
+                "at": "2026-11-03T18:43:52.839059Z"
+              },
+              {
+                "stage": "image_lookup",
+                "phase": "started",
+                "at": "2026-11-03T18:43:52.843613Z"
+              },
+              {
+                "stage": "image_lookup",
+                "phase": "completed",
+                "at": "2026-11-03T18:43:53.855986Z"
+              },
+              {
+                "stage": "volume_create",
+                "phase": "started",
+                "at": "2026-11-03T18:43:53.857968Z"
+              },
+              {
+                "stage": "volume_create",
+                "phase": "completed",
+                "at": "2026-11-03T18:43:54.359434Z"
+              },
+              {
+                "stage": "container_create",
+                "phase": "started",
+                "at": "2026-11-03T18:43:54.361545Z"
+              },
+              {
+                "stage": "container_create",
+                "phase": "completed",
+                "at": "2026-11-03T18:43:54.861200Z"
+              },
+              {
+                "stage": "manifest_copy",
+                "phase": "started",
+                "at": "2026-11-03T18:43:54.864249Z"
+              },
+              {
+                "stage": "manifest_copy",
+                "phase": "completed",
+                "at": "2026-11-03T18:43:56.019776Z"
+              },
+              {
+                "stage": "parent_authorization",
+                "phase": "started",
+                "at": "2026-11-03T18:43:56.022818Z"
+              },
+              {
+                "stage": "parent_authorization",
+                "phase": "completed",
+                "at": "2026-11-03T18:43:56.024823Z"
+              },
+              {
+                "stage": "launch_intent",
+                "phase": "started",
+                "at": "2026-11-03T18:43:56.026778Z"
+              },
+              {
+                "stage": "launch_intent",
+                "phase": "completed",
+                "at": "2026-11-03T18:43:56.029616Z"
+              },
+              {
+                "stage": "container_start",
+                "phase": "started",
+                "at": "2026-11-03T18:43:56.031877Z"
+              },
+              {
+                "stage": "container_start",
+                "phase": "completed",
+                "at": "2026-11-03T18:43:57.443994Z"
+              }
+            ]
+          },
+          "startup_stage": "screenshot",
+          "startup_reason": null,
+          "startup_timings_ms": {
+            "driver_version": 130,
+            "driver_launch": 173,
+            "driver_readiness": 42,
+            "session_creation": 5,
+            "browser_launch": 2433,
+            "devtools_connect": 402,
+            "session_handshake": 305,
+            "version_validation": 1,
+            "session_timeouts": 3,
+            "ready": 198,
+            "navigation": 325,
+            "navigation_checkpoint": 473,
+            "screenshot": 8067
+          },
+          "startup_diagnostics": {
+            "driver_version": "146.0.7680.31",
+            "driver_state": "running",
+            "driver_exit_code": null,
+            "browser_state": "unavailable",
+            "devtools_port_file": "present",
+            "session_created": true,
+            "cleanup": "unverified",
+            "cleanup_driver_exit_code": -9,
+            "cleanup_browser_state": "unavailable",
+            "native_errors": []
+          },
+          "started_at": "2026-11-03T18:43:58.029807Z",
+          "finished_at": "2026-11-03T18:44:14.105105Z"
+        }
+      ]
+    }
+  ],
+  "observer_attached": [
+    true
+  ]
+}

@@ -1,0 +1,151 @@
+{
+  "date": "2026-10-31",
+  "branch": "dev",
+  "baseline_commit": "2479de4017cd8e29516daa1ecf62d5763bc2b6b2",
+  "browser_driver_version": "146.0.7680.31",
+  "cohorts": [
+    {
+      "configuration": "fresh_F_headless",
+      "runs": [
+        {
+          "run_id": "81803d7ebb794f65a37b3b13feb5a10d",
+          "headed": false,
+          "state": "failed",
+          "first_attempt_success": false,
+          "duration_seconds": 11.141,
+          "stage": "browser_launch",
+          "reason": null,
+          "code": "ReadTimeout",
+          "stage_ms": {
+            "driver_version": 1562,
+            "driver_launch": 1406,
+            "driver_readiness": 16,
+            "session_creation": 31
+          },
+          "cleanup": "no_survivors_observed",
+          "survivor_count": 0,
+          "number": 1
+        }
+      ]
+    },
+    {
+      "configuration": "cached_headless_comparison",
+      "runs": [
+        {
+          "run_id": "43be669cc2534e6eb1b670d0343d80d0",
+          "headed": false,
+          "state": "completed",
+          "first_attempt_success": true,
+          "duration_seconds": 20.766,
+          "stage": "navigation",
+          "reason": null,
+          "code": null,
+          "stage_ms": {
+            "driver_version": 594,
+            "driver_launch": 734,
+            "driver_readiness": 16,
+            "session_creation": 0,
+            "browser_launch": 781,
+            "devtools_connect": 313,
+            "session_handshake": 94,
+            "version_validation": 171,
+            "session_timeouts": 188,
+            "ready": 969
+          },
+          "cleanup": "no_survivors_observed",
+          "survivor_count": 0,
+          "number": 1
+        }
+      ]
+    },
+    {
+      "configuration": "fresh_C_temp_headless",
+      "runs": [
+        {
+          "run_id": "01d302ffa39f48088e04f9b7fe234b17",
+          "headed": false,
+          "state": "failed",
+          "first_attempt_success": false,
+          "duration_seconds": 7.828,
+          "stage": "browser_launch",
+          "reason": null,
+          "code": "ReadTimeout",
+          "stage_ms": {
+            "driver_version": 234,
+            "driver_launch": 375,
+            "driver_readiness": 16,
+            "session_creation": 0
+          },
+          "cleanup": "no_survivors_observed",
+          "survivor_count": 0,
+          "number": 1
+        }
+      ]
+    },
+    {
+      "configuration": "fresh_F_headed",
+      "runs": [
+        {
+          "run_id": "683b5cddedd44e2f9388041f37319543",
+          "headed": true,
+          "state": "failed",
+          "first_attempt_success": false,
+          "duration_seconds": 6.516,
+          "stage": "browser_launch",
+          "reason": null,
+          "code": "ReadTimeout",
+          "stage_ms": {
+            "driver_version": 250,
+            "driver_launch": 328,
+            "driver_readiness": 0,
+            "session_creation": 0
+          },
+          "cleanup": "no_survivors_observed",
+          "survivor_count": 0,
+          "number": 1
+        }
+      ]
+    }
+  ],
+  "additional_native_diagnostics": {
+    "headless_attempts": 4,
+    "session_creation_successes": 0,
+    "outcomes": [
+      "ReadTimeout",
+      "ReadTimeout",
+      "ReadTimeout",
+      "ReadTimeout"
+    ],
+    "logging": "native error source/code allowlist only; raw stderr discarded",
+    "individual_cleanup_not_measured": true,
+    "last_observed_browser_thread_count": 4,
+    "last_observed_modules_include": [
+      "chrome.exe",
+      "ntdll.dll",
+      "KERNEL32.DLL",
+      "KERNELBASE.dll",
+      "chrome_elf.dll"
+    ],
+    "chrome_dll_loaded_at_sample": false,
+    "wait_chain": "no blocking dependency identified"
+  },
+  "payload_comparison": {
+    "sha256_identical_common_files": 308,
+    "common_file_differences": 0,
+    "extra_cached_files": 4,
+    "extra_cached_files_description": "literal SystemDrive cache directory; not copied as remediation"
+  },
+  "final_cleanup": "no runner-profile Chrome/ChromeDriver processes observed",
+  "root_cause": "unresolved",
+  "native_trace_available": false,
+  "elevated_administrator": false,
+  "tests": {
+    "runner_outside_sandbox": "6/6 passed",
+    "pip_check": "passed",
+    "initial_root_directory_test_invocation": "import failed because runner lab module was not on path; rerun from documented cwd",
+    "runner_inside_sandbox": "4 passed; 2 environmental errors: temp lock permission and forbidden loopback socket"
+  },
+  "application_changes": false,
+  "full_10_headless_5_headed_baseline": "not rerun; no fix identified",
+  "real_ui_api_mongo": "not rerun in this investigation"
+}

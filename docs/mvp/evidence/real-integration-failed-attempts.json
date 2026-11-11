@@ -1,0 +1,58 @@
+[
+  {
+    "fixture": "m1a-real-20261031-023348",
+    "report": {
+      "environment": "real UI/login/API/TLS Mongo; synthetic accounts; existing local auth-cache fallback",
+      "checks": [
+        {
+          "check": "normal_signup_real_UI_login_project_access",
+          "result": "PASS",
+          "seconds": 41.775,
+          "project_id": "PRJ001"
+        },
+        {
+          "check": "runner_failure_evidence",
+          "result": "FAIL",
+          "run_id": "7389bbf5c75949c6bf239eb3470932ad",
+          "state": "failed",
+          "stage": "session_creation",
+          "code": "ReadTimeout",
+          "reason": null
+        },
+        {
+          "check": "headless_UI_completion_three_private_screenshots",
+          "result": "FAIL",
+          "error_type": "Error"
+        }
+      ]
+    }
+  },
+  {
+    "fixture": "m1a-real-20261031-090706",
+    "report": {
+      "environment": "real UI/login/API/TLS Mongo; synthetic accounts; existing local auth-cache fallback",
+      "checks": [
+        {
+          "check": "normal_signup_real_UI_login_project_access",
+          "result": "PASS",
+          "seconds": 52.878,
+          "project_id": "PRJ001"
+        },
+        {
+          "check": "runner_failure_evidence",
+          "result": "FAIL",
+          "run_id": "ae60098cc238428ead230273ed4ec906",
+          "state": "failed",
+          "stage": "devtools_connect",
+          "code": "ReadTimeout",
+          "reason": null
+        },
+        {
+          "check": "headless_UI_completion_three_private_screenshots",
+          "result": "FAIL",
+          "error_type": "Error"
+        }
+      ]
+    }
+  }
+]

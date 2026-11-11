@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useProjects } from "@/hooks/useProjects";
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { LayoutGrid, FolderOpen, Puzzle, Zap, Bot, ChevronLeft, ChevronRight, Layers, FileText, GitBranch, Users, BrainCircuit, ShieldCheck, MessageSquareText, Bug } from "lucide-react";
+import { LayoutGrid, FolderOpen, Zap, ChevronLeft, ChevronRight, Layers, FileText, GitBranch, Users, BrainCircuit, ShieldCheck, MessageSquareText, Bug } from "lucide-react";
 
 export default function Sidebar() {
   const { enabled } = useFeatures();
@@ -19,7 +19,7 @@ export default function Sidebar() {
   const globalMenu = [
     { name: "Dashboard", icon: LayoutGrid, href: "/dashboard" },
     { name: "Projects", icon: FolderOpen, href: "/projects" },
-    ...(enabled("test_generation") ? [{ name: "AI Generator", icon: Bot, href: "/ai" }] : []),
+    ...(projects.some(item => item.current_user_role === "ADMIN") ? [{ name: "AI Configuration", icon: BrainCircuit, href: "/settings/ai" }] : []),
   ];
   const platformMenu = user?.platform_role === "OWNER" || user?.platform_role === "ADMIN" ? [
     { name: "Admin Dashboard", icon: ShieldCheck, href: "/platform-admin" },
@@ -27,13 +27,14 @@ export default function Sidebar() {
   ] : [];
   const projectMenu = projectId ? [
     { name: "Overview", icon: Layers, href: `/projects/${projectId}` },
-    { name: "Reproduce Bug", icon: Bug, href: `/projects/${projectId}/reproduce` },
+    ...(enabled("visual_runner_lab") ? [{ name: "Visual Runner Lab", icon: Zap, href: `/projects/${projectId}/visual-lab` }] : []),
+    ...(enabled("bug_reproduction_ui") ? [{ name: "Reproduce Bug", icon: Bug, href: `/projects/${projectId}/reproduce` }] : []),
     ...(enabled("story_management") ? [{ name: "Stories", icon: FileText, href: `/projects/${projectId}/stories` }] : []),
+    ...(enabled("scenario_generation") ? [{ name: "Scenarios", icon: Layers, href: `/projects/${projectId}/scenarios` }] : []),
+    ...(enabled("test_generation") ? [{ name: "Test Cases", icon: FileText, href: `/projects/${projectId}/testcases` }] : []),
     { name: "Environments", icon: FolderOpen, href: `/projects/${projectId}/environments` },
-    ...(enabled("repository_discovery", "test_registry") ? [{ name: "Repositories", icon: GitBranch, href: `/projects/${projectId}/repositories` }] : []),
+    ...(enabled("repository_ui", "repository_discovery", "test_registry") ? [{ name: "Repositories", icon: GitBranch, href: `/projects/${projectId}/repositories` }] : []),
     ...(project?.current_user_role === "ADMIN" ? [{ name: "Team", icon: Users, href: `/projects/${projectId}/settings/team` }] : []),
-    ...(project?.current_user_role === "ADMIN" ? [{ name: "AI Configuration", icon: BrainCircuit, href: `/projects/${projectId}/settings/ai` }] : []),
-    ...(enabled("scenario_generation") ? [{ name: "Scenarios", icon: Puzzle, href: `/projects/${projectId}/scenarios` }] : []),
     // Execution history is shown on the overview; there is no separate execution page yet.
   ] : [];
   const destination = [...globalMenu, ...platformMenu, ...projectMenu].filter((item) => pathname === item.href || pathname.startsWith(item.href + "/"))

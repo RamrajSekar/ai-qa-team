@@ -1,0 +1,37 @@
+{
+  "date": "2026-11-02",
+  "source_private_csv": "tmp/m1a-native-fresh.CSV",
+  "source_sha256": "520cc299295d851941901745506cd9b704946daa95c6671689626d9c0121abe9",
+  "run_id": "ef2c00d11b4e4b1893b44ee54efbd760",
+  "driver_pid": 17108,
+  "driver_pid_present": true,
+  "chrome_parent_driver_match": true,
+  "rows": 68317,
+  "process_counts": {
+    "chromedriver.exe": 1976,
+    "chrome.exe": 66341
+  },
+  "failed_image_load_events": 0,
+  "denied_total": 251,
+  "key_image_loads": {
+    "main_chrome_dll_seconds_after_browser_start": 3.746,
+    "first_renderer_start_seconds": 8.728,
+    "first_renderer_chrome_dll_seconds": 9.625
+  },
+  "denial_analysis": {
+    "temporary_file_denials": 5,
+    "same_process_successful_access_also_observed_for_temp_files": true,
+    "utility_parent_workspace_directory_denials": 3,
+    "causal_relevance": "unknown; compare working control before permission changes"
+  },
+  "process_exits": "main browser/GPU exited during cleanup; two renderer processes exited code 0 earlier; no crash inference",
+  "csv_duration_column_present": false,
+  "limitations": [
+    "event gaps are not operation durations",
+    "CSV does not contain call stacks",
+    "no cached control native capture yet",
+    "tracing may perturb timing",
+    "no identified causal permission or image-load failure"
+  ],
+  "outcome": "session and navigation succeeded; first screenshot ReadTimeout; no runtime fix justified"
+}

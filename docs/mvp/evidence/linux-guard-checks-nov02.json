@@ -1,0 +1,92 @@
+{
+  "image": "ec46ed0f56ad43fcbc07122fbe5450e42bd755f9a7862027ba57556a2d6723fc",
+  "attempts": [
+    {
+      "case": "forced-reconcile",
+      "container": "m1a-guard-5793999a41e1",
+      "run": "484fc6d83afb4c4ba74bdbd587a1ff69",
+      "container_exit_seconds": 9.765,
+      "exit_code": 137,
+      "pid": 0,
+      "oom_killed": false,
+      "state_before": "running",
+      "state_after": "interrupted",
+      "active_reconcile_rejected": true,
+      "first_reconcile": {
+        "changed": true,
+        "replayed": false
+      },
+      "second_reconcile": {
+        "changed": false,
+        "replayed": false
+      },
+      "idempotent": true,
+      "terminal_preserved": false,
+      "screenshots": [],
+      "passed": true
+    },
+    {
+      "case": "frozen-child-watchdog",
+      "container": "m1a-guard-c2012fa71187",
+      "run": "c3667e003628409a829af946b80ac149",
+      "container_exit_seconds": 111.375,
+      "exit_code": 1,
+      "pid": 0,
+      "oom_killed": false,
+      "state_before": "timed_out",
+      "state_after": "timed_out",
+      "active_reconcile_rejected": true,
+      "first_reconcile": {
+        "changed": false,
+        "replayed": false
+      },
+      "second_reconcile": {
+        "changed": false,
+        "replayed": false
+      },
+      "idempotent": true,
+      "terminal_preserved": true,
+      "screenshots": [
+        "01-open"
+      ],
+      "passed": true
+    },
+    {
+      "case": "completed-preserved",
+      "container": "m1a-guard-5cabfac7292e",
+      "run": "e6b1e450b1db44838557674dba0d9fb2",
+      "container_exit_seconds": 14.391,
+      "exit_code": 0,
+      "pid": 0,
+      "oom_killed": false,
+      "state_before": "completed",
+      "state_after": "completed",
+      "active_reconcile_rejected": true,
+      "first_reconcile": {
+        "changed": false,
+        "replayed": false
+      },
+      "second_reconcile": {
+        "changed": false,
+        "replayed": false
+      },
+      "idempotent": true,
+      "terminal_preserved": true,
+      "screenshots": [
+        "01-open",
+        "02-filled",
+        "03-confirmed"
+      ],
+      "passed": true
+    }
+  ],
+  "date": "2026-11-02",
+  "environment": "Real local Podman 6.1.4 Linux/amd64; network none; non-root; sandbox enabled",
+  "unit_tests": "8 passed; mocked process/control plus temporary-file state tests",
+  "limitations": [
+    "Opt-in single-operator reconciliation, not multi-host fencing",
+    "Per-browser process observation unavailable",
+    "Frozen child supervisor is a fault injection, not a reproduced Chrome hang",
+    "API/UI/Mongo Linux integration and cloud not tested"
+  ]
+}

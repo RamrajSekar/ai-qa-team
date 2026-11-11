@@ -1,0 +1,67 @@
+{
+  "date": "2026-11-02",
+  "scope": "Synthetic Linux contracts and backend dispatcher; no UI/login/billing/customer execution",
+  "image": "b5d5e83e29ec11e6d2e34ce387f1e2f6f7108acdbd31bf22d96e4418a4dbb66c",
+  "attempts": [
+    {
+      "kind": "fixture-startup",
+      "result": "failed before dispatch",
+      "cause": "Windows Mongo InvalidSSLConfiguration: same CA/server certificate; corrected to distinct signed server certificate without disabling TLS"
+    },
+    {
+      "kind": "pre-fix real integration",
+      "result": "failed",
+      "checks": [
+        {
+          "check": "real Mongo duplicate enqueue",
+          "passed": true,
+          "details": null
+        },
+        {
+          "check": "two slots allocated; third batch queued",
+          "passed": true,
+          "details": null
+        },
+        {
+          "check": "cross-project status and cancel denial",
+          "passed": true,
+          "details": null
+        },
+        {
+          "check": "independent cancellation and queue progression",
+          "passed": false,
+          "details": null
+        }
+      ],
+      "cause": "Cancellation incorrectly relabelled interrupted by post-case remnant check. Independent two-case and queued one-case batches completed."
+    },
+    {
+      "kind": "linux-batch-real-full.json",
+      "result": "passed",
+      "checks_passed": 10,
+      "checks_total": 10,
+      "peak_overlapping_case_intervals": 2
+    },
+    {
+      "kind": "linux-batch-real-final.json",
+      "result": "passed",
+      "checks_passed": 10,
+      "checks_total": 10,
+      "peak_overlapping_case_intervals": 2
+    }
+  ],
+  "unit_checks": {
+    "batch_contract_api": 10,
+    "feature_history": 14,
+    "legacy_lab": 10,
+    "runner_protocol_graph": 10,
+    "linux_guard_and_batch_cleanup": 9
+  },
+  "limitations": [
+    "ASGI authentication double; no real UI/login or full API process-restart test",
+    "Single development host/checkout only; not distributed fencing or exactly-once execution",
+    "Missing/unknown container after start intent holds capacity for operator review",
+    "No subscription credits charged, no AI, no customer URLs, no cloud",
+    "Windows startup blocker remains unresolved"
+  ]
+}
