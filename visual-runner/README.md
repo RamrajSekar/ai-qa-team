@@ -278,3 +278,8 @@ tests and three synthetic-browser protocol tests using service doubles, and
 TypeScript checking. Run Windows API tests with `python -X utf8 -m unittest`.
 The successful real UI run is user-reported evidence. Hosted deployment and
 customer application execution have not been verified by this merge.
+
+Focused lint on nine changed UI files reports five existing explicit-any errors
+in AuthProvider and two warnings (unused catch variable and story effect hook
+dependencies). These remain open. The intercepted browser UI regression was not
+rerun at this merge checkpoint. TypeScript and the 30 backend checks passed.
