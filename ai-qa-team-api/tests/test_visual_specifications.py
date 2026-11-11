@@ -95,6 +95,36 @@ class VisualSpecificationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([step["action"] for step in result["steps"]], ["click", "assert_text"])
         self.assertEqual((await self.preview(version, application_role="qa")).status_code, 422)
 
+    async def test_immutable_run_admission_is_idempotent_scoped_and_never_launches(self):
+        self.db["approved_workflow_runs"] = Collection()
+        settings.features.approved_visual_run_admission = True
+        version = await self.specification([{"action": "click", "target": "Help"}, {"action": "assert_text", "expected": "Help center"}])
+        preview = (await self.preview(version)).json()
+        path = self.base + "/cases/TC1/" + version["version_id"] + "/runs"
+        payload = {"environment_id": "ENV1", "preview_digest": preview["manifest_digest"], "idempotency_key": "a" * 32}
+        response = await self.client.post(path, json=payload)
+        self.assertEqual(response.status_code, 201, response.text)
+        run = response.json()
+        self.assertFalse(run["execution_ready"])
+        self.assertEqual(run["state"], "prepared")
+        self.assertEqual(run["manifest"]["environment_revision"], 1)
+        self.assertEqual(run["manifest"]["approved_specification_version_id"], version["version_id"])
+        original = deepcopy(run["manifest"])
+        self.assertEqual((await self.client.post(path, json=payload)).json()["run_id"], run["run_id"])
+        self.assertEqual(len(self.db["approved_workflow_runs"].docs), 1)
+        bad = {**payload, "environment_id": "FOREIGN"}
+        self.assertEqual((await self.client.post(path, json=bad)).status_code, 409)
+        self.assertEqual((await self.client.get(f'/projects/P2/visual-specifications/runs/{run["run_id"]}')).status_code, 404)
+        self.db["environments"].docs[0]["revision"] = 2
+        # New admissions revalidate; the original immutable manifest remains inspectable.
+        stale = {**payload, "idempotency_key": "b" * 32}
+        self.assertEqual((await self.client.post(path, json=stale)).status_code, 409)
+        cancelled = await self.client.post(self.base + f'/runs/{run["run_id"]}/cancel')
+        self.assertEqual(cancelled.json()["state"], "cancelled")
+        self.assertEqual(cancelled.json()["manifest"], original)
+        settings.features.approved_visual_run_admission = False
+        self.assertEqual((await self.client.get(self.base + f'/runs/{run["run_id"]}')).status_code, 403)
+
     async def test_reusable_versions_compile_parameters_and_credential_references(self):
         workflow = await self.workflow([
             {"action": "type", "target": "Username", "value": {"source": "credential", "field": "username"}},

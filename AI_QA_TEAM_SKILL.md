@@ -9,6 +9,13 @@ Updated 2026-10-31. This repository guidance replaces the former brownfield-only
 
 ## Mission and scope
 
+Current development status and limits: see `docs/mvp/PRODUCT_KNOWLEDGE.md` and
+`docs/mvp/APPROVED_EXECUTION_DELIVERY.md`. Text/transcript knowledge review is not
+recording ingestion. Scenario intents describe coverage; detailed testcase drafts
+describe procedures/expectations. Prepared run manifests do not launch browsers.
+BrowserStack is accepted as the initial development adapter for the assigned
+seven-task execution work; VM/Sauce remain future adapters, not automatic fallbacks.
+
 Train an AI QA practitioner through uploaded narrated product demonstrations; validate its understanding; approve tests; execute them through computer vision and natural-language specifications; retain reviewed corrections. One or two days describes supervised onboarding effort, not guaranteed autonomy or model training.
 
 Customer path after project/access setup: Train product knowledge → review/clarify and approve knowledge → add story + acceptance criteria → generate/review/approve tests → execute → review evidence → approve corrections when needed. Account onboarding alone does not implement this path. Repository imports are optional.

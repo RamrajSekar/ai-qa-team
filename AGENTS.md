@@ -8,6 +8,8 @@ Updated 2026-10-31. Current target: a human-supervised, recording-trained visual
 - `docs/mvp/REPO_GAP_ANALYSIS.md`: implementation assessment, evidence and verification limits.
 - `docs/mvp/IMPLEMENTATION_PLAN.md`: milestones, migration and effort estimates.
 - `docs/mvp/DECISIONS.md`: accepted constraints, hypotheses and open decisions.
+- `docs/mvp/PRODUCT_KNOWLEDGE.md`: development knowledge review, story analysis and scenario/testcase distinction.
+- `docs/mvp/APPROVED_EXECUTION_DELIVERY.md`: seven-task execution status and merge gates.
 - `AI_QA_TEAM_SKILL.md`: architecture and safety guidance aligned to this target.
 - `CODEX_CONTEXT_PROMPT.md`: task workflow and handoff guidance.
 
@@ -34,6 +36,16 @@ New executor: Robot Framework core → custom Python visual library → direct H
 Screenshots/computer vision identify UI targets; approved natural-language tests compile into bounded structured specifications. Trusted code performs coordinate/key actions and validates checkpoints. Do not silently add DOM/selector targeting, arbitrary JavaScript, generated code or unrestricted Robot keywords. WebDriver is a protocol, not a Selenium client requirement. Robot core alone supplies neither browser control nor vision.
 
 ## Mandatory invariants
+
+Current development additions (2026-11-11): default-off `product_knowledge` and
+`story_analysis` support document/timestamped-transcript sources, reviewed immutable
+knowledge snapshots, blocker review and knowledge-linked scenario intents/detailed
+testcase drafts. This is not recording upload/transcription. Compiled specifications
+pin knowledge/analysis and can save non-executable immutable run admissions.
+General worker, credential-safe visual execution and real integration remain
+unfinished; never interpret a prepared admission as a queued/started run. BrowserStack
+is the accepted first development provider for the assigned execution work,
+superseding its earlier deferred listing; preserve a reusable adapter boundary.
 
 - MongoDB is durable truth; Redis is coordination/cache. Reuse existing services and feature configuration where appropriate.
 - Authorize every project reference, query, artifact and job. Platform roles do not bypass project membership. Application roles are distinct from project roles.

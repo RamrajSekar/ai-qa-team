@@ -13,6 +13,8 @@ class LLMRequest:
     max_tokens: int | None = None
     response_schema: dict[str, Any] | None = None
     response_schema_name: str | None = None
+    prompt_key: str | None = None
+    prompt_version: str | None = None
 
 
 @dataclass(frozen=True)

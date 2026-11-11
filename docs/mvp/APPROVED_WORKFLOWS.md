@@ -113,6 +113,11 @@ budgets are not qualified by this local slice.
 
 ## Remaining Step 3 and Step 4 work
 
+2026-11-11 update: specifications additionally pin reviewed knowledge/analysis when
+the knowledge flags are on, and may save a durable non-executable admission after
+preview. See PRODUCT_KNOWLEDGE.md and APPROVED_EXECUTION_DELIVERY.md for APIs, exact
+status and all seven execution gates. This does not complete the runtime work below.
+
 Implement and qualify a trusted runtime interpreter against an approved browser
 arrangement. It must locate targets visually, perform only allowed actions, verify
 checkpoints, evaluate assertions independently and stop safely on ambiguity.

@@ -65,6 +65,11 @@ class SpecificationPreviewSelection(Contract):
     application_role: VisibleText | None = None
 
 
+class SpecificationRunAdmission(SpecificationPreviewSelection):
+    idempotency_key: RequestKey
+    preview_digest: Digest
+
+
 class WorkflowReference(Contract):
     workflow_id: Identifier
     version_id: RequestKey
@@ -79,6 +84,9 @@ class CompiledSpecificationPreview(Contract):
     testcase_id: Identifier
     approved_specification_version_id: RequestKey
     specification_digest: Digest
+    knowledge_version_id: RequestKey | None = None
+    knowledge_content_digest: Digest | None = None
+    story_analysis_id: RequestKey | None = None
     source_digest: Digest
     workflow_versions: list[WorkflowReference]
     steps: list[VisualStep] = Field(min_length=1, max_length=40)

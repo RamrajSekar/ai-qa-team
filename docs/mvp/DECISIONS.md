@@ -183,3 +183,24 @@ subject to target/network authorization. The initial implementation is developme
 only authoring, immutable approvals, compilation and preview; browser runtime is
 not enabled. See APPROVED_WORKFLOWS.md. No browser-host or image-processing decision
 has been inferred from this scope amendment.
+
+### 2026-11-11 — knowledge-first design and execution delivery
+
+Accepted: approved product knowledge contextualizes story/acceptance-criteria-based
+design. Scenarios are coverage intents, not duplicate detailed cases. Testcases
+contain concrete procedures, explicit expectations/assertions, data and cleanup.
+Material analysis findings require reviewed resolutions; changed context requires
+renewed review. Requested generation counts may be capped or return fewer supported
+distinct results and must report actual counts honestly.
+
+Development choice: document text and timestamped transcript excerpts precede media
+ingestion; they must not be advertised as uploaded-recording training. Knowledge/design
+tasks extend the existing metered gateway. Multi-host approval/quota races, media
+ingestion, retention and real provider integration remain unqualified.
+
+BrowserStack is accepted as the first development execution provider behind a
+reusable adapter, superseding its earlier deferred status for the user's assigned
+execution tasks. Immutable general run admission remains non-executable until the
+isolated worker, network/evidence controls and real checks are complete. See
+PRODUCT_KNOWLEDGE.md and APPROVED_EXECUTION_DELIVERY.md. No production readiness,
+automatic provider fallback or merge approval from test doubles is implied.

@@ -23,6 +23,15 @@ export interface CatalogCase {
   description?: string;
   complexity?: string;
   status: string;
+  purpose?: string;
+  role?: string | null;
+  preconditions?: string[];
+  public_data?: Record<string, string>;
+  assertions?: string[];
+  cleanup?: string[];
+  knowledge_version_id?: string;
+  acceptance_criteria_refs?: string[];
+  rule_references?: string[];
   steps: { description?: string; action: string; expected?: string | null }[];
 }
 
@@ -114,6 +123,15 @@ export default function ProjectTestCatalog({ kind }: { kind: "scenarios" | "test
             <h2 className="font-semibold">{testcase.title}</h2>
             <p>{testcase.testcase_id} · {testcase.complexity || "Unspecified complexity"} · {testcase.status}</p>
             {testcase.description && <p>{testcase.description}</p>}
+            {testcase.knowledge_version_id && <details><summary>Purpose, data and approved context</summary>
+              <p>Purpose: {testcase.purpose}</p><p>Role: {testcase.role || "Not specified"}</p>
+              <p>Preconditions: {testcase.preconditions?.join("; ")}</p>
+              <p>Public data: {Object.entries(testcase.public_data || {}).map(([key, value]) => `${key}: ${value}`).join("; ")}</p>
+              <p>Required assertions: {testcase.assertions?.join("; ")}</p><p>Cleanup: {testcase.cleanup?.join("; ") || "None specified"}</p>
+              <p>Acceptance criteria: {testcase.acceptance_criteria_refs?.join("; ")}</p>
+              <p>Rules: {testcase.rule_references?.join(", ") || "Reviewer-authored acceptance criteria"}</p>
+              <p>Knowledge version: {testcase.knowledge_version_id}</p>
+            </details>}
             {enabled("reusable_workflows") && <VisualSpecificationPanel key={`${testcase.testcase_id}:${testcase.updated_at || ""}`} projectId={projectId} testcaseId={testcase.testcase_id} canApprove={canApprove} />}
             <details><summary className="cursor-pointer">Steps and expected results</summary>
               <ol className="list-decimal pl-6 space-y-2 mt-3">

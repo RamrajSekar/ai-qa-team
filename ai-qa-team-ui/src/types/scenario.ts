@@ -23,4 +23,14 @@ export interface Scenario {
   generated_by_agent?: string;
   complexity?: string;
   approved?: boolean;
+  spec_kind?: string;
+  purpose?: string;
+  role?: string | null;
+  coverage_type?: "happy_path" | "negative" | "boundary" | "exception";
+  preconditions?: string[];
+  expected_outcome?: string;
+  acceptance_criteria_refs?: string[];
+  rule_references?: string[];
+  knowledge_version_id?: string;
+  story_analysis_id?: string;
 }

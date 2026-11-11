@@ -86,6 +86,18 @@ class TestCaseResponse(BaseModel):
     scenario_id: Optional[str]
     project_id: Optional[str]
 
+    spec_kind: Optional[str] = None
+    purpose: Optional[str] = None
+    role: Optional[str] = None
+    preconditions: List[str] = Field(default_factory=list)
+    public_data: Dict[str, str] = Field(default_factory=dict)
+    assertions: List[str] = Field(default_factory=list)
+    cleanup: List[str] = Field(default_factory=list)
+    acceptance_criteria_refs: List[str] = Field(default_factory=list)
+    rule_references: List[str] = Field(default_factory=list)
+    knowledge_version_id: Optional[str] = None
+    story_analysis_id: Optional[str] = None
+
     title: str
     description: Optional[str]
     complexity: Optional[str] = None

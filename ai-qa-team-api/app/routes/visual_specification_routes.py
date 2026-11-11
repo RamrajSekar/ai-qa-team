@@ -7,6 +7,8 @@ from app.db.connection import db
 from app.models.visual_specification import WorkflowDraft, SpecificationDraft, SpecificationPreviewSelection, CompiledSpecificationPreview
 from app.routes.approved_visual_runs import require_development, actor_id
 from app.services.visual_specifications import VisualSpecifications
+from app.services.approved_workflow_runs import ApprovedWorkflowRuns
+from app.models.visual_specification import SpecificationRunAdmission
 from app.utils.auth_dependency import get_current_user
 from app.utils.feature_flags import feature_required
 from app.utils.project_authorization import require_project_member, require_project_admin
@@ -64,3 +66,24 @@ async def preview_specification(project_id: str, testcase_id: CaseId, version_id
                                 payload: SpecificationPreviewSelection, user=Depends(get_current_user)):
     await require_project_member(project_id, user)
     return await service().preview(project_id, testcase_id, version_id, payload)
+
+
+@router.post("/cases/{testcase_id}/{version_id}/runs", status_code=201,
+             dependencies=[Depends(feature_required("approved_visual_run_admission"))])
+async def admit_workflow_run(project_id: str, testcase_id: CaseId, version_id: VersionId,
+                             payload: SpecificationRunAdmission, user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await ApprovedWorkflowRuns(db, settings.jwt_secret_key.encode()).admit(
+        project_id, testcase_id, version_id, actor_id(user), payload)
+
+
+@router.get("/runs/{run_id}", dependencies=[Depends(feature_required("approved_visual_run_admission"))])
+async def workflow_run_status(project_id: str, run_id: Annotated[str, Path(pattern=r"^[0-9a-f]{64}$")], user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await ApprovedWorkflowRuns(db, settings.jwt_secret_key.encode()).status(project_id, run_id)
+
+
+@router.post("/runs/{run_id}/cancel", dependencies=[Depends(feature_required("approved_visual_run_admission"))])
+async def cancel_workflow_run(project_id: str, run_id: Annotated[str, Path(pattern=r"^[0-9a-f]{64}$")], user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await ApprovedWorkflowRuns(db, settings.jwt_secret_key.encode()).cancel(project_id, run_id)

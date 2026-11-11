@@ -16,6 +16,7 @@ import RecordingViewer from "@/components/recorder/RecordingViewer";
 import RecorderOverlay from "@/components/recorder/RecorderOverlay";
 
 import type { Scenario } from "@/types/scenario";
+import StoryAnalysisPanel from "@/components/knowledge/StoryAnalysisPanel";
 import ScenarioTable from "@/components/scenarios/ScenarioTable";
 import ScenarioModal from "@/components/scenarios/ScenarioModal";
 import ScenarioViewer from "@/components/scenarios/ScenarioViewer";
@@ -40,6 +41,8 @@ export default function StoryDetailsPage() {
   const [scenarioModalOpen, setScenarioModalOpen] = useState(false);
   const [editingScenario, setEditingScenario] = useState<Scenario | undefined>();
   const [viewScenario, setViewScenario] = useState<Scenario | null>(null);
+  const [scenarioCount, setScenarioCount] = useState(3);
+  const [generationMessage, setGenerationMessage] = useState("");
   const [generating, setGenerating] = useState(false);
   const [scenarioError, setScenarioError] = useState("");
 
@@ -91,7 +94,7 @@ export default function StoryDetailsPage() {
     setGenerating(true);
     setScenarioError("");
     try {
-      const response = await apiFetch(`/scenarios/generate-from-story?story_id=${encodeURIComponent(storyId)}&count=1&complexity=basic`, {
+      const response = await apiFetch(`/scenarios/generate-from-story?story_id=${encodeURIComponent(storyId)}&count=${scenarioCount}&complexity=basic`, {
         method: "POST",
       });
       if (!response.ok) {
@@ -102,6 +105,7 @@ export default function StoryDetailsPage() {
         throw new Error(typeof detail === "string" ? detail : detail?.message || "Could not generate a scenario.");
       }
       if (!response.data?.scenarios?.length) throw new Error(response.data?.summary?.message || "No scenarios were generated.");
+      setGenerationMessage(response.data?.summary?.message || `${response.data.scenarios.length} scenarios generated.`);
       await loadScenarios();
     } catch (failure) {
       setScenarioError(failure instanceof Error ? failure.message : "Could not generate a scenario.");
@@ -177,14 +181,17 @@ export default function StoryDetailsPage() {
         </div>
       </div>
 
+      <FeatureGate names={["product_knowledge", "story_analysis"]}><StoryAnalysisPanel projectId={projectId} storyId={storyId} /></FeatureGate>
+
       {/* SCENARIOS SECTION */}
       <FeatureGate names={["scenario_generation"]}><div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-xl font-semibold">Scenarios</h2>
           <div className="flex flex-wrap gap-2">
+          <label>Requested scenarios <input aria-label="Requested scenarios" type="number" min={1} max={20} value={scenarioCount} onChange={event => setScenarioCount(Math.max(1, Math.min(20, Number(event.target.value) || 1)))} /></label>
           <button type="button" className="workspace-button" disabled={generating || !story.acceptance_criteria?.trim()}
             onClick={() => void generateScenario()}>
-            {generating ? "Generating scenario…" : "Generate scenario with AI"}
+            {generating ? "Generating scenarios…" : "Generate scenarios with AI"}
           </button>
           <button
             onClick={() => {
@@ -197,8 +204,9 @@ export default function StoryDetailsPage() {
           </button>
           </div>
         </div>
-        <p className="text-sm">Open a scenario to review its steps, approve it, and generate a test case.</p>
+        <p className="text-sm">Scenarios describe coverage intent (what to verify). Test cases contain detailed procedures and explicit expected results (how to verify). Requested counts are bounded by plan limits and supported coverage; generation can return fewer distinct scenarios.</p>
         {!story.acceptance_criteria?.trim() && <p className="text-sm">Add story acceptance criteria to generate a scenario with AI.</p>}
+        {generationMessage && <p role="status">{generationMessage}</p>}
         {scenarioError && <p role="alert" className="text-sm text-red-700">{scenarioError}</p>}
 
         <ScenarioTable

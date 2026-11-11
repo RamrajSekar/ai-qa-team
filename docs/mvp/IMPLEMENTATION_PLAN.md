@@ -378,3 +378,25 @@ flagged authoring, approval, compilation/preview and dependency-review implement
 General browser execution remains pending interpreter, hosting/vision permissions,
 target/network enforcement and real-service qualification. Step 3 is therefore
 partially implemented; authoring approval is not execution readiness.
+
+## Knowledge-first implementation and execution sequence, 2026-11-11
+
+The [knowledge slice](PRODUCT_KNOWLEDGE.md) implements default-off text/transcript
+source review, immutable snapshots, story ambiguity/gap/conflict review, metered
+context-aware design and requested/allowed/actual counts. Scenarios now represent
+coverage intent; detailed testcase procedures/assertions follow approved intent.
+Retain legacy records and flag-off behavior. No recording pipeline is delivered.
+
+The user's seven next execution tasks, exact acceptance gates and unfinished work
+are tracked in [approved execution delivery](APPROVED_EXECUTION_DELIVERY.md).
+Durable compiled admission is implemented as non-executable preparation; the
+recommended next code task is a separately supervised Robot/direct-WebDriver worker
+with manifest revalidation and fail-closed network/evidence policies. BrowserStack
+is the first accepted development provider behind reusable interfaces. Do not
+reinterpret existing synthetic jobs or attach to legacy consumers.
+
+Real verification needs a dedicated authorized development project/environment and
+provider screenshot permission. Do not merge on unit tests or service pings alone.
+After all seven gates pass, create `dev` → `main` PR and perform authorized merge
+without bypassing required independent review. Current work has not been committed,
+pushed or merged. Existing Windows/five-way reliability issues remain open.
