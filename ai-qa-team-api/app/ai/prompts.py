@@ -1,21 +1,36 @@
-generate_testcase_prompt = """
-You are an AI TestCase Generator.
+import json
 
-Generate Playwright-style test steps in JSON.
+def generate_testcase_prompt(scenario):
+    return f"""
+You are an automation test generator. Convert the scenario into a structured test case.
 
-Supported actions:
-- navigate
-- click
-- fill
-- assert
-- wait
+STRICT RULES:
+- OUTPUT JSON ONLY.
+- DO NOT write code.
+- Steps must be executable by a Playwright StepEngine:
+  * action must be one of: navigate | click | type | fill | assert_text | wait | noop
+  * locator must be a valid CSS/XPath selector OR null for navigation/assert_text
+  * value may be static text OR a dataset variable like {{username}}
+- Each step must include:
+  step_id, description, action, locator, value
 
-Rules:
-- Return JSON ONLY.
-- No commentary.
-- Use clear titles.
-- Ensure each step contains only allowed actions.
+Here is the scenario:
 
-Scenario Context:
-{scenario_text}
+{json.dumps(scenario, indent=2)}
+
+Return JSON in this format:
+
+{{
+  "title": "<string>",
+  "description": "<string>",
+  "steps": [
+    {{
+      "step_id": "STEP001",
+      "description": "<Natural Language>",
+      "action": "<action>",
+      "locator": "<selector or null>",
+      "value": "<value or null>"
+    }}
+  ]
+}}
 """

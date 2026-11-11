@@ -1,20 +1,18 @@
-from app.services.ai.provider_factory import get_ai_provider
+from app.services.ai.llm_gateway import LLMGateway
 from app.db.connection import db
 from bson.objectid import ObjectId
 from fastapi import HTTPException
 import json
 import re
 from typing import List, Any
+from app.services.ai.base_provider import LLMRequest
 
-async def generate_scenarios_from_prompt(prompt: str) -> List[dict]:
+async def generate_scenarios_from_prompt(project_id: str, prompt: str) -> List[dict]:
     """
     Call the configured AI provider with the given prompt and parse the
     returned JSON list of scenarios.
     """
-    provider = get_ai_provider()
-    raw = await provider.generate(prompt)
-
-    print('🔥 RAW AI OUTPUT 🔥', raw)
+    raw = (await LLMGateway().generate(project_id, LLMRequest(prompt=prompt))).text
 
     # Extract JSON array from the response using a naive regex
     match = re.search(r'\[.*\]', raw, re.DOTALL)

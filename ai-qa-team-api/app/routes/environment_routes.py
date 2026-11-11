@@ -1,28 +1,29 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Optional
+
 from app.utils.auth_dependency import get_current_user
-from app.db.connection import db
 from app.models.environment_model import (
     ProjectEnvironment,
-    ProjectEnvironmentResponse
+    ProjectEnvironmentResponse,
 )
 from app.services.project_environment_service import (
     create_environment,
     list_environments,
     get_environment,
     update_environment,
-    delete_environment
+    delete_environment,
 )
-from typing import Optional
-
 
 router = APIRouter(prefix="/environments", tags=["Environments"])
 
-
+# -------------------------------------------------------
+# CREATE ENVIRONMENT
+# -------------------------------------------------------
 @router.post(
-    "/",
+    "",
     response_model=ProjectEnvironmentResponse,
     summary="Create Environment",
-    description="Create a new environment tied to a project."
+    description="Create a new environment for a project",
 )
 async def create_env(
     env: ProjectEnvironment,
@@ -30,12 +31,18 @@ async def create_env(
 ):
     return await create_environment(env, current_user)
 
-
+# -------------------------------------------------------
+# LIST ENVIRONMENTS
+# -------------------------------------------------------
+@router.get(
+    "",
+    response_model=list[ProjectEnvironmentResponse],
+    summary="List Environments",
+)
 @router.get(
     "/",
     response_model=list[ProjectEnvironmentResponse],
     summary="List Environments",
-    description="List all environments for the logged-in user."
 )
 async def get_envs(
     project_id: Optional[str] = Query(None),
@@ -43,11 +50,13 @@ async def get_envs(
 ):
     return await list_environments(project_id, current_user)
 
-
+# -------------------------------------------------------
+# GET SINGLE ENVIRONMENT
+# -------------------------------------------------------
 @router.get(
     "/{env_id}",
     response_model=ProjectEnvironmentResponse,
-    summary="Get Environment by ID"
+    summary="Get Environment by ID",
 )
 async def get_env(
     env_id: str,
@@ -55,23 +64,27 @@ async def get_env(
 ):
     return await get_environment(env_id, current_user)
 
-
-@router.put(
+# -------------------------------------------------------
+# UPDATE ENVIRONMENT
+# -------------------------------------------------------
+@router.patch(
     "/{env_id}",
     response_model=ProjectEnvironmentResponse,
-    summary="Update Environment"
+    summary="Update Environment",
 )
-async def update_env(
+async def patch_env(
     env_id: str,
     env: ProjectEnvironment,
     current_user=Depends(get_current_user)
 ):
     return await update_environment(env_id, env, current_user)
 
-
+# -------------------------------------------------------
+# DELETE ENVIRONMENT
+# -------------------------------------------------------
 @router.delete(
     "/{env_id}",
-    summary="Delete Environment"
+    summary="Delete Environment",
 )
 async def delete_env(
     env_id: str,

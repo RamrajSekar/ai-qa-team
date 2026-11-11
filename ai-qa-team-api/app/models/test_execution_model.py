@@ -24,10 +24,8 @@ class TestExecution(BaseModel):
     testcase_id: str
 
     status: Literal["queued", "running", "passed", "failed", "error"] = "queued"
+    complexity: Optional[str] = None  # basic | medium | advanced | None (legacy)
 
-    # --------------------------------------------------------
-    # NEW ENVIRONMENT STRUCTURE
-    # --------------------------------------------------------
     env_type: str                                 # "qa", "dev", "staging", ...
     env_id: Optional[str] = None                  # ENV001
     role: Optional[str] = None                    # selected role
@@ -78,7 +76,7 @@ class TestExecutionResponse(BaseModel):
     story_id: Optional[str] = None
     scenario_id: Optional[str] = None
     testcase_id: str
-
+    complexity: Optional[str] = None
     status: str
 
     # Environment info

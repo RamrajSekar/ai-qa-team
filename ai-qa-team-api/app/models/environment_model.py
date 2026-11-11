@@ -11,8 +11,8 @@ class EnvironmentCredentials(BaseModel):
 
 class ProjectEnvironment(BaseModel):
     project_id: str                # NEW — project this environment belongs to
-    env_id: str                    # ENV001
-    env_type: Literal["local", "dev", "qa", "staging", "prod"] = "qa"
+    env_id: Optional[str] = None                    # ENV001
+    env_type: str = "qa"
 
     base_url: str
     api_base_url: Optional[str] = None

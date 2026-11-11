@@ -54,7 +54,7 @@ async def get_subscription(user_identifier: str):
         "scenarios_used": 0,
         "executions_used": 0,
         "team_members_used": 0,
-        "ai_gen_used": 0,   # NEW FIELD
+        "ai_gen_used": 0,
     }
 
     if "usage" not in sub or not isinstance(sub["usage"], dict):
@@ -98,7 +98,8 @@ async def increment_usage(user_identifier: str, field: str):
     and log the result.
     """
     query = build_user_query(user_identifier)
-    valid_fields = ["projects_used","stories_used", "scenarios_used", "executions_used", "team_members_used", "ai_gen_used"]
+    valid_fields = ["projects_used", "stories_used", "scenarios_used", "testcases_used",
+                    "executions_used", "team_members_used", "ai_gen_used"]
     if field not in valid_fields:
         logger.warning(f"Invalid usage field '{field}' for {user_identifier}")
         return
@@ -113,3 +114,16 @@ async def increment_usage(user_identifier: str, field: str):
         logger.info(f"Incremented {field} for {user_identifier}")
     else:
         logger.warning(f"Failed to increment {field} for {user_identifier}")
+
+
+async def decrement_usage(user_email: str, field: str):
+    await db["users"].update_one(
+        {"email": user_email},
+        {"$inc": {f"subscription.usage.{field}": -1}}
+    )
+
+    # Ensure it does not go negative
+    await db["users"].update_one(
+        {"email": user_email, f"subscription.usage.{field}": {"$lt": 0}},
+        {"$set": {f"subscription.usage.{field}": 0}}
+    )

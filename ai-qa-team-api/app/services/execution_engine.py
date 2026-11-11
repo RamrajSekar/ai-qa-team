@@ -15,6 +15,7 @@ from app.models.test_execution_model import (
 from app.services.subscription_services import get_subscription, increment_usage
 from app.services.story_service import get_next_sequence
 from app.utils.redis_client import redis_client
+from app.utils.feature_flags import require_features
 
 logger = logging.getLogger(__name__)
 
@@ -56,12 +57,14 @@ async def create_execution_record(
 
     story_id: Optional[str] = None,
     scenario_id: Optional[str] = None,
+    complexity: Optional[str] = None,
 ) -> TestExecutionResponse:
     """
     Create a TestExecution document with status='queued' and store in Mongo.
     Does NOT execute the test.
     """
 
+    require_features("native_execution")
     execution_id = await get_next_sequence('execution_id', 'EX')
 
     # Normalize dataset
@@ -112,7 +115,7 @@ async def create_execution_record(
         started_at=None,
         completed_at=None,
         duration_ms=None,
-
+        complexity=complexity,
         triggered_by=triggered_by,
         runner_type=runner_type,
         step_results=[],
@@ -136,6 +139,7 @@ async def create_execution_record(
         'env_id': execution.env_id,
         'role': execution.role,
         'environment_doc': execution.environment_doc,
+        'complexity': execution.complexity,
         'credentials': execution.credentials,
         'base_url': execution.base_url,
         'api_base_url': execution.api_base_url,
@@ -177,6 +181,7 @@ async def queue_test_execution(
     browser: Optional[str],
     headed: bool,
     dataset: Optional[dict | str],
+    complexity: Optional[str]='basic',
     runner_type: Literal['playwright-local', 'playwright-cloud', 'manual'] = 'playwright-local',
 ) -> TestExecutionResponse:
     """
@@ -185,6 +190,8 @@ async def queue_test_execution(
       2) Creates a TestExecution record
       3) Pushes a job into Redis for the worker
     """
+
+    require_features("native_execution")
 
     # Subscription check
     sub = await get_subscription(user_identifier)
@@ -196,6 +203,15 @@ async def queue_test_execution(
 
     if limit is not None and used >= limit:
         raise ValueError(f'Execution limit reached ({used}/{limit})')
+
+      # ------------------------------------------
+    # Load testcase to get complexity
+    # ------------------------------------------
+    testcase = await db["testcases"].find_one({"testcase_id": testcase_id})
+    if not testcase:
+        raise ValueError(f"Testcase {testcase_id} not found")
+
+    testcase_complexity = testcase.get("complexity", complexity)
 
     # Create execution record
     execution_response = await create_execution_record(
@@ -212,6 +228,7 @@ async def queue_test_execution(
         headed=headed,
         dataset=dataset,
         runner_type=runner_type,
+        complexity=testcase_complexity,
     )
 
     # Prepare JSON-safe payload for worker
@@ -280,26 +297,28 @@ async def list_executions_for_user(
     user_email: str,
     skip: int = 0,
     limit: int = 20,
+    complexity: Optional[str] = None,
 ) -> List[TestExecutionResponse]:
     """
-    List executions triggered by the user.
+    List executions triggered by this user (for dashboard),
+    optionally filtered by testcase complexity.
     """
+    query: Dict[str, Any] = {"triggered_by": user_email}
+    if complexity:
+        query["complexity"] = complexity
+
     cursor = (
         db['executions']
-        .find({'triggered_by': user_email})
+        .find(query)
         .sort('started_at', -1)
         .skip(skip)
         .limit(limit)
     )
 
     results: List[TestExecutionResponse] = []
-
     async for doc in cursor:
         doc['id'] = str(doc['_id'])
         doc.pop('_id', None)
-
-        # Backward compatibility: ignore any old `environment` field
-
         results.append(TestExecutionResponse(**doc))
 
     return results

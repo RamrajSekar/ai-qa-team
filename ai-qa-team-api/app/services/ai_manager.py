@@ -1,8 +1,13 @@
-class AIManager:
-    def __init__(self, provider="openai"):
-        self.provider = provider
+from app.services.ai.base_provider import LLMRequest
+from app.services.ai.llm_gateway import LLMGateway
 
-    async def generate_scenarios(self, story_text: str):
-        # Placeholder for OpenAI integration
-        return [f"Generated test scenario for: {story_text}"]
-# To be deleted
+
+class AIManager:
+    """Compatibility facade; new AI features should inject LLMGateway directly."""
+
+    def __init__(self, project_id: str, gateway: LLMGateway | None = None):
+        self.project_id = project_id
+        self.gateway = gateway or LLMGateway()
+
+    async def generate(self, prompt: str) -> str:
+        return (await self.gateway.generate(self.project_id, LLMRequest(prompt=prompt))).text

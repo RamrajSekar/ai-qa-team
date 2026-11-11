@@ -1,0 +1,98 @@
+{
+  "$defs": {
+    "FixtureCase": {
+      "additionalProperties": false,
+      "properties": {
+        "case_run_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "title": "Case Run Id",
+          "type": "string"
+        },
+        "specification": {
+          "const": "synthetic-form-v1",
+          "default": "synthetic-form-v1",
+          "title": "Specification",
+          "type": "string"
+        },
+        "authorization": {
+          "const": "server-owned-fixture",
+          "default": "server-owned-fixture",
+          "title": "Authorization",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_run_id",
+        "specification",
+        "authorization"
+      ],
+      "title": "FixtureCase",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "batch_id": {
+      "pattern": "^[0-9a-f]{32}$",
+      "title": "Batch Id",
+      "type": "string"
+    },
+    "adapter": {
+      "const": "robot-direct-webdriver-batch-v1",
+      "default": "robot-direct-webdriver-batch-v1",
+      "title": "Adapter",
+      "type": "string"
+    },
+    "mode": {
+      "const": "mechanical-smoke",
+      "default": "mechanical-smoke",
+      "title": "Mode",
+      "type": "string"
+    },
+    "environment": {
+      "const": "controlled-synthetic-v1",
+      "default": "controlled-synthetic-v1",
+      "title": "Environment",
+      "type": "string"
+    },
+    "cases": {
+      "items": {
+        "$ref": "#/$defs/FixtureCase"
+      },
+      "maxItems": 10,
+      "minItems": 1,
+      "title": "Cases",
+      "type": "array"
+    },
+    "case_timeout_seconds": {
+      "const": 90,
+      "default": 90,
+      "title": "Case Timeout Seconds",
+      "type": "integer"
+    },
+    "batch_timeout_seconds": {
+      "maximum": 1100,
+      "minimum": 110,
+      "title": "Batch Timeout Seconds",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "batch_id",
+    "adapter",
+    "mode",
+    "environment",
+    "cases",
+    "case_timeout_seconds",
+    "batch_timeout_seconds"
+  ],
+  "title": "BatchManifest",
+  "type": "object"
+}

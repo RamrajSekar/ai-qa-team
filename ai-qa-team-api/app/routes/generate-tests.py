@@ -4,8 +4,12 @@ from app.utils.auth_dependency import get_current_user
 from app.utils.subscription_dependency import subscription_required
 from bson.objectid import ObjectId
 from app.services.story_service import get_next_sequence
+from app.utils.feature_flags import feature_required
 
-router = APIRouter(prefix="/generate-tests", tags=["Test Generator"])
+router = APIRouter(
+    prefix="/generate-tests", tags=["Test Generator"],
+    dependencies=[Depends(feature_required("test_generation"))],
+)
 
 
 # Purpose (Post-MVP only):

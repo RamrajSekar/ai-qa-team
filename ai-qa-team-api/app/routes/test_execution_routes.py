@@ -12,6 +12,8 @@ from app.services.execution_engine import (
 )
 from app.utils.auth_dependency import get_current_user
 from app.utils.subscription_dependency import subscription_required
+from app.config import settings
+from app.utils.feature_flags import feature_required
 
 router = APIRouter(prefix="/execute", tags=["Test Execution"])
 
@@ -21,6 +23,8 @@ router = APIRouter(prefix="/execute", tags=["Test Execution"])
 # ----------------------------------------------------------
 @router.post(
     "/testcase/{testcase_id}",
+    dependencies=[Depends(feature_required("native_execution"))],
+    include_in_schema=settings.features.native_execution,
     response_model=TestExecutionResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
@@ -118,6 +122,8 @@ async def execute_single_testcase(
 # ----------------------------------------------------------
 @router.post(
     "/batch",
+    dependencies=[Depends(feature_required("native_execution"))],
+    include_in_schema=settings.features.native_execution,
     response_model=List[TestExecutionResponse],
     status_code=status.HTTP_202_ACCEPTED,
 )
@@ -233,14 +239,21 @@ async def get_execution(
 # ----------------------------------------------------------
 # 4️⃣ List executions (dashboard)
 # ----------------------------------------------------------
+@router.get("", response_model=List[TestExecutionResponse], include_in_schema=False)
 @router.get("/", response_model=List[TestExecutionResponse])
 async def list_my_executions(
     skip: int = 0,
     limit: int = 20,
+    complexity: Optional[str] = Query(
+        None,
+        description="Filter by testcase complexity: basic | medium | advanced",
+    ),
     current_user=Depends(get_current_user),
 ):
+    user_email = current_user.get("email")
     return await list_executions_for_user(
-        user_email=current_user.get("email"),
+        user_email=user_email,
         skip=skip,
         limit=limit,
+        complexity=complexity,
     )

@@ -170,5 +170,16 @@ async def run_full_cleanup():
     print("\n✨ ALL CLEANUP COMPLETED SUCCESSFULLY ✨\n")
 
 
+async def add_approval_flag():
+    cursor = db["scenarios"].find({})
+    async for doc in cursor:
+        if "approved" not in doc:
+            await db["scenarios"].update_one(
+                {"_id": doc["_id"]},
+                {"$set": {"approved": False}}
+            )
+
+    print("✅ Backfill completed: added approved=False to all scenarios without the field.")
+
 if __name__ == "__main__":
-    asyncio.run(run_full_cleanup())
+    asyncio.run(add_approval_flag())

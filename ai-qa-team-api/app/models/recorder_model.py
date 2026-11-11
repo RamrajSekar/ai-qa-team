@@ -8,6 +8,7 @@ class RecordedStep(BaseModel):
     One recorded UI step from the front-end recorder.
     This is intentionally generic and future-proof.
     """
+    recording_id: Optional[str] = None
     order: int = Field(..., description="1-based order of the step in the recording")
     action: str = Field(..., description="Human readable action, e.g. 'Click Login button'")
     selector: Optional[str] = Field(
@@ -33,10 +34,12 @@ class RecordingCreate(BaseModel):
     Payload from the frontend when user clicks `Save Recording`
     for a given Story.
     """
+    recording_id: Optional[str] = None
     story_id: str
     project_id: Optional[str] = None  # can be auto-derived from story on backend
     steps: List[RecordedStep]
     notes: Optional[str] = None
+    status: str = Field("completed", description="completed | draft | processing")
     agent_name: Optional[str] = Field(
         None,
         description="User-facing name of the Recorder Agent (per-project)",
@@ -58,8 +61,12 @@ class RecordingResponse(BaseModel):
     steps: List[RecordedStep]
     notes: Optional[str] = None
     agent_name: Optional[str] = None
+    is_editable: bool = True
+    status: str
     created_by: str
     created_at: str
+    updated_at: str
+    updated_by: str
 
     class Config:
         populate_by_name = True
