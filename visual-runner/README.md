@@ -258,3 +258,73 @@ manually dispatched workflow to exist on the default branch. Configure the
 three named credentials as Actions secrets before dispatching the visual
 experiment. The regular BrowserStack form probe does not use the OpenAI secret.
 The guard tests use doubles and make no model or BrowserStack calls.
+
+## UI integration merge checkpoint, 2026-11-10
+
+The user reports a successful approved synthetic run from the local project UI
+through BrowserStack. The saved environment URL is not navigated by this adapter.
+Use `Save draft` as the visible button and `Draft saved` as the positive expectation.
+A different expected result exercises contradiction reporting. Customer staging
+execution remains gated.
+
+The integration restores story/scenario/test generation navigation and fixes
+collection route redirects through the UI proxy. It shares project loading,
+uses lightweight login profile loading and hides bug reproduction behind the
+new default-off `bug_reproduction_ui` flag.
+
+The isolated merge candidate passed 19 feature/API tests, eight approved-run
+tests and three synthetic-browser protocol tests using service doubles, and
+TypeScript checking. Run Windows API tests with `python -X utf8 -m unittest`.
+The successful real UI run is user-reported evidence. Hosted deployment and
+customer application execution have not been verified by this merge.
+
+Focused lint on nine changed UI files reports five existing explicit-any errors
+in AuthProvider and two warnings (unused catch variable and story effect hook
+dependencies). These remain open. The intercepted browser UI regression was not
+rerun at this merge checkpoint. TypeScript and the 30 backend checks passed.
+
+## Project catalogs and workspace settings, 2026-11-10
+
+Project Scenarios and Test Cases now have paginated, membership-authorized lists,
+owner edit/delete controls and creation controls. Scenarios support manual creation
+and AI generation from a source story. Test cases support manual basic drafts and
+existing deterministic generation from approved scenarios. Edits require renewed
+review; immutable approved visual snapshots remain in history. Deletion rejects
+dependent tests, approvals and execution history. Parallel mutation versus approval
+and distributed quota enforcement were not qualified by these local checks.
+
+AI Configuration is in Workspace navigation with a project selector for administrators.
+Credentials remain scoped to projects; existing project settings URLs remain valid.
+Managed uses backend OPENAI_API_KEY. An inherited environment variable overrides
+.env, and API restart is needed after changing credentials. OpenAI project keys are
+retained after Test Connection until Save & Activate. The Managed label and error
+explain the credential source.
+
+Configure the backend using these boolean flags, then restart it and refresh the UI.
+
+```dotenv
+FEATURES__STORY_MANAGEMENT=true
+FEATURES__SCENARIO_GENERATION=true
+FEATURES__TEST_GENERATION=true
+FEATURES__REPOSITORY_UI=false
+```
+
+The repository UI flag hides navigation and guards direct UI access. Existing
+repository APIs/data retain their existing controls. .env remains private and is
+not included in Git. The landing page now describes the recording/knowledge,
+story/test-review and visual-evidence product direction with development labels.
+
+Verification for this change uses mocked backend services, TypeScript, focused lint
+and diff checks. Real-login UI/Mongo mutation flows, real AI generation, hosted
+deployment and concurrent mutation safety are not verified by these checks.
+
+Merge-candidate verification passed 22 feature/catalog tests and 12 provider tests
+with doubles, TypeScript, lint on all changed UI TypeScript files and staged diff
+checks. No real provider credentials were used for these regression runs.
+
+## Secure staging preparation
+
+[Staging login preparation](../docs/mvp/STAGING_LOGIN_PREPARATION.md) records the
+encrypted environment credential and immutable input-binding implementation,
+configuration, routes, Windows verification commands and remaining login gates.
+Steps 1 and 2 prepare data only; the synthetic executor still opens its fixed sample.
