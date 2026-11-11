@@ -152,6 +152,7 @@ class AIUsageService:
             "billing_owner": billing_owner, "operation_type": policy.operation.value, "ai_mode": context.mode,
             "provider_id": context.provider_id, "model": context.model, "credits_reserved": policy.credit_cost,
             "credits_consumed": 0, "input_units": len(request.prompt), "input_unit_type": "CHARACTERS",
+            "prompt_key": request.prompt_key, "prompt_version": request.prompt_version,
             "input_tokens": None, "output_tokens": None, "total_tokens": None, "status": "STARTED",
             "started_at": started_at, "completed_at": None, "billing_period_start": reservation["period_start"],
             "billing_period_end": reservation["period_end"], "estimated_managed_cost": None,

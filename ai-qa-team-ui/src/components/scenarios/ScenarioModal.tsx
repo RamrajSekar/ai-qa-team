@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 import { X } from "lucide-react";
 import { apiFetch } from "@/utils/api";
 import type { Scenario, StepModel } from "@/types/scenario";
@@ -22,6 +23,13 @@ export default function ScenarioModal({
   projectId,
   scenario,
 }: ScenarioModalProps) {
+  const { enabled } = useFeatures();
+  const intentMode = scenario ? scenario.spec_kind === "coverage-intent-v1" : enabled("product_knowledge");
+  const [purpose, setPurpose] = useState(scenario?.purpose || "");
+  const [expected, setExpected] = useState(scenario?.expected_outcome || "");
+  const [role, setRole] = useState(scenario?.role || "");
+  const [coverage, setCoverage] = useState(scenario?.coverage_type || "happy_path");
+  const [preconditions, setPreconditions] = useState((scenario?.preconditions || []).join("\n"));
   const isEdit = !!scenario;
 
   const [title, setTitle] = useState(scenario?.title ?? "");
@@ -43,7 +51,8 @@ export default function ScenarioModal({
       story_id: storyId,
       title,
       description,
-      steps: steps.map(step => ({ ...step, action: step.action.trim(), expected: step.expected?.trim() || null })),
+      ...(intentMode ? { purpose: purpose || title, expected_outcome: expected, role: role || null, coverage_type: coverage, preconditions: preconditions.split("\n").filter(Boolean), ...(scenario ? { acceptance_criteria_refs: scenario.acceptance_criteria_refs, rule_references: scenario.rule_references } : {}) } : {}),
+      steps: intentMode ? [] : steps.map(step => ({ ...step, action: step.action.trim(), expected: step.expected?.trim() || null })),
     };
 
     const url = isEdit
@@ -64,7 +73,7 @@ export default function ScenarioModal({
     }
   }
 
-  const canSave = title.trim() && steps.every(step => step.action.trim());
+  const canSave = title.trim() && (intentMode ? expected.trim() : steps.every(step => step.action.trim()));
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
@@ -108,7 +117,14 @@ export default function ScenarioModal({
             />
           </div>
 
-          <fieldset disabled={saving} className="space-y-2">
+          {intentMode ? <fieldset disabled={saving} className="space-y-2"><legend>Coverage intent — what to verify</legend>
+            <label className="block">Purpose<input className="border rounded w-full" value={purpose} onChange={event => setPurpose(event.target.value)} /></label>
+            <label className="block">Application role<input className="border rounded w-full" value={role} onChange={event => setRole(event.target.value)} /></label>
+            <label className="block">Coverage<select value={coverage} onChange={event => setCoverage(event.target.value as typeof coverage)}>{["happy_path", "negative", "boundary", "exception"].map(value => <option key={value}>{value}</option>)}</select></label>
+            <label className="block">Preconditions (one per line)<textarea className="border rounded w-full" value={preconditions} onChange={event => setPreconditions(event.target.value)} /></label>
+            <label className="block">Explicit expected outcome<textarea className="border rounded w-full" value={expected} onChange={event => setExpected(event.target.value)} /></label>
+            <p>Detailed actions belong in test cases. The server links new intent to the current reviewed story and approved knowledge.</p>
+          </fieldset> : <fieldset disabled={saving} className="space-y-2">
             <legend className="font-medium text-sm">Scenario steps</legend>
             {steps.map((step, index) => (
               <div className="space-y-1 border rounded p-2" key={step.step_id}>
@@ -128,7 +144,7 @@ export default function ScenarioModal({
               const stepId = crypto.randomUUID();
               setSteps(items => [...items, { step_id: stepId, category: "UI", action: "", expected: "" }]);
             }}>Add step</button>
-          </fieldset>
+          </fieldset>}
           {error && <p role="alert" className="text-red-700 text-sm">{error}</p>}
         </div>
 

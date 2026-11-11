@@ -23,9 +23,14 @@ from app.ai.scenario_prompts import (
 from app.services.ai.scenario_generator import generate_scenarios_from_prompt
 from app.services.ai.ai_configuration_service import public_error
 from app.services.ai.base_provider import LLMProviderError
+from app.services.ai.ai_usage_policy import AIUsageError
+from app.services.knowledge_test_design import KnowledgeTestDesign
+from app.models.test_design import ScenarioIntent
+from pydantic import ValidationError
 from app.services.subscription_services import decrement_usage
 from app.utils.feature_flags import feature_required
 from app.utils.project_authorization import require_project_member
+from app.config import settings
 
 # ------------------------------------------------------
 # Router Setup
@@ -78,6 +83,8 @@ def _build_scenario_response(doc: dict) -> ScenarioResponse:
         project_id=doc["project_id"],
         title=doc["title"],
         description=doc.get("description", ""),
+        **{key: doc[key] for key in ("spec_kind", "purpose", "role", "coverage_type", "expected_outcome", "preconditions",
+                                   "acceptance_criteria_refs", "rule_references", "knowledge_version_id", "story_analysis_id") if key in doc},
         steps=normalized_steps,
         status=doc.get("status", "pending"),
         complexity=doc.get("complexity", ""),
@@ -139,12 +146,31 @@ async def create_scenario(
             "approved": False,
         }
 
+        await require_project_member(story["project_id"], current_user)
+        if settings.features.product_knowledge:
+            context = await KnowledgeTestDesign(db).knowledge.generation_context(story["project_id"], story["story_id"])
+            try:
+                intent = ScenarioIntent(title=scenario.title, description=scenario.description or "",
+                    purpose=scenario.purpose or scenario.description or scenario.title, role=scenario.role,
+                    coverage_type=scenario.coverage_type or "happy_path", preconditions=scenario.preconditions,
+                    expected_outcome=scenario.expected_outcome or "",
+                    acceptance_criteria_refs=scenario.acceptance_criteria_refs or [story["acceptance_criteria"]],
+                    rule_references=scenario.rule_references)
+            except ValidationError:
+                raise HTTPException(422, "Complete the scenario intent and explicit expected outcome.") from None
+            KnowledgeTestDesign.references(intent, story, context["knowledge"])
+            doc.update({**intent.model_dump(), "steps": [], "spec_kind": "coverage-intent-v1",
+                        "knowledge_version_id": context["knowledge"]["version_id"],
+                        "story_analysis_id": context["analysis"]["analysis_id"]})
+
         result = await db["scenarios"].insert_one(doc)
         doc["_id"] = result.inserted_id
         return _build_scenario_response(doc)
 
-    except Exception as e:
-        raise HTTPException(400, f"Failed to create scenario: {e}")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(400, "Scenario could not be created.") from None
 
 
 # -------------------------------------------------------------------
@@ -249,13 +275,15 @@ async def update_scenario(
 
     await require_project_member(existing["project_id"], current_user)
 
-    update_data = {k: v for k, v in update.model_dump().items() if v is not None}
+    update_data = {k: v for k, v in update.model_dump(exclude_unset=True).items() if v is not None}
+    if existing.get("spec_kind") == "coverage-intent-v1" and update_data.get("approved"):
+        raise HTTPException(409, "Use the approval operation to validate current knowledge and story context.")
 
     # Preserve existing approval flag if not explicitly updated
     if "approved" not in update_data:
         update_data["approved"] = existing.get("approved", False)
 
-    if any(field in update_data for field in ("title", "description", "steps")):
+    if any(field in update_data for field in ("title", "description", "steps", "purpose", "role", "coverage_type", "expected_outcome", "preconditions", "acceptance_criteria_refs", "rule_references")):
         update_data["approved"] = False
 
     # Normalize steps if updated
@@ -351,25 +379,21 @@ async def generate_scenarios_from_story(
 
         sub = await get_subscription(user_id)
 
+        await require_project_member(story["project_id"], current_user)
         existing = await db["scenarios"].count_documents({"created_by": email})
         max_scen = sub["limits"]["scenarios_limit"]
-        rem_scen = max_scen - existing
-
+        rem_scen = None if max_scen is None else max(max_scen - existing, 0)
         ai_used = sub["usage"]["ai_gen_used"]
         ai_lim = sub["limits"]["ai_gen_limit"]
-        rem_ai = count if ai_lim is None else ai_lim - ai_used
-
-        allowed = min(count, rem_ai, rem_scen)
-        if allowed <= 0:
-            return ScenarioGenerationResponse(
-                scenarios=[],
-                summary=ScenarioGenerationSummary(
-                    message="No AI scenario generations left.",
-                    remaining_ai_generations=rem_ai,
-                    remaining_scenario_slots=rem_scen,
-                    plan=sub["plan"],
-                ),
-            )
+        rem_ai = None if ai_lim is None else max(ai_lim - ai_used, 0)
+        knowledge_mode = settings.features.product_knowledge
+        allowed = count if rem_scen is None else min(count, rem_scen)
+        if not knowledge_mode and rem_ai is not None:
+            allowed = min(allowed, rem_ai)
+        if allowed <= 0 or rem_ai == 0:
+            return ScenarioGenerationResponse(scenarios=[], summary=ScenarioGenerationSummary(
+                message="Scenario or AI allowance is exhausted.", requested_count=count, allowed_count=0, generated_count=0,
+                remaining_ai_generations=rem_ai, remaining_scenario_slots=rem_scen, plan=sub["plan"]))
 
         project = await db["projects"].find_one(
             {"project_id": story["project_id"]}
@@ -378,9 +402,12 @@ async def generate_scenarios_from_story(
             "scenario_builder", "Scenario Builder"
         )
 
-        prompt = build_scenario_prompt_from_story(agent, story, allowed, complexity)
-        ai_list = await generate_scenarios_from_prompt(story["project_id"], prompt)
-        ai_list = ai_list[:allowed]
+        context = None
+        if knowledge_mode:
+            ai_list, context = await KnowledgeTestDesign(db).scenarios(story["project_id"], current_user, story, allowed, complexity)
+        else:
+            prompt = build_scenario_prompt_from_story(agent, story, allowed, complexity)
+            ai_list = (await generate_scenarios_from_prompt(story["project_id"], prompt))[:allowed]
 
         created = []
 
@@ -408,24 +435,30 @@ async def generate_scenarios_from_story(
                 "generated_by_agent": agent,
             }
 
+            if context:
+                doc.update({**item, "spec_kind": "coverage-intent-v1", "steps": [],
+                            "knowledge_version_id": context["knowledge"]["version_id"],
+                            "story_analysis_id": context["analysis"]["analysis_id"]})
+
             res = await db["scenarios"].insert_one(doc)
             doc["_id"] = res.inserted_id
 
             created.append(_build_scenario_response(doc))
 
-            await increment_usage(user_id, "ai_gen_used")
+            if not knowledge_mode:
+                await increment_usage(user_id, "ai_gen_used")
             await increment_usage(user_id, "scenarios_used")
 
-        return ScenarioGenerationResponse(
-            scenarios=created,
-            summary=ScenarioGenerationSummary(
-                message=f"{allowed} scenarios generated.",
-                remaining_ai_generations=max(rem_ai - allowed, 0),
-                remaining_scenario_slots=max(rem_scen - allowed, 0),
-                plan=sub["plan"],
-            ),
-        )
+        actual = len(created)
+        spent = 1 if knowledge_mode else actual
+        return ScenarioGenerationResponse(scenarios=created, summary=ScenarioGenerationSummary(
+            message=f"{actual} of {count} requested scenarios generated (allowed {allowed}).",
+            requested_count=count, allowed_count=allowed, generated_count=actual,
+            remaining_ai_generations=None if rem_ai is None else max(rem_ai - spent, 0),
+            remaining_scenario_slots=None if rem_scen is None else max(rem_scen - actual, 0), plan=sub["plan"]))
 
+    except AIUsageError as exc:
+        raise HTTPException(exc.status_code, exc.public_detail()) from None
     except LLMProviderError as exc:
         raise public_error(exc) from None
     except HTTPException:
@@ -563,8 +596,20 @@ async def approve_scenario(
     if not scenario:
         raise HTTPException(404, "Scenario not found.")
 
+    await require_project_member(scenario["project_id"], current_user)
+    if scenario.get("spec_kind") == "coverage-intent-v1":
+        context = await KnowledgeTestDesign(db).knowledge.generation_context(scenario["project_id"], scenario["story_id"])
+        if (scenario.get("knowledge_version_id") != context["knowledge"]["version_id"]
+                or scenario.get("story_analysis_id") != context["analysis"]["analysis_id"]):
+            raise HTTPException(409, "Knowledge or story analysis changed. Create a successor scenario.")
+        try:
+            intent = ScenarioIntent(**{key: scenario.get(key) for key in ScenarioIntent.model_fields})
+        except ValidationError:
+            raise HTTPException(422, "Complete the scenario intent and expected outcome before approval.") from None
+        story = await KnowledgeTestDesign(db).knowledge.story(scenario["project_id"], scenario["story_id"])
+        KnowledgeTestDesign.references(intent, story, context["knowledge"])
     await db["scenarios"].update_one(
-        {"scenario_id": scenario_id},
+        {"scenario_id": scenario_id, "project_id": scenario["project_id"]},
         {"$set": {"approved": True}}
     )
 

@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/utils/api";
 import VisualStepEditor, { type AuthoredStep, type WorkflowVersion } from "./VisualStepEditor";
+import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 
 interface SpecVersion { version_id: string; status: string; steps: AuthoredStep[]; story_id: string; acceptance_criteria_snapshot: string }
 interface SpecState { version: SpecVersion | null; review_required: boolean; reason?: string | null }
 interface EnvironmentChoice { env_id: string; env_type: string; credentials: { role: string }[] }
-interface Preview { target_url: string; requires_credentials: boolean; environment_revision: number; steps: AuthoredStep[]; execution_ready: false }
+interface Preview { target_url: string; requires_credentials: boolean; environment_revision: number; steps: AuthoredStep[]; execution_ready: false; manifest_digest: string }
+interface PreparedRun { run_id: string; state: string; manifest_digest: string; reason: string | null; execution_ready: false }
 
 function SavedSteps({ steps }: { steps: AuthoredStep[] }) {
   return <details><summary>Review saved steps</summary><ol className="list-decimal pl-6">
@@ -30,6 +32,7 @@ export default function VisualSpecificationPanel({ projectId, testcaseId, canApp
 }
 
 function AuthoringForm({ projectId, testcaseId, canApprove }: { projectId: string; testcaseId?: string; canApprove: boolean }) {
+  const { enabled } = useFeatures();
   const base = `/projects/${encodeURIComponent(projectId)}/visual-specifications`;
   const casePath = `${base}/cases/${encodeURIComponent(testcaseId || "")}`;
   const [workflows, setWorkflows] = useState<WorkflowVersion[]>([]);
@@ -43,6 +46,8 @@ function AuthoringForm({ projectId, testcaseId, canApprove }: { projectId: strin
   const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [admission, setAdmission] = useState<PreparedRun | null>(null);
+  const [admissionKey, setAdmissionKey] = useState<string | null>(null);
 
   const load = useCallback(async (signal?: AbortSignal) => {
     const [response, specification, savedEnvironments] = await Promise.all([
@@ -92,7 +97,23 @@ function AuthoringForm({ projectId, testcaseId, canApprove }: { projectId: strin
       });
       if (!response.ok) throw new Error(typeof response.data?.detail === "string" ? response.data.detail : "Could not preview specification.");
       setPreview(response.data);
+      setAdmissionKey(crypto.randomUUID().replaceAll("-", ""));
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Could not preview specification."); }
+    finally { setBusy(false); }
+  }
+
+  async function saveAdmission(cancel = false) {
+    if (!state?.version || (!cancel && (!preview || !admissionKey))) return;
+    setBusy(true); setError("");
+    try {
+      const path = cancel ? `${base}/runs/${admission?.run_id}/cancel` : `${casePath}/${state.version.version_id}/runs`;
+      const response = await apiFetch(path, { method: "POST", body: JSON.stringify(cancel ? {} : {
+        environment_id: environment, application_role: role || null,
+        preview_digest: preview?.manifest_digest, idempotency_key: admissionKey,
+      }) });
+      if (!response.ok) throw new Error(typeof response.data?.detail === "string" ? response.data.detail : "Could not save run admission.");
+      setAdmission(response.data);
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Could not save run admission."); }
     finally { setBusy(false); }
   }
 
@@ -129,5 +150,10 @@ function AuthoringForm({ projectId, testcaseId, canApprove }: { projectId: strin
       <button className="workspace-button" disabled={busy || !environment || state.version.status !== "approved" || state.review_required} onClick={() => void previewSpecification()}>Preview approved steps</button>
     </div>}
     {preview && <div role="status">Prepared preview for {preview.target_url} · environment revision {preview.environment_revision} · {preview.steps.length} expanded steps · {preview.requires_credentials ? "Credential role required" : "Public-page workflow"}. Browser execution pending.</div>}
+    {preview && enabled("approved_visual_run_admission") && <button className="workspace-button" disabled={busy || !admissionKey} onClick={() => void saveAdmission()}>Save immutable run admission (no execution)</button>}
+    {admission && <div className="border rounded p-3 space-y-2"><p role="status">Run admission {admission.run_id} · {admission.state}. General worker not enabled; no browser has launched.</p>
+      <p>Manifest digest: {admission.manifest_digest}</p>
+      {admission.state === "prepared" && <button className="workspace-button" disabled={busy} onClick={() => void saveAdmission(true)}>Cancel prepared admission</button>}
+    </div>}
   </div>;
 }

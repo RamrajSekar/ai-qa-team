@@ -5,6 +5,8 @@ from uuid import uuid4
 from fastapi import HTTPException
 from pymongo import ReturnDocument
 
+from app.config import settings
+from app.services.product_knowledge import ProductKnowledge
 from app.models.visual_specification import VisualStep, CompiledSpecificationPreview
 from app.services.approved_visual_run import ApprovedVisualRuns, digest
 from app.services.staging_run_binding import sandbox_url
@@ -109,15 +111,26 @@ class VisualSpecifications:
         story, scenario, criteria, source = await self.sources.source(project, testcase)
         steps = [step.model_dump(exclude_none=True) for step in payload.steps]
         await self.compile(project, steps)
+        knowledge_pin = {}
+        if settings.features.product_knowledge:
+            context = await ProductKnowledge(self.db).generation_context(project, story)
+            knowledge_pin = {"knowledge_version_id": context["knowledge"]["version_id"],
+                             "knowledge_content_digest": context["knowledge"]["content_digest"],
+                             "story_analysis_id": context["analysis"]["analysis_id"]}
         return await self.insert("visual_test_spec_versions", project, actor, {
             "testcase_id": testcase, "story_id": story, "scenario_id": scenario,
-            "source_digest": source, "acceptance_criteria_snapshot": criteria, "steps": steps,
+            "source_digest": source, "acceptance_criteria_snapshot": criteria, "steps": steps, **knowledge_pin,
         })
 
     async def validate_specification(self, project, document):
         _, _, _, source = await self.sources.source(project, document["testcase_id"])
         if source != document["source_digest"]:
             raise HTTPException(409, "Story, scenario or test case changed. Create and review a successor specification.")
+        if settings.features.product_knowledge:
+            context = await ProductKnowledge(self.db).generation_context(project, document["story_id"])
+            if (document.get("knowledge_version_id") != context["knowledge"]["version_id"]
+                    or document.get("story_analysis_id") != context["analysis"]["analysis_id"]):
+                raise HTTPException(409, "Approved knowledge or story analysis changed. Review a successor specification.")
         return await self.compile(project, document["steps"])
 
     async def approve_specification(self, project, testcase, actor, version_id):
@@ -178,6 +191,7 @@ class VisualSpecifications:
                     "target_url": sandbox_url(environment.get("base_url")), "application_role": credential["role"] if credential else None,
                     "credential_id": credential["credential_id"] if credential else None,
                     "requires_credentials": requires_credentials}
+        manifest.update({key: document[key] for key in ("knowledge_version_id", "knowledge_content_digest", "story_analysis_id") if key in document})
         preview = CompiledSpecificationPreview(**manifest, manifest_digest="0" * 64)
         canonical = preview.model_dump(mode="json", exclude_none=True, exclude={"manifest_digest"})
         return preview.model_copy(update={"manifest_digest": digest(canonical, self.digest_key)})

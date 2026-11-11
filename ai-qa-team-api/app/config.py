@@ -15,6 +15,8 @@ class FeatureFlags(BaseModel):
     bug_reproduction_ui: bool = False
     repository_ui: bool = False
     reusable_workflows: bool = False
+    product_knowledge: bool = False
+    story_analysis: bool = False
     jira_trigger: bool = False
     failure_diagnostics: bool = False
     self_healing: bool = False

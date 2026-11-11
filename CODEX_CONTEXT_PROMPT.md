@@ -4,6 +4,12 @@ Updated 2026-10-31. Use this context with a concrete task; it is not an instruct
 
 ## Objective and required reading
 
+Also read `docs/mvp/PRODUCT_KNOWLEDGE.md` and `docs/mvp/APPROVED_EXECUTION_DELIVERY.md`
+for the current development slice and incomplete execution/merge gates. Preserve
+the document/transcript-only limitation, scenario-intent/testcase-procedure distinction
+and non-executable prepared admissions. BrowserStack is the accepted first development
+adapter for this assigned work; do not mistake that decision for customer readiness.
+
 Evolve the existing AI QA Team platform into a human-supervised, recording-trained visual QA SaaS. Read `AGENTS.md`, `AI_QA_TEAM_SKILL.md`, and `docs/mvp/{MVP_SPEC,REPO_GAP_ANALYSIS,IMPLEMENTATION_PLAN,DECISIONS}.md`. Current user instructions define the task. Scope documents define targets; inspected code and checks establish current implementation.
 
 The old repository-first orchestration/synthetic-data roadmap is optional preserved work. Recording-led priority is already accepted. Do not request reconfirmation or require repository import before training/testing. The earlier statement that root guides remain unchanged is historical; these guides have now been consolidated.

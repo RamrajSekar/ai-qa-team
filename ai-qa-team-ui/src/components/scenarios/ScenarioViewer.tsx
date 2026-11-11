@@ -39,7 +39,8 @@ export default function ScenarioViewer({ open, scenario, onClose, onApproved }: 
 
   const scenarioId = encodeURIComponent(scenario.scenario_id);
   const projectId = encodeURIComponent(scenario.project_id);
-  const canGenerate = enabled("test_generation") && scenario.approved && scenario.steps.length > 0;
+  const hasIntent = scenario.spec_kind === "coverage-intent-v1" && !!scenario.expected_outcome?.trim();
+  const canGenerate = enabled("test_generation") && scenario.approved && (hasIntent || scenario.steps.length > 0);
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
       <div className="bg-white rounded-lg w-full max-w-3xl p-6 shadow-xl relative">
@@ -78,10 +79,11 @@ export default function ScenarioViewer({ open, scenario, onClose, onApproved }: 
           </div>
 
           <div>
-            <p className="text-xs text-gray-500 mb-1">Steps</p>
+            {hasIntent && <div className="space-y-2"><p>Coverage intent: {scenario.coverage_type}</p><p>Purpose: {scenario.purpose}</p><p>Role: {scenario.role || "Not specified"}</p><p>Preconditions: {scenario.preconditions?.join("; ")}</p><p>Expected outcome: {scenario.expected_outcome}</p><p>Knowledge version: {scenario.knowledge_version_id}</p><p>Acceptance criteria: {scenario.acceptance_criteria_refs?.join("; ")}</p><p>Rules: {scenario.rule_references?.join(", ") || "Reviewer-authored acceptance criteria"}</p></div>}
+            <p className="text-xs text-gray-500 mb-1">{hasIntent ? "Detailed procedures are authored in test cases" : "Legacy scenario steps"}</p>
 
             {scenario.steps.length === 0 ? (
-              <p className="text-gray-500 italic">No steps defined.</p>
+              <p className="text-gray-500 italic">{hasIntent ? "Generate a detailed test case from this coverage intent." : "No steps defined."}</p>
             ) : (
               <div className="border rounded p-3 bg-gray-50 max-h-72 overflow-auto">
                 {scenario.steps.map((step, idx) => (
@@ -107,7 +109,7 @@ export default function ScenarioViewer({ open, scenario, onClose, onApproved }: 
           <Link className="underline" href={`/projects/${projectId}#approved-visual-run`}>Open Project Overview</Link>
         </p>}
         <div className="flex flex-wrap justify-end gap-2 mt-6">
-          {!scenario.approved && <button type="button" className="workspace-button" disabled={busy || !scenario.steps.length}
+          {!scenario.approved && <button type="button" className="workspace-button" disabled={busy || (!hasIntent && !scenario.steps.length)}
             onClick={() => void perform(`/scenarios/${scenarioId}/approve`, "PUT", data => onApproved(data as Scenario))}>
             Approve scenario
           </button>}

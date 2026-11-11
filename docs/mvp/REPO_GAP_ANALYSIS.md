@@ -170,3 +170,27 @@ The project page requests `/execute?skip=0&limit=200`; the list route previously
 Added the exact development origin `http://localhost:3000` to the existing credentialed CORS allowlist (`app/main.py`); `127.0.0.1:3000` was already allowed. The project overview now handles execution-history HTTP/network failures independently, displays an unavailable/retry state instead of an empty-history claim, and retains loaded project details. Other loading failures show a bounded retry message instead of an unhandled promise and permanent skeleton. No global fetch semantics or authorization changes. All 14 mocked feature/history tests passed, including allowed localhost preflight and rejected untrusted origin. The running UI/API were unreachable from this session; the user browser path is not verified by these mocked checks.
 
 Follow-up checks: UI `tsc --noEmit --incremental false` passed; `git diff --check` passed with line-ending warnings. Focused ESLint produced no output and was interrupted after stalling; no lint pass is claimed.
+
+## Knowledge/design and durable admission checkpoint — 2026-11-11
+
+Assessed/edited `dev`; the pre-task head was `d1d79fd`. Current uncommitted work is
+documented in [PRODUCT_KNOWLEDGE.md](PRODUCT_KNOWLEDGE.md) and
+[APPROVED_EXECUTION_DELIVERY.md](APPROVED_EXECUTION_DELIVERY.md). The user's existing
+`docs/BRANCH_WORKFLOW.md` edit is preserved.
+
+Evidence: new project-scoped `product_knowledge` models/service/routes and UI support
+document/transcript citations, snapshots and reviewed analysis. `knowledge_test_design.py`
+reuses the metered gateway; scenario/testcase routes and UI separate coverage from
+procedures and report actual counts. `visual_specifications.py` pins knowledge and
+analysis. `approved_workflow_runs.py` saves immutable, non-executable admissions with
+explicit adapter/runtime identities. No general worker or customer execution is delivered.
+
+Current isolated results: 8 knowledge/design, 4 count, 9 specification/admission,
+23 feature/history and 13 AI-usage checks passed. TypeScript passed. Read-only
+development Mongo/Redis pings passed. No new real-login/write/restart/AI/browser
+integration is established by these checks. Intercepted UI verification initially
+failed on cold compilation and an introduced invalid UTF-8 character (corrected).
+Final TypeScript and focused lint passed. Both the new knowledge/story and
+existing legacy story-generation intercepted UI regressions passed. Existing
+synthetic admission/binding (13) and environment-secret (8) regressions passed,
+for 78 backend checks total. Historical results above remain historical. No commit, push, PR or merge has occurred in this checkpoint.

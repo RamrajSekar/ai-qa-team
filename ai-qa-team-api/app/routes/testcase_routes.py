@@ -13,6 +13,10 @@ from app.services.subscription_services import get_subscription, increment_usage
 from app.services.test_generator import generate_playwright_test
 from app.config import settings
 from app.services.step_mapper import StepMapper
+from app.services.knowledge_test_design import KnowledgeTestDesign
+from app.services.ai.ai_usage_policy import AIUsageError
+from app.services.ai.base_provider import LLMProviderError
+from app.services.ai.ai_configuration_service import public_error
 
 from app.utils.feature_flags import feature_required
 from app.utils.project_authorization import require_project_member
@@ -130,6 +134,18 @@ async def generate_testcases(
             f"Test case generation limit reached for {complexity} cases.",
         )
 
+    knowledge_plans = None
+    if settings.features.product_knowledge and scenario.get("spec_kind") != "coverage-intent-v1":
+        raise HTTPException(409, "Preserve this legacy scenario. Create and approve a coverage intent against current knowledge before generating new detailed cases.")
+    if scenario.get("spec_kind") == "coverage-intent-v1":
+        try:
+            knowledge_plans, _ = await KnowledgeTestDesign(db).testcases(scenario["project_id"], current_user, scenario, allowed)
+        except AIUsageError as exc:
+            raise HTTPException(exc.status_code, exc.public_detail()) from None
+        except LLMProviderError as exc:
+            raise public_error(exc) from None
+        allowed = len(knowledge_plans)
+
     # -------------------------------------
     # 3) StepMapper: scenario steps → structured
     # -------------------------------------
@@ -138,7 +154,7 @@ async def generate_testcases(
 
     generated_cases: List[TestCaseResponse] = []
 
-    for _ in range(allowed):
+    for index in range(allowed):
         testcase_id = await get_next_sequence("testcase_id", "TC")
 
         structured_steps_dicts = [
@@ -172,6 +188,15 @@ async def generate_testcases(
             "data_overrides": {},
         }
 
+        if knowledge_plans is not None:
+            plan = knowledge_plans[index]
+            doc.update({**plan, "title": plan["title"], "description": plan["purpose"], "code": "",
+                        "status": "draft", "spec_kind": "detailed-case-v1",
+                        "knowledge_version_id": scenario["knowledge_version_id"],
+                        "story_analysis_id": scenario["story_analysis_id"],
+                        "natural_steps": [{"action": step["instruction"], "expected": step["expected"]} for step in plan["procedure"]],
+                        "steps": [{"action": "unknown", "description": step["instruction"], "expected": step["expected"]} for step in plan["procedure"]]})
+
         res = await db["testcases"].insert_one(doc)
         doc["_id"] = str(res.inserted_id)
         doc.pop("_id", None)
@@ -183,6 +208,8 @@ async def generate_testcases(
                 project_id=doc["project_id"],
                 title=doc["title"],
                 description=doc.get("description"),
+                **{key: doc[key] for key in ("spec_kind", "purpose", "role", "preconditions", "public_data", "assertions", "cleanup",
+                                           "acceptance_criteria_refs", "rule_references", "knowledge_version_id", "story_analysis_id") if key in doc},
                 complexity=doc.get("complexity"),
                 steps=[TestStep(**s) for s in doc.get("steps", [])],
                 status=doc["status"],

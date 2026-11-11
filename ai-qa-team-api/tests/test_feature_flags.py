@@ -19,7 +19,7 @@ TEST_ENV = {
     "JWT_SECRET_KEY": "jwt-test-only", "OPENAI_API_KEY": "", "FEATURES": "{}",
 }
 # Override all feature env values, even if a developer enables them locally.
-OFF = ["visual_runner_lab", "visual_runner_batches", "approved_visual_run_admission", "approved_visual_run_execution", "bug_reproduction_ui", "repository_ui", "reusable_workflows", "story_management", "scenario_generation", "test_generation", "recorder",
+OFF = ["visual_runner_lab", "visual_runner_batches", "approved_visual_run_admission", "approved_visual_run_execution", "bug_reproduction_ui", "repository_ui", "reusable_workflows", "product_knowledge", "story_analysis", "story_management", "scenario_generation", "test_generation", "recorder",
        "native_execution", "jira_trigger", "failure_diagnostics", "self_healing",
        "playwright_repo_adapter", "selenium_repo_adapter"]
 ON = ["repository_discovery", "test_registry", "test_data_generation"]
@@ -218,7 +218,8 @@ class FeatureFlagTests(unittest.TestCase):
         settings.features.scenario_generation = True
         self.authenticate()
         db["stories"].find_one.return_value = {"story_id": "ST1", "project_id": "P", "title": "Draft"}
-        db["projects"].find_one.return_value = {"project_id": "P"}
+        db["projects"].find_one.return_value = {"project_id": "P", "created_by": self.email}
+        db["project_memberships"].find_one.return_value = {"project_id": "P", "status": "ACTIVE", "role": "ADMIN"}
         db["scenarios"].count_documents.return_value = 0
         error = LLMProviderError("AUTHENTICATION_ERROR", "The provider credentials could not be authenticated.")
         with patch.object(scenario_routes, "generate_scenarios_from_prompt", new=AsyncMock(side_effect=error)):
