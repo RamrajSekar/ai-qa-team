@@ -1,6 +1,6 @@
 # Branch workflow
 
-Accepted 2026-11-11: use `dev` as the single ongoing development branch. Merge reviewed, verified work into `main` when ready. Do not create extra feature branches unless explicitly requested. Vercel production should follow `main`. Historical feature branches are already merged.
+Accepted 2026-11-11: use `dev` as the single ongoing development branch. Before any merge into `main`, create a pull request from `dev` to `main` for review. Merge only after user approval; do not merge or push changes directly to `main`. Do not create extra feature branches unless explicitly requested. Vercel production should follow `main`. Historical feature branches are already merged.
 
 ## Consolidation verification
 
