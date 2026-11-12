@@ -433,6 +433,13 @@ provider support and RPC overhead before expanding the implementation.
 
 See [Platform prompts](PLATFORM_PROMPTS.md). Phase 1 connects knowledge extraction,
 story analysis and knowledge-aware scenario/test design to the existing platform-only
-registry. Phase 2 migrates legacy dynamic templates without changing their contracts.
+registry. Phase 2 now migrates legacy dynamic templates without changing their contracts.
 Phase 3 adds synthetic draft preview and real-login qualification. Execution stays
 out of this work. Backend owner configuration reuses PLATFORM_OWNER_EMAIL.
+
+
+UI/UX refresh (2026-11-12): shared controls and accessible onboarding/dialogs,
+Test Design page hierarchy and platform prompt activation improvements are implemented for development.
+See [scope, commands, evidence and remaining qualification](UI_UX_REFRESH.md).
+Phase 3 synthetic preview and real-login/provider checks remain next; recording
+ingestion is still gated on private storage. Do not resume Execution MVP by inference.

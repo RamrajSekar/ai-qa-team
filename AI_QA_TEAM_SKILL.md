@@ -198,3 +198,10 @@ Platform prompt governance: see `docs/mvp/PLATFORM_PROMPTS.md`. Only platform
 OWNER/ADMIN manages shared task prompts, never project admins. Private backend
 `PLATFORM_OWNER_EMAIL` bootstraps the trusted owner; changing it does not revoke
 persisted roles. Project knowledge remains scoped, reviewed memory, not fine-tuning.
+
+
+Current delivery priority (2026-11-12): complete Phase 1 Test Design before advancing
+Execution MVP. See `docs/mvp/TEST_DESIGN_MVP.md` for incomplete release gates,
+`PLATFORM_PROMPTS.md` for platform-only prompt phases, and `UI_UX_REFRESH.md` for the
+shared workspace/dialog patterns and verification limits. Preserve existing runtime
+features. Private recording storage/upload/transcription are not delivered.

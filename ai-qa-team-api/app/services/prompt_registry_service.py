@@ -9,6 +9,7 @@ from app.config import settings
 from app.db.connection import db
 from app.services.platform_role_service import normalize_email
 from app.services.prompt_defaults import PROMPT_DEFAULTS
+from app.services.prompt_templates import validate_template
 
 
 def _now() -> str:
@@ -54,6 +55,7 @@ async def get_prompt_definition(prompt_key: str) -> dict:
     prompt_key = prompt_key.upper()
     document = await db["prompt_definitions"].find_one({"prompt_key": prompt_key})
     definition = _safe_definition(document, prompt_key)
+    definition["template_variables"] = _default(prompt_key).get("template_variables", [])
     definition["active"] = await get_active(prompt_key)
     return definition
 
@@ -111,7 +113,8 @@ async def create_draft(prompt_key: str, actor: str, base_version: int | str | No
 
 
 async def update_draft(prompt_key: str, version_number: int, system_prompt: str) -> dict:
-    prompt_key = prompt_key.upper(); _default(prompt_key); _validate_prompt_content(system_prompt)
+    prompt_key = prompt_key.upper(); fallback = _default(prompt_key); _validate_prompt_content(system_prompt)
+    validate_template(system_prompt, fallback.get("template_variables", []))
     document = await db["prompt_definitions"].find_one({"prompt_key": prompt_key})
     if not document: raise HTTPException(404, "Prompt version not found")
     versions = deepcopy(document.get("versions", []))
@@ -131,6 +134,7 @@ async def activate_version(prompt_key: str, version_number: int) -> dict:
     target = next((item for item in versions if item["version"] == version_number), None)
     if not target: raise HTTPException(404, "Prompt version not found")
     _validate_prompt_content(target["system_prompt"])
+    validate_template(target["system_prompt"], _default(prompt_key).get("template_variables", []))
     activated_at = _now()
     for item in versions:
         if item["status"] == "ACTIVE": item["status"] = "INACTIVE"

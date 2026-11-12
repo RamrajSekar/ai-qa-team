@@ -41,17 +41,17 @@ export default function AuthModal() {
           </div>
           <div>
             <p className="auth-eyebrow">Product knowledge. Reviewed tests.</p>
-            <h2>Start with the tests your team already owns.</h2>
+            <h2>Give your QA team shared product understanding.</h2>
             <p>
-              Use one workspace for bug reproduction and focused QA exploration as the product
-              evolves.
+              Review product knowledge, clarify stories and create test designs with explicit
+              expected results.
             </p>
           </div>
           <ul className="auth-benefits">
             {[
-              "Robot Framework first",
-              "Existing repositories stay yours",
-              "Resolve only the data you need",
+              "Approved product knowledge",
+              "Story-based scenarios and test cases",
+              "Human review stays in control",
             ].map((benefit) => (
               <li key={benefit}>
                 <Check size={15} aria-hidden="true" />

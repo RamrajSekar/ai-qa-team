@@ -15,7 +15,7 @@ class ScenarioCountTests(unittest.IsolatedAsyncioTestCase):
         story = {"story_id": "ST1", "project_id": "P1", "title": "Save", "acceptance_criteria": "Draft saved"}
         stories = SimpleNamespace(find_one=AsyncMock(return_value=story))
         scenarios = SimpleNamespace(count_documents=AsyncMock(return_value=0), insert_one=AsyncMock(return_value=SimpleNamespace(inserted_id="row")))
-        db = {"stories": stories, "scenarios": scenarios, "projects": SimpleNamespace(find_one=AsyncMock(return_value={}))}
+        db = {"prompt_definitions": SimpleNamespace(find_one=AsyncMock(return_value=None)), "stories": stories, "scenarios": scenarios, "projects": SimpleNamespace(find_one=AsyncMock(return_value={}))}
         sub = {"plan": "free", "limits": {"scenarios_limit": scenario_limit, "ai_gen_limit": ai_limit}, "usage": {"ai_gen_used": 0}}
         rows = [{"title": f"Intent {i}", "steps": []} for i in range(actual)]
         designer = MagicMock(); designer.scenarios = AsyncMock(return_value=(rows, {"knowledge": {"version_id": "k"}, "analysis": {"analysis_id": "a"}}))

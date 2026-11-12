@@ -6,11 +6,11 @@ import StepEnvironment from "./steps/StepEnvironment";
 import StepTestImport from "./steps/StepTestImport";
 import StepFinish from "./steps/StepFinish";
 import StepTeam from "./steps/StepTeam";
-import { X } from "lucide-react";
+import { WorkspaceDialog } from "@/components/ui/workspace-dialog";
 import { User } from "@/types/user";
 import { OnboardingStep } from "../onboarding/types";
 
-const STEP_LABELS = ["Project", "Application", "Team", "Automation", "Ready"];
+const STEP_LABELS = ["Project", "Application", "Team", "Optional import", "Ready"];
 
 interface OnboardingModalProps {
   user: User;
@@ -28,7 +28,7 @@ export default function OnboardingModal({
   const maxStep = 5;
 
   const [step, setStep] = useState<OnboardingStep>(
-    (user?.onboarding?.current_step as OnboardingStep) || 1
+    Math.max(1, Math.min(5, user?.onboarding?.current_step || 1)) as OnboardingStep
   );
 
   const next = () =>
@@ -81,23 +81,20 @@ export default function OnboardingModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-      <div className="onboarding-dialog relative">
-
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-        >
-          <X size={24} />
-        </button>
-
-        <div className="onboarding-stepper" aria-label={`Setup step ${step} of ${maxStep}`}>
-          {STEP_LABELS.map((label, index) => <div key={label} className={index + 1 <= step ? "is-active" : ""}><span>{index + 1}</span><small>{label}</small></div>)}
-        </div>
-
-        {steps[step]}
-      </div>
-    </div>
+    <WorkspaceDialog open onClose={onClose} title="Set up your QA workspace" className="onboarding-dialog">
+      <header className="onboarding-header">
+        <p className="workspace-eyebrow">Welcome to AI QA Squad</p>
+        <h1>Set up your QA workspace</h1>
+        <p>Create a project first. Product knowledge and story-based test design come next.</p>
+      </header>
+      <ol className="onboarding-stepper" aria-label={`Setup step ${step} of ${maxStep}`}>
+        {STEP_LABELS.map((label, index) => <li key={label} aria-current={index + 1 === step ? "step" : undefined}
+          className={index + 1 < step ? "is-complete" : index + 1 === step ? "is-active" : ""}>
+          <span aria-hidden="true">{index + 1 < step ? "✓" : index + 1}</span><small>{label}</small>
+        </li>)}
+      </ol>
+      <div className="onboarding-content" key={step}>{steps[step]}</div>
+      <p className="onboarding-progress">Step {step} of {maxStep} · You can close setup and return later.</p>
+    </WorkspaceDialog>
   );
 }

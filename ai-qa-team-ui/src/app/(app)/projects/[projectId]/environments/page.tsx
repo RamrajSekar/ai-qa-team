@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Plus, Globe } from "lucide-react";
 import { apiFetch } from "@/utils/api";
@@ -18,34 +18,26 @@ export default function EnvironmentsPage() {
   const [mode, setMode] = useState<"create" | "edit">("create");
   const [selectedEnv, setSelectedEnv] = useState<Environment | null>(null);
   const [canManage, setCanManage] = useState(false);
+  const [error, setError] = useState("");
 
-  async function loadEnvironments() {
-    setLoading(true);
-
-    const res = await apiFetch(`/environments?project_id=${project_id}`);
-    console.log("ENV FETCH:", res);
-
-    if (res.ok && Array.isArray(res.data)) {
-      const normalized = res.data.map((env: any) => ({
-        ...env,
-        id: env.id ?? env._id ?? "",
-      }));
-      setEnvironments(normalized);
-    } else {
-      console.error("Failed to fetch environments:", res);
-    }
-
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    if (project_id) {
-      loadEnvironments();
-      apiFetch(`/projects/${project_id}`).then((response) => {
-        if (response.ok) setCanManage(response.data.current_user_role === "ADMIN");
-      });
-    }
+  const loadEnvironments = useCallback(async () => {
+    setLoading(true); setError("");
+    try {
+      const res = await apiFetch(`/environments?project_id=${encodeURIComponent(project_id)}`);
+      if (!res.ok || !Array.isArray(res.data)) throw new Error("Could not load project environments. Try again.");
+      setEnvironments((res.data as (Environment & { _id?: string })[]).map(env => ({ ...env, id: env.id ?? env._id ?? "" })));
+    } catch { setError("Could not load project environments. Try again."); }
+    finally { setLoading(false); }
   }, [project_id]);
+  useEffect(() => {
+    if (!project_id) return;
+    void loadEnvironments();
+    let current = true;
+    apiFetch(`/projects/${encodeURIComponent(project_id)}`).then(response => {
+      if (current && response.ok) setCanManage(response.data.current_user_role === "ADMIN");
+    }).catch(() => { if (current) setCanManage(false); });
+    return () => { current = false; };
+  }, [project_id, loadEnvironments]);
 
   function handleAdd() {
     setSelectedEnv(null);
@@ -70,24 +62,25 @@ export default function EnvironmentsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="design-page">
+      <div className="workspace-page-header">
         <div>
-          <h2 className="text-xl font-semibold">Project Environments</h2>
-          <p className="text-sm text-gray-500">
+          <p className="workspace-eyebrow">Project setup</p><h1>Project Environments</h1>
+          <p className="workspace-description">
             Manage endpoints, credentials, auth tokens, browsers & variables.
           </p>
         </div>
 
         {canManage && <button
           onClick={handleAdd}
-          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md flex items-center gap-2"
+          className="workspace-button workspace-primary"
         >
           <Plus size={18} />
           Add Environment
         </button>}
       </div>
 
+      {error && <div role="alert"><p>{error}</p><button className="workspace-button" onClick={() => void loadEnvironments()}>Try again</button></div>}
       {loading ? (
         <p>Loading environments...</p>
       ) : environments.length === 0 ? (

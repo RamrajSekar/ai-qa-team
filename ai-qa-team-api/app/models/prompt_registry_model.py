@@ -27,6 +27,7 @@ class PromptDefinition(BaseModel):
     name: str
     description: str
     output_contract: str
+    template_variables: list[str] = Field(default_factory=list)
     active_version: int | None = None
     created_at: str | None = None
     updated_at: str | None = None

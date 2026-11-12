@@ -11,7 +11,7 @@ async function fixture(t) {
   t.after(() => context.close());
   await context.addCookies([{ name: 'access_token', value: 'test-only', url: base }]);
   const calls = [];
-  const project = { id: 'P1', project_id: 'P1', name: 'Customer portal', description: 'Quality workspace for the customer experience.', created_at: '2026-09-01', agent_identities: {} };
+  const project = { id: 'P1', project_id: 'P1', current_user_role: 'ADMIN', name: 'Customer portal', description: 'Quality workspace for the customer experience.', created_at: '2026-09-01', agent_identities: {} };
   await context.route('**/*', async route => {
     const req = route.request(); const url = new URL(req.url());
     if (url.origin === new URL(base).origin || !['fetch', 'xhr'].includes(req.resourceType())) return route.continue();

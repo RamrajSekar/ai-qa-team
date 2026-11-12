@@ -1,4 +1,5 @@
 "use client";
+import { WorkspaceDialog } from "@/components/ui/workspace-dialog";
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -74,28 +75,23 @@ function EnvironmentEditor({ onClose, mode, projectId, env, onSaved }: ModalProp
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+    <WorkspaceDialog open onClose={onClose} title={mode === "edit" ? "Edit Environment" : "Create Environment"} busy={saving} className="workspace-dialog-wide environment-dialog">
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="bg-white rounded-xl shadow-2xl w-[900px] max-h-[90vh] overflow-hidden flex flex-col"
+        className="environment-dialog-layout"
       >
         {/* HEADER */}
         <div className="flex justify-between items-center px-6 py-4 border-b">
           <h2 className="text-xl font-semibold">
             {mode === "edit" ? "Edit Environment" : "Create Environment"}
           </h2>
-
-          <button onClick={onClose} className="text-gray-500 hover:text-black text-xl">
-            ✕
-          </button>
         </div>
 
         {/* TAB BAR */}
-        <div className="px-6 py-3 border-b flex gap-4 text-sm font-medium">
+        <div className="environment-tabs" aria-label="Environment settings">
           {TABS.map((t) => (
             <button
               key={t}
+              aria-pressed={activeTab === t}
               onClick={() => setActiveTab(t)}
               className={`pb-2 ${
                 activeTab === t
@@ -165,7 +161,7 @@ function EnvironmentEditor({ onClose, mode, projectId, env, onSaved }: ModalProp
           </button>
         </div>
       </motion.div>
-    </div>
+    </WorkspaceDialog>
   );
 }
 

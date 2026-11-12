@@ -25,8 +25,8 @@ export default function KnowledgePage() {
     finally { setBusy(false); }
   }
   function edit(index: number, fields: Partial<Claim>) { setClaims(items => items.map((item, i) => i === index ? { ...item, ...fields } : item)); }
-  return <div className="p-6 space-y-6">
-    <h1 className="text-2xl font-semibold">Teach &amp; review product knowledge</h1>
+  return <div className="design-page">
+    <header><p className="workspace-eyebrow">Project knowledge</p><h1>Teach &amp; review product knowledge</h1><p className="workspace-description">Build reviewed project memory, then use it to analyze stories and design tests.</p></header>
     <p>Documents and timestamped transcript excerpts are supported here. Video/audio upload and automatic transcription are not implemented. Use non-sensitive product material; do not paste credentials or personal data.</p>
     <p>AI proposals need human correction and approval. Observed, inferred and unknown information never automatically becomes an expected requirement.</p>
     <fieldset disabled={busy} className="border rounded p-4 space-y-3">
@@ -35,7 +35,7 @@ export default function KnowledgePage() {
       <label className="block">Source type <select value={kind} onChange={event => setKind(event.target.value as Source["kind"])}><option value="document">Document text</option><option value="recording_transcript">Timestamped transcript excerpt</option></select></label>
       {kind === "recording_transcript" && <div><label>Start seconds <input type="number" min={0} max={1800} value={start} onChange={event => setStart(Number(event.target.value))} /></label><label>End seconds <input type="number" min={start} max={1800} value={end} onChange={event => setEnd(Number(event.target.value))} /></label></div>}
       <label className="block">Source content<textarea className="border rounded w-full" rows={5} maxLength={kind === "document" ? 60000 : 12000} value={text} onChange={event => setText(event.target.value)} /></label>
-      <button className="workspace-button" disabled={!sourceTitle.trim() || !text.trim()} onClick={() => void act(async () => {
+      <button className="workspace-button workspace-primary" disabled={!sourceTitle.trim() || !text.trim()} onClick={() => void act(async () => {
         await knowledgeRequest(base + "/sources", { title: sourceTitle, kind, text: kind === "document" ? text : "", segments: kind === "document" ? [] : [{ start_seconds: start, end_seconds: end, text }] });
         setText(""); setSourceTitle(""); await load();
       })}>Save source</button>

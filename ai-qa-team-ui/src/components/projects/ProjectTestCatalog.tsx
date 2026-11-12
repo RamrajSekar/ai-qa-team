@@ -94,9 +94,9 @@ export default function ProjectTestCatalog({ kind }: { kind: "scenarios" | "test
   const count = kind === "scenarios" ? scenarios.length : cases.length;
   const projectPath = `/projects/${encodeURIComponent(projectId)}`;
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">{title}</h1>
+    <div className="design-page catalog-page">
+      <div className="workspace-page-header">
+        <div><p className="workspace-eyebrow">Test design</p><h1>{title}</h1><p className="workspace-description">{kind === "scenarios" ? "Review what to verify before designing detailed test cases." : "Review procedures, approve explicit expectations and export test designs."}</p></div>
         <Link className="workspace-button" href={`${projectPath}/stories`}>Open stories to create or generate</Link>
       </div>
       {kind === "testcases" && enabled("reusable_workflows") && <VisualSpecificationPanel projectId={projectId} canApprove={canApprove} />}
@@ -107,10 +107,10 @@ export default function ProjectTestCatalog({ kind }: { kind: "scenarios" | "test
       ) : <>
         {count === 0 && <p>No {title.toLowerCase()} on this page. Create a scenario from a story, then approve it to generate test cases.</p>}
         {kind === "scenarios" ? scenarios.map(scenario => (
-          <article className="border rounded-lg bg-white p-4 space-y-2" key={scenario.scenario_id}>
+          <article className="catalog-card space-y-3" key={scenario.scenario_id}>
             <h2 className="font-semibold">{scenario.title}</h2>
             <p>{scenario.scenario_id} · {scenario.approved ? "Approved" : "Pending approval"}</p>
-            <div className="flex gap-4">
+            <div className="catalog-actions">
               <Link href={`${projectPath}/stories/${encodeURIComponent(scenario.story_id)}`}>Story {scenario.story_id}</Link>
               <button className="workspace-button" onClick={() => setSelected(scenario)}>Review scenario</button>
               {scenario.created_by === user?.email && <>
@@ -120,7 +120,7 @@ export default function ProjectTestCatalog({ kind }: { kind: "scenarios" | "test
             </div>
           </article>
         )) : cases.map(testcase => (
-          <article className="border rounded-lg bg-white p-4 space-y-2" key={testcase.testcase_id}>
+          <article className="catalog-card space-y-3" key={testcase.testcase_id}>
             <h2 className="font-semibold">{testcase.title}</h2>
             <p>{testcase.testcase_id} · {testcase.complexity || "Unspecified complexity"} · {testcase.status}</p>
             {testcase.description && <p>{testcase.description}</p>}
@@ -143,7 +143,7 @@ export default function ProjectTestCatalog({ kind }: { kind: "scenarios" | "test
                 </li>)}
               </ol>
             </details>
-            <div className="flex gap-4">
+            <div className="catalog-actions">
               <Link href={`${projectPath}/scenarios`}>Source scenario {testcase.scenario_id}</Link>
               <Link href={projectPath}>Review execution approval on overview</Link>
               {testcase.created_by === user?.email && <>
