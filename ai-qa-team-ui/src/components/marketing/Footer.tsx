@@ -11,7 +11,7 @@ export default function Footer() {
       <p className="lp-note">Account creation opens the existing workspace. See delivery progress for current capabilities.</p>
     </section>
     <footer className="lp-footer lp-container"><p>© {new Date().getFullYear()} AI QA Team</p>
-      <nav aria-label="Footer navigation"><a href="#product">Product</a><a href="#roadmap">Progress</a><Link href="/auth?mode=login">Sign In</Link></nav>
+      <nav aria-label="Footer navigation"><Link href="/pricing">Pricing</Link><a href="#product">Product</a><a href="#roadmap">Progress</a><Link href="/auth?mode=login">Sign In</Link></nav>
     </footer>
   </>;
 }

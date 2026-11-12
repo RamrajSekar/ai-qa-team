@@ -9,7 +9,7 @@ export default function Hero() {
       <a className="lp-brand" href="#"><span>QA</span> AI QA Team</a>
       <nav aria-label="Public navigation">
         <a href="#product">Product</a><a href="#knowledge">Product Knowledge</a>
-        <a href="#how-it-works">How It Works</a><a href="#roadmap">Progress</a>
+        <Link href="/pricing">Pricing</Link><a href="#how-it-works">How It Works</a><a href="#roadmap">Progress</a>
       </nav>
       <div className="lp-actions"><ThemeToggle /><Link href="/auth?mode=login">Sign In</Link>
         <Link className="lp-button" href="/auth?mode=signup">Create Account</Link></div>

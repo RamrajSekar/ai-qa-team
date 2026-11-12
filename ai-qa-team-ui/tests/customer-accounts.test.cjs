@@ -7,7 +7,7 @@ let browser;
 before(async () => { browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || 'msedge' }); });
 after(async () => browser?.close());
 
-async function fixture(t, { role = 'OWNER', pending = false, signup = false, emailDelivery = false, aiUnlimited = false } = {}) {
+async function fixture(t, { role = 'OWNER', pending = false, signup = false, emailDelivery = false, aiUnlimited = false, splitAI = false } = {}) {
   const context = await browser.newContext(); t.after(() => context.close());
   await context.addCookies([{ name: 'access_token', value: 'intercepted-ui-fixture', url: base }]);
   let authenticated = !signup;
@@ -35,6 +35,7 @@ async function fixture(t, { role = 'OWNER', pending = false, signup = false, ema
     }
     if (url.pathname === '/account/projects') json = [project];
     if (url.pathname === '/account/subscription') json = { billing_scope: 'ACCOUNT', subscription: { plan: 'free', status: 'active', usage: { projects_used: 1, stories_used: 1, scenarios_used: 2, testcases_used: 3, testcases_basic_used: 3, testcases_medium_used: 0, testcases_advanced_used: 0, team_members_used: 1, executions_used: 0, ai_gen_used: 1 }, limits: { ai_gen_limit: aiUnlimited ? null : 3, stories_limit: 5, scenarios_limit: 10, executions_limit: 20, projects_limit: 1, testcases_limit: 0, testcases_basic_limit: 10, testcases_medium_limit: 0, testcases_advanced_limit: 0, team_members_limit: 2 } } };
+    if (url.pathname === '/account/subscription' && splitAI) { json.subscription.ai_allowance_version = 1; Object.assign(json.subscription.usage, { managed_ai_credits_used: 1, byok_ai_requests_used: 2 }); Object.assign(json.subscription.limits, { managed_ai_credits_limit: 25, byok_ai_requests_limit: 25 }); }
     if (url.pathname === '/account/members') json = [{ email: user.email, account_role: role }];
     if (url.pathname === '/account/invitations') {
       if (request.method() === 'POST') {
@@ -191,5 +192,20 @@ test('unlimited AI allowance has no misleading bounded progress bar', async t =>
   await page.goto(base + '/settings/account');
   const section = page.getByRole('region', { name: 'Subscription & usage' });
   await section.getByText('Unlimited allowance', { exact: true }).waitFor();
+  assert.equal(await section.getByRole('progressbar', { name: 'AI Credits usage', exact: true }).count(), 0);
+});
+
+
+test('split AI allowances show separate Managed credits and BYOK requests', async t => {
+  const { page } = await fixture(t, { splitAI: true });
+  await page.goto(base + '/settings/account');
+  const section = page.getByRole('region', { name: 'Subscription & usage' });
+  const managed = section.getByRole('progressbar', { name: 'Included AI Credits usage', exact: true });
+  const byok = section.getByRole('progressbar', { name: 'AI Request Allowance usage', exact: true });
+  await managed.waitFor();
+  assert.equal(await managed.getAttribute('value'), '1'); assert.equal(await managed.getAttribute('max'), '25');
+  assert.equal(await byok.getAttribute('value'), '2'); assert.equal(await byok.getAttribute('max'), '25');
+  await section.getByText(/Credits count requests, not tokens/).waitFor();
+  await section.getByText(/You pay the provider separately/).waitFor();
   assert.equal(await section.getByRole('progressbar', { name: 'AI Credits usage', exact: true }).count(), 0);
 });

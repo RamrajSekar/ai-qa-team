@@ -26,6 +26,9 @@ def initial_subscription(subscription):
     result = deepcopy(subscription)
     # A newly created account has no additional members or pending invites.
     result.setdefault("usage", {})["team_members_used"] = 0
+    if settings.features.separate_ai_allowances:
+        from app.services.ai_allowances import initialize_allowances
+        initialize_allowances(result)
     return result
 
 

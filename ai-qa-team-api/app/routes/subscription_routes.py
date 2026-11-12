@@ -62,3 +62,9 @@ async def check_plan(request: Request, current_user=Depends(get_current_user)):
 @router.get("/plans")
 async def list_plans():
     return [{"name": k, **v} for k, v in PLAN_LIMITS.items()]
+
+
+@router.get("/pricing")
+async def pricing_catalog():
+    from app.services.ai_allowances import public_pricing
+    return public_pricing()

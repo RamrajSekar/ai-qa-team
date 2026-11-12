@@ -6,7 +6,7 @@ PLAN_LIMITS = {
         "scenarios_limit": 10,
         "executions_limit": 20,
         "team_members_limit": 2,
-        "ai_gen_limit": 3,
+        "ai_gen_limit": 25,
         # 🆕 testcases per complexity
         "testcases_basic_limit": 10,
         "testcases_medium_limit": 0,
@@ -19,7 +19,7 @@ PLAN_LIMITS = {
         "scenarios_limit": 200,
         "executions_limit": 1000,
         "team_members_limit": 5,
-        "ai_gen_limit": 50,
+        "ai_gen_limit": 500,
         "testcases_basic_limit": 500,
         "testcases_medium_limit": 200,
         "testcases_advanced_limit": 100,
@@ -34,7 +34,7 @@ PLAN_LIMITS = {
         "testcases_advanced_limit": 9999,
         "executions_limit": 10000,
         "team_members_limit": 20,
-        "ai_gen_limit": None,
+        "ai_gen_limit": 5000,
         "description": "For large-scale QA automation teams with custom support."
     }
 }

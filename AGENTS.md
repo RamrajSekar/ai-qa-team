@@ -1,5 +1,11 @@
 # AGENTS.md — AI QA Squad
 
+Account AI allowance/pricing amendment (2026-11-12): see
+`docs/mvp/AI_ALLOWANCES_PRICING.md`. Versioned accounts retain separate Managed
+credits and BYOK requests even when the rollout flag is disabled. Never reset
+usage on mode changes or migrate at startup. Prices are experimental; no checkout
+or paid mode entitlements are delivered. Credits are not tokens or cost guarantees.
+
 Updated 2026-10-31. Current target: a human-supervised, recording-trained visual QA SaaS. This is an incremental evolution of AI QA Team, not a rewrite.
 
 ## Sources of truth and evidence

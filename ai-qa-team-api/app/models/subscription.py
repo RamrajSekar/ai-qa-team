@@ -11,6 +11,8 @@ class UsageModel(BaseModel):
     executions_used: int = 0
     team_members_used: int = 0
     ai_gen_used: int = 0
+    managed_ai_credits_used: int = 0
+    byok_ai_requests_used: int = 0
     # 🆕 Testcase usage by complexity
     testcases_basic_used: int = 0
     testcases_medium_used: int = 0
@@ -24,6 +26,8 @@ class LimitModel(BaseModel):
     executions_limit: int = 0
     team_members_limit: int = 0
     ai_gen_limit: Optional[int] = 0
+    managed_ai_credits_limit: int = 0
+    byok_ai_requests_limit: int = 0
     # 🆕 Testcase limits by complexity
     testcases_basic_limit: int = 0
     testcases_medium_limit: int = 0
@@ -38,6 +42,7 @@ class Subscription(BaseModel):
     status: Literal["active", "expired", "cancelled"] = "active"
     provider: Optional[str] = "Manual"
     payment_id: Optional[str] = None
+    ai_allowance_version: Optional[int] = None
     ai_usage_period_start: Optional[datetime] = None
     ai_usage_period_end: Optional[datetime] = None
 
@@ -67,3 +72,8 @@ class Subscription(BaseModel):
                 testcases_medium_limit=plan_data.get("testcases_medium_limit", 0),
                 testcases_advanced_limit=plan_data.get("testcases_advanced_limit", 0),
             )
+
+        from app.services.ai_allowances import configured_limits
+        limits = configured_limits(self.plan)
+        self.limits.managed_ai_credits_limit = limits["managed_ai_credits_limit"]
+        self.limits.byok_ai_requests_limit = limits["byok_ai_requests_limit"]
