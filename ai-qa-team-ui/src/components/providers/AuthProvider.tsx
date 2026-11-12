@@ -85,9 +85,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signupWithEmail = async (name: string, email: string, password: string) => {
     const res = await apiFetch("/auth/signup", {
       method: "POST",
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, ...(new URLSearchParams(window.location.hash.slice(1)).get("invite") ? { invitation_token: new URLSearchParams(window.location.hash.slice(1)).get("invite") } : {}) }),
     });
     if (res.ok) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
       setUser(res.data.user);
       closeAuth();
     }

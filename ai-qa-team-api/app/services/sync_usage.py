@@ -3,7 +3,13 @@ from app.db.connection import db
 async def sync_usage(email: str) -> dict:
     """Recalculate all usage counters for a user."""
 
-    user = await db["users"].find_one({"email": email}, {"subscription.usage.ai_gen_used": 1})
+    user = await db["users"].find_one({"email": email})
+    from app.services.account_billing import billing_account
+    account = await billing_account(db, user)
+    if account:
+        # Account counters are durable migration + mutation counters. A profile
+        # refresh must not overwrite concurrent reservations or reset usage.
+        return account["subscription"]["usage"]
     ai_gen_used = ((user or {}).get("subscription", {}).get("usage", {}).get("ai_gen_used", 0))
 
     counts = {

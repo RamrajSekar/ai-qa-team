@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, SecretStr
 from datetime import datetime, timezone
 from typing import Optional, Literal
 from app.models.subscription import Subscription
@@ -24,6 +24,7 @@ class User(BaseModel):
     name: str
     email: EmailStr
     password: Optional[str] = None
+    invitation_token: Optional[SecretStr] = Field(default=None, exclude=True)
     provider: str = "local"  # local, google, github
     role: str = "admin"     # admin, lead, tester
     platform_role: Literal["OWNER", "ADMIN", "NONE"] = "NONE"

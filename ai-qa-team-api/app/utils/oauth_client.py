@@ -22,7 +22,7 @@ oauth.register(
     access_token_url="https://github.com/login/oauth/access_token",
     api_base_url="https://api.github.com/",
     client_kwargs={
-        "scope": "read:user repo",
+        "scope": "read:user user:email repo" if settings.features.customer_accounts else "read:user repo",
         "token_endpoint_auth_method": "client_secret_post",
     },
     redirect_uri=settings.github_redirect_uri,

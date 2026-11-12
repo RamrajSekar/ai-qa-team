@@ -157,6 +157,7 @@ class AuthSessionTests(unittest.IsolatedAsyncioTestCase):
                 return_value={"email": "safe@example.com", "role": "admin"},
             ),
             patch.object(auth_routes, "get_refresh_token", return_value="existing-refresh"),
+            patch.object(auth_routes, "db", {"users": _UsersCollection({"email": "safe@example.com"})}),
             patch.object(auth_routes, "create_access_token", return_value="new-access-token"),
         ):
             response = await auth_routes.refresh_token(request)

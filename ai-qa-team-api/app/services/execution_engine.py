@@ -301,12 +301,17 @@ async def list_executions_for_user(
     skip: int = 0,
     limit: int = 20,
     complexity: Optional[str] = None,
+    account_id: Optional[str] = None,
 ) -> List[TestExecutionResponse]:
     """
     List executions triggered by this user (for dashboard),
     optionally filtered by testcase complexity.
     """
     query: Dict[str, Any] = {"triggered_by": user_email}
+    if account_id:
+        memberships = await db["project_memberships"].find({"email": user_email.lower(), "status": "ACTIVE"}).to_list(10000)
+        projects = await db["projects"].find({"account_id": account_id, "project_id": {"$in": [item["project_id"] for item in memberships]}}).to_list(10000)
+        query["project_id"] = {"$in": [item["project_id"] for item in projects]}
     if complexity:
         query["complexity"] = complexity
 

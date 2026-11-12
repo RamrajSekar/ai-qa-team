@@ -233,3 +233,11 @@ Approved project knowledge is separate scoped memory, not model fine-tuning. Reu
 the existing registry/UI and backend PLATFORM_OWNER_EMAIL bootstrap. See
 [implementation and remaining phases](PLATFORM_PROMPTS.md). Editable instructions
 cannot replace code-enforced schemas, isolation, approvals or permissions.
+
+
+## Customer accounts and onboarding (2026-11-12)
+
+Accepted: one customer account per user, stable pending account at new signup/verified first OAuth; account name in existing Account & Project onboarding. Account OWNER/ADMIN manages customer invitations; project administrators assign existing same-account members. No platform/project role bypass, account switcher, implicit customer merger or account creation on normal login. Explicit reviewed existing-data migration precedes enabling the default-off feature. See [contracts and limits](CUSTOMER_ACCOUNTS.md). Billing/usage ownership and account-local display IDs remain separate work.
+
+
+Account Team/shared billing amendment (2026-11-12): see [ACCOUNT_TEAM_BILLING.md](ACCOUNT_TEAM_BILLING.md). Account OWNER/ADMIN manages same-account project assignments centrally; project-content/evidence access still requires membership. `account_subscriptions` is default off; billing cutover is an explicit reviewed migration, after which the account subscription is canonical even if the flag is disabled. Preserve legacy user subscriptions and histories; do not silently reset usage or apply existing-data migration at startup. Account-local display IDs remain future work.

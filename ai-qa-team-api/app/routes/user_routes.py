@@ -3,6 +3,8 @@ from pydantic import BaseModel
 from typing import Optional, Literal
 
 from app.db.connection import db
+from app.services.customer_accounts import CustomerAccounts, enabled as accounts_enabled
+from app.utils.project_authorization import require_project_member
 from app.utils.auth_dependency import get_current_user  # your existing auth dep
 from app.services.onboarding_services import (
     get_onboarding_status,
@@ -53,8 +55,15 @@ async def update_onboarding(data: dict, current_user=Depends(get_current_user)):
         update_data["onboarding.onboarding_status"] = "in_progress"
 
     if "project_id" in data:
+        if accounts_enabled() or current_user.get("account_id"):
+            await require_project_member(data["project_id"], current_user)
         update_data["onboarding.context.project_id"] = data["project_id"]
 
+    if "environment_id" in data and (accounts_enabled() or current_user.get("account_id")):
+        environment = await db["environments"].find_one({"env_id": data["environment_id"]})
+        if not environment:
+            raise HTTPException(404, "Environment not found.")
+        await require_project_member(environment["project_id"], current_user)
     if "environment_id" in data:
         update_data["onboarding.context.environment_id"] = data["environment_id"]
 
@@ -65,6 +74,10 @@ async def update_onboarding(data: dict, current_user=Depends(get_current_user)):
 
 @router.post("/finish")
 async def finish_onboarding(current_user=Depends(get_current_user)):
+    if accounts_enabled() or current_user.get("account_id"):
+        account = await CustomerAccounts(db).require(current_user)
+        if account["setup_status"] != "COMPLETE":
+            raise HTTPException(409, "Name the customer account before completing onboarding.")
     await db["users"].update_one(
         {"email": current_user["email"]},
         {"$set": {

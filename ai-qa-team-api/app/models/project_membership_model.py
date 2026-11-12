@@ -5,7 +5,7 @@ from pydantic import BaseModel, EmailStr
 
 
 ProjectRole = Literal["ADMIN", "TESTER"]
-MembershipStatus = Literal["INVITED", "ACTIVE"]
+MembershipStatus = Literal["INVITED", "ACTIVE", "LEGACY_REVIEW_REQUIRED"]
 
 
 class ProjectInvitationCreate(BaseModel):

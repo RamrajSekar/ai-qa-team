@@ -8,6 +8,8 @@ from app.services.story_service import get_next_sequence
 from app.models.project_model import ProjectCreate, ProjectResponse, AgentIdentities
 from app.utils.subscription_dependency import subscription_required
 from app.services.project_team_service import create_creator_membership
+from app.services.customer_accounts import CustomerAccounts, enabled as accounts_enabled
+from app.services.subscription_services import increment_usage, decrement_usage
 from app.utils.project_authorization import require_project_admin, require_project_member
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
@@ -22,10 +24,17 @@ async def create_project(
     current_user=Depends(get_current_user),
     _: None = Depends(subscription_required("projects"))
 ):
+    account = None
+    if accounts_enabled() or current_user.get("account_id"):
+        account = await CustomerAccounts(db).admin(current_user)
+        if account.get("setup_status") != "COMPLETE":
+            raise HTTPException(409, "Name the customer account in onboarding before creating a project.")
     # Generate next project ID
     new_project_id = await get_next_sequence("project_id", "PRJ")
 
     data = project.model_dump()
+    if account:
+        data["account_id"] = account["_id"]
     data["project_id"] = new_project_id
     data["created_by"] = current_user["email"]
     data["created_at"] = datetime.now(timezone.utc).isoformat()
@@ -49,10 +58,12 @@ async def create_project(
     data["current_user_role"] = "ADMIN"
 
     # 🔥 Increment project usage (FIXES DASHBOARD & /projects)
-    await db["users"].update_one(
-        {"email": current_user["email"]},
-        {"$inc": {"subscription.usage.projects_used": 1}}
-    )
+    from app.services.account_billing import billing_account
+    billing = await billing_account(db, current_user)
+    if billing:
+        await db["customer_accounts"].update_one({"_id": billing["_id"]}, {"$inc": {"subscription.usage.projects_used": 1}})
+    else:
+        await db["users"].update_one({"email": current_user["email"]}, {"$inc": {"subscription.usage.projects_used": 1}})
 
     # 🔥 Update onboarding steps
     await db["users"].update_one(
@@ -76,15 +87,19 @@ async def create_project(
 # -------------------------------------------------------------------
 @router.get("", response_model=list[ProjectResponse])
 async def list_projects(current_user=Depends(get_current_user)):
+    account = None
+    if accounts_enabled() or current_user.get("account_id"):
+        account = await CustomerAccounts(db).require(current_user)
+    account_scope = {"account_id": account["_id"]} if account else {}
     account_email = current_user.get("email", "")
     email = account_email.lower()
     # Backfill only projects whose legacy creator is unambiguous.
-    owned = await db["projects"].find({"created_by": account_email}).to_list(500)
+    owned = await db["projects"].find({"created_by": account_email, **account_scope}).to_list(500)
     for project in owned:
         await require_project_member(project["project_id"], current_user)
     memberships = await db["project_memberships"].find({"email": email, "status": "ACTIVE"}).to_list(500)
     roles = {membership["project_id"]: membership["role"] for membership in memberships}
-    cursor = db["projects"].find({"project_id": {"$in": list(roles)}})
+    cursor = db["projects"].find({"project_id": {"$in": list(roles)}, **account_scope})
     projects = []
 
     async for doc in cursor:
@@ -122,7 +137,9 @@ async def update_project(
     data: dict,
     current_user=Depends(get_current_user)
 ):
-    await require_project_admin(project_id, current_user)
+    project, _ = await require_project_admin(project_id, current_user)
+    if (accounts_enabled() or project.get("account_id")) and set(data) - {"name", "description", "agent_identities"}:
+        raise HTTPException(422, "Project ownership and identifiers cannot be edited.")
 
     update_data = {k: v for k, v in data.items() if v is not None}
     if "project_id" in update_data:
@@ -213,18 +230,18 @@ async def delete_project(
     await db["encrypted_secrets"].delete_many({"project_id": project_id})
 
     # 🔥 Decrement usage count
-    await db["users"].update_one(
-        {"email": email},
-        {"$inc": {
-            "subscription.usage.projects_used": -1,
-            "subscription.usage.team_members_used": -additional_members,
-        }}
-    )
+    from app.services.account_billing import billing_account
+    billing = await billing_account(db, current_user)
+    if billing:
+        await decrement_usage(current_user["email"], "projects_used")
+    else:
+        await db["users"].update_one({"email": email}, {"$inc": {
+            "subscription.usage.projects_used": -1, "subscription.usage.team_members_used": -additional_members}})
 
     # Check if 0 left
     user = await db["users"].find_one({"email": email})
 
-    if user["subscription"]["usage"]["projects_used"] <= 0:
+    if user and not billing and user["subscription"]["usage"]["projects_used"] <= 0:
         await db["users"].update_one(
             {"email": email},
             {

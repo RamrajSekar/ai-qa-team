@@ -3,6 +3,8 @@ from pydantic import BaseModel, Field
 
 
 class FeatureFlags(BaseModel):
+    customer_accounts: bool = False
+    account_subscriptions: bool = False
     story_management: bool = False
     scenario_generation: bool = False
     test_generation: bool = False

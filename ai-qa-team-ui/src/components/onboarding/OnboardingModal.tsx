@@ -1,5 +1,6 @@
 "use client";
 
+import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 import { useState } from "react";
 import StepProject from "./steps/StepProject";
 import StepEnvironment from "./steps/StepEnvironment";
@@ -25,6 +26,8 @@ export default function OnboardingModal({
   onProjectsReload,
   onClose,
 }: OnboardingModalProps) {
+  const { enabled } = useFeatures();
+  const labels = enabled("customer_accounts") ? ["Account & project", ...STEP_LABELS.slice(1)] : STEP_LABELS;
   const maxStep = 5;
 
   const [step, setStep] = useState<OnboardingStep>(
@@ -88,7 +91,7 @@ export default function OnboardingModal({
         <p>Create a project first. Product knowledge and story-based test design come next.</p>
       </header>
       <ol className="onboarding-stepper" aria-label={`Setup step ${step} of ${maxStep}`}>
-        {STEP_LABELS.map((label, index) => <li key={label} aria-current={index + 1 === step ? "step" : undefined}
+        {labels.map((label, index) => <li key={label} aria-current={index + 1 === step ? "step" : undefined}
           className={index + 1 < step ? "is-complete" : index + 1 === step ? "is-active" : ""}>
           <span aria-hidden="true">{index + 1 < step ? "✓" : index + 1}</span><small>{label}</small>
         </li>)}

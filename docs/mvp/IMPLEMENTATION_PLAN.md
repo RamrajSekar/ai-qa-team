@@ -443,3 +443,11 @@ Test Design page hierarchy and platform prompt activation improvements are imple
 See [scope, commands, evidence and remaining qualification](UI_UX_REFRESH.md).
 Phase 3 synthetic preview and real-login/provider checks remain next; recording
 ingestion is still gated on private storage. Do not resume Execution MVP by inference.
+
+
+## Customer account foundation — current slice (2026-11-12)
+
+Ownership/isolation implementation is default off: naming in existing onboarding, local/verified OAuth provisioning, account-admin invitations and same-account project access. [Customer accounts](CUSTOMER_ACCOUNTS.md) records migration, tests and release gates. Next: review explicit existing-user mappings, resolve cross-account legacy memberships, take backup/maintenance window, dry-run/apply/verify, then enable and qualify normal browser/OAuth login. Do not apply to existing data automatically. Following separately scoped phases move subscription/usage to the customer account and introduce account-local display numbering; preserve old identity/history links. Test Design remains the product priority; no execution scope advances here.
+
+
+Account Team/shared billing amendment (2026-11-12): see [ACCOUNT_TEAM_BILLING.md](ACCOUNT_TEAM_BILLING.md). Account OWNER/ADMIN manages same-account project assignments centrally; project-content/evidence access still requires membership. `account_subscriptions` is default off; billing cutover is an explicit reviewed migration, after which the account subscription is canonical even if the flag is disabled. Preserve legacy user subscriptions and histories; do not silently reset usage or apply existing-data migration at startup. Account-local display IDs remain future work.

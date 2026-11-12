@@ -256,4 +256,5 @@ async def list_my_executions(
         skip=skip,
         limit=limit,
         complexity=complexity,
+        **({"account_id": current_user["account_id"]} if current_user.get("account_id") else {}),
     )

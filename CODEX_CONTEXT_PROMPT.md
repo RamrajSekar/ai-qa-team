@@ -158,3 +158,9 @@ Execution MVP. See `docs/mvp/TEST_DESIGN_MVP.md` for incomplete release gates,
 `PLATFORM_PROMPTS.md` for platform-only prompt phases, and `UI_UX_REFRESH.md` for the
 shared workspace/dialog patterns and verification limits. Preserve existing runtime
 features. Private recording storage/upload/transcription are not delivered.
+
+
+For account work, read `docs/mvp/CUSTOMER_ACCOUNTS.md`: current default-off ownership/isolation slice, migration gates and verification limits. Preserve existing billing and IDs until explicitly scoped. Account assignment requires reviewed migration for existing users; account naming is in onboarding, never new-account creation during login.
+
+
+Account Team/shared billing amendment (2026-11-12): see `docs/mvp/ACCOUNT_TEAM_BILLING.md`. Account OWNER/ADMIN manages same-account project assignments centrally; project-content/evidence access still requires membership. `account_subscriptions` is default off; billing cutover is an explicit reviewed migration, after which the account subscription is canonical even if the flag is disabled. Preserve legacy user subscriptions and histories; do not silently reset usage or apply existing-data migration at startup. Account-local display IDs remain future work.
