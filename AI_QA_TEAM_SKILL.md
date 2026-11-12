@@ -9,6 +9,11 @@ Updated 2026-10-31. This repository guidance replaces the former brownfield-only
 
 ## Mission and scope
 
+Planning update: `docs/mvp/HYBRID_EXECUTION_PLAN.md` proposes semantic-first target
+resolution with bounded visual fallback. It is not implemented. An assigned H0
+task must explicitly amend/version the existing targeting constraint; do not add
+DOM/selector behavior silently or migrate old approvals automatically.
+
 Current development status and limits: see `docs/mvp/PRODUCT_KNOWLEDGE.md` and
 `docs/mvp/APPROVED_EXECUTION_DELIVERY.md`. Text/transcript knowledge review is not
 recording ingestion. Scenario intents describe coverage; detailed testcase drafts
@@ -187,3 +192,9 @@ checkpoint/assertion/failure evidence. No DOM/JS targeting fallback or fixed-coo
 claim of visual targeting. Customer execution, production/cloud deployment and
 full MVP readiness remain gated. This amendment records scope only; it does not
 implement M1B or authorize model calls in a documentation task.
+
+
+Platform prompt governance: see `docs/mvp/PLATFORM_PROMPTS.md`. Only platform
+OWNER/ADMIN manages shared task prompts, never project admins. Private backend
+`PLATFORM_OWNER_EMAIL` bootstraps the trusted owner; changing it does not revoke
+persisted roles. Project knowledge remains scoped, reviewed memory, not fine-tuning.

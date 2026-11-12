@@ -22,7 +22,7 @@ with patch.dict(os.environ, {"MONGO_URI": "mongodb://localhost:27017", "MONGO_DB
 
 class KnowledgeTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.db = {key: Collection() for key in ("product_knowledge_sources", "product_knowledge_versions", "story_analyses")}
+        self.db = {key: Collection() for key in ("product_knowledge_sources", "product_knowledge_versions", "story_analyses", "prompt_definitions")}
         self.db["stories"] = Collection({"project_id": "P1", "story_id": "ST1", "title": "Save draft",
                                         "description": "Synthetic", "acceptance_criteria": "Show Draft saved.", "out_of_scope": ""})
         self.usage = SimpleNamespace(execute=AsyncMock())
@@ -98,7 +98,15 @@ class KnowledgeTests(unittest.IsolatedAsyncioTestCase):
         result = await self.service.extract("P1", self.user, source["source_id"])
         self.assertEqual(result.claims[0].epistemic_status, "observed")
         self.assertEqual(self.usage.execute.call_args.args[0], AIOperation.KNOWLEDGE_EXTRACTION)
-        self.assertEqual(self.usage.execute.call_args.args[3].prompt_version, "1")
+        self.assertEqual(self.usage.execute.call_args.args[3].prompt_version, "CODE_DEFAULT_V1")
+        self.db["prompt_definitions"].docs.append({
+            "prompt_key": "KNOWLEDGE_EXTRACTION_V1", "active_version": 2,
+            "versions": [{"version": 2, "status": "ACTIVE", "system_prompt": "Preserve product terminology."}]})
+        await self.service.extract("P1", self.user, source["source_id"])
+        request = self.usage.execute.call_args.args[3]
+        self.assertEqual(request.prompt_version, "2")
+        self.assertIn("Preserve product terminology.", request.system_prompt)
+        self.assertIn("untrusted data", request.system_prompt)
         claim["segment_index"] = 1
         self.usage.execute.return_value.text = json.dumps({"claims": [claim], "clarification_questions": []})
         with self.assertRaises(HTTPException): await self.service.extract("P1", self.user, source["source_id"])

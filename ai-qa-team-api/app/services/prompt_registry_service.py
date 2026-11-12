@@ -58,10 +58,11 @@ async def get_prompt_definition(prompt_key: str) -> dict:
     return definition
 
 
-async def get_active(prompt_key: str) -> dict:
+async def get_active(prompt_key: str, database=None) -> dict:
     prompt_key = prompt_key.upper()
     fallback = _default(prompt_key)
-    document = await db["prompt_definitions"].find_one({"prompt_key": prompt_key})
+    store = db if database is None else database
+    document = await store["prompt_definitions"].find_one({"prompt_key": prompt_key})
     if document and document.get("active_version") is not None:
         version = next((item for item in document.get("versions", []) if item["version"] == document["active_version"] and item["status"] == "ACTIVE"), None)
         if version:

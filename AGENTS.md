@@ -10,6 +10,7 @@ Updated 2026-10-31. Current target: a human-supervised, recording-trained visual
 - `docs/mvp/DECISIONS.md`: accepted constraints, hypotheses and open decisions.
 - `docs/mvp/PRODUCT_KNOWLEDGE.md`: development knowledge review, story analysis and scenario/testcase distinction.
 - `docs/mvp/APPROVED_EXECUTION_DELIVERY.md`: seven-task execution status and merge gates.
+- `docs/mvp/HYBRID_EXECUTION_PLAN.md`: proposed semantic-first targeting amendment, phases and qualification gates; planning only.
 - `AI_QA_TEAM_SKILL.md`: architecture and safety guidance aligned to this target.
 - `CODEX_CONTEXT_PROMPT.md`: task workflow and handoff guidance.
 
@@ -34,6 +35,13 @@ Account/project onboarding is reusable but is not product training. Training mea
 New executor: Robot Framework core → custom Python visual library → direct HTTPX WebDriver client → ChromeDriver → matched Chrome for Testing. No Selenium, Playwright or Puppeteer clients, including transitive dependencies, in that isolated runtime. Preserve legacy Playwright separately. Static source scanners for those frameworks are not runtime clients.
 
 Screenshots/computer vision identify UI targets; approved natural-language tests compile into bounded structured specifications. Trusted code performs coordinate/key actions and validates checkpoints. Do not silently add DOM/selector targeting, arbitrary JavaScript, generated code or unrestricted Robot keywords. WebDriver is a protocol, not a Selenium client requirement. Robot core alone supplies neither browser control nor vision.
+
+The user has requested a semantic-first hybrid **plan**, recorded in
+`docs/mvp/HYBRID_EXECUTION_PLAN.md`. It proposes an explicit amendment to the above
+targeting constraint, not a hidden fallback or delivered feature. When implementation
+is assigned, start with H0/H1: version the policy/contracts and update guidance,
+then prove the supported direct-WebDriver semantic subset. Do not treat this
+planning task as authority to change application behavior or approved versions.
 
 ## Mandatory invariants
 
@@ -166,3 +174,9 @@ checkpoint/assertion/failure evidence. No DOM/JS targeting fallback or fixed-coo
 claim of visual targeting. Customer execution, production/cloud deployment and
 full MVP readiness remain gated. This amendment records scope only; it does not
 implement M1B or authorize model calls in a documentation task.
+
+
+Platform prompt governance: see `docs/mvp/PLATFORM_PROMPTS.md`. Only platform
+OWNER/ADMIN manages shared task prompts, never project admins. Private backend
+`PLATFORM_OWNER_EMAIL` bootstraps the trusted owner; changing it does not revoke
+persisted roles. Project knowledge remains scoped, reviewed memory, not fine-tuning.

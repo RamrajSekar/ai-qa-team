@@ -13,6 +13,7 @@ import ScenarioModal from "@/components/scenarios/ScenarioModal";
 import TestCaseEditor from "@/components/projects/TestCaseEditor";
 import CatalogCreation from "./CatalogCreation";
 import ScenarioViewer from "@/components/scenarios/ScenarioViewer";
+import TestDesignReview from "./TestDesignReview";
 
 export interface CatalogCase {
   updated_at?: string;
@@ -123,6 +124,7 @@ export default function ProjectTestCatalog({ kind }: { kind: "scenarios" | "test
             <h2 className="font-semibold">{testcase.title}</h2>
             <p>{testcase.testcase_id} · {testcase.complexity || "Unspecified complexity"} · {testcase.status}</p>
             {testcase.description && <p>{testcase.description}</p>}
+            {enabled("product_knowledge", "story_analysis") && <TestDesignReview key={`${testcase.testcase_id}:${testcase.updated_at || ""}`} testcase={testcase} projectId={projectId} canApprove={canApprove} />}
             {testcase.knowledge_version_id && <details><summary>Purpose, data and approved context</summary>
               <p>Purpose: {testcase.purpose}</p><p>Role: {testcase.role || "Not specified"}</p>
               <p>Preconditions: {testcase.preconditions?.join("; ")}</p>

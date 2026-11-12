@@ -2,6 +2,13 @@
 
 Status: authoritative target, approved planning scope from the 2026-10-31 assessment request. This document describes required behavior, not delivered functionality. See [repository evidence](REPO_GAP_ANALYSIS.md), [delivery plan](IMPLEMENTATION_PLAN.md), and [decisions](DECISIONS.md).
 
+Proposed targeting amendment (2026-11-11): the user requested a
+[semantic-first hybrid execution plan](HYBRID_EXECUTION_PLAN.md). It preserves
+natural-language authoring and human approvals while proposing semantic/DOM target
+resolution with bounded visual fallback. It is not implemented and does not silently
+supersede the earlier runtime constraint. H0 explicitly versions the amendment
+before implementation; the training/knowledge/story workflow remains unchanged.
+
 ## Purpose and relationship to existing work
 
 Deliver a browser-accessible, human-supervised QA service that learns a bounded application module from narrated recordings, obtains approval for knowledge, generates tests from stories and acceptance criteria with that knowledge as context, and executes approved cases visually. Customers write no scripts or selectors. Backend-controlled specialized AI tasks support the workflow; ordinary code controls authorization, approvals, versions, permissions, comparisons, secrets, retries, budgets, and outcomes. No multi-agent swarm, new agent framework, graph database, Obsidian Second Brain, or MAK4I dependency is required.

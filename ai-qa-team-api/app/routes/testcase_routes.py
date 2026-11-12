@@ -244,6 +244,12 @@ async def update_testcase(
     if not existing:
         raise HTTPException(404, "Testcase not found")
 
+    await require_project_member(existing["project_id"], current_user)
+    if payload.project_id and payload.project_id != existing["project_id"]:
+        raise HTTPException(422, "Moving a test case between projects requires an explicit migration.")
+    if payload.scenario_id and not await db["scenarios"].find_one({"project_id": existing["project_id"], "scenario_id": payload.scenario_id}):
+        raise HTTPException(404, "Source scenario not found in this project.")
+
     # Normalize structured steps
     normalized_steps = normalize_steps(payload.steps or [])
 
@@ -289,6 +295,8 @@ async def get_testcase(
     if not doc:
         raise HTTPException(404, "Testcase not found")
 
+    await require_project_member(doc["project_id"], current_user)
+
     doc.pop("_id", None)
     doc["steps"] = [TestStep(**s) for s in doc.get("steps", [])]
 
@@ -307,6 +315,17 @@ async def list_testcases(
 ):
     filter_q: dict = {}
 
+    if project_id:
+        await require_project_member(project_id, current_user)
+    if scenario_id:
+        scenario = await db["scenarios"].find_one({"scenario_id": scenario_id, **({"project_id": project_id} if project_id else {})})
+        if not scenario:
+            raise HTTPException(404, "Scenario not found in the selected project.")
+        await require_project_member(scenario["project_id"], current_user)
+        filter_q["project_id"] = scenario["project_id"]
+    if not project_id and not scenario_id:
+        filter_q["created_by"] = current_user["email"]
+
     if scenario_id:
         filter_q["scenario_id"] = scenario_id
 
@@ -317,6 +336,12 @@ async def list_testcases(
 
     results: List[TestCaseResponse] = []
     async for doc in cursor:
+        if not project_id and not scenario_id:
+            try:
+                await require_project_member(doc["project_id"], current_user)
+            except HTTPException as exc:
+                if exc.status_code in (403, 404): continue
+                raise
         doc.pop("_id", None)
         doc["steps"] = [TestStep(**s) for s in doc.get("steps", [])]
         results.append(TestCaseResponse(**doc))
@@ -373,7 +398,7 @@ async def delete_catalog_testcase(testcase_id: str, project_id: str, current_use
     scope = {"project_id": project_id, "testcase_id": testcase_id, "created_by": current_user["email"]}
     if not await db["testcases"].find_one(scope):
         raise HTTPException(404, "Test case not found or access denied")
-    for collection in ("approved_visual_tests", "approved_visual_runs", "visual_test_spec_versions", "executions"):
+    for collection in ("approved_visual_tests", "approved_visual_runs", "visual_test_spec_versions", "test_design_documents", "executions"):
         if await db[collection].find_one({"project_id": project_id, "testcase_id": testcase_id}):
             raise HTTPException(409, "This test case has approvals or execution history and cannot be deleted.")
     result = await db["testcases"].delete_one(scope)
