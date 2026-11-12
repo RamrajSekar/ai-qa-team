@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import Link from "next/link";
+import SubscriptionUsage, { type AccountSubscription } from "./SubscriptionUsage";
 import TeamManager from "@/components/team/TeamManager";
 import { apiFetch } from "@/utils/api";
 
@@ -18,7 +19,7 @@ export default function AccountSettings({ team = false }: { team?: boolean }) {
   const admin = user?.account_role === "OWNER" || user?.account_role === "ADMIN";
   const [projects, setProjects] = useState<{project_id: string; name: string}[]>([]);
   const [projectId, setProjectId] = useState("");
-  const [billing, setBilling] = useState<{ billing_scope?: string; subscription?: {plan: string; status: string; usage: Record<string, number>; limits: Record<string, number | null>} } | null>(null);
+  const [billing, setBilling] = useState<{ billing_scope?: string; subscription?: AccountSubscription } | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -45,21 +46,6 @@ export default function AccountSettings({ team = false }: { team?: boolean }) {
     return () => controller.abort();
   }, [load]);
 
-  function usageLabel(key: string) {
-    const labels: Record<string, string> = { projects_used: "Projects", stories_used: "Stories", scenarios_used: "Scenarios", testcases_used: "Test Cases", executions_used: "Executions", team_members_used: "Additional Team Members", ai_gen_used: "AI Generations" };
-    return labels[key] || key.replace(/_used$/, "").split("_").map(word => word[0].toUpperCase() + word.slice(1)).join(" ");
-  }
-
-  function displayedLimit(key: string) {
-    const limits = billing?.subscription?.limits;
-    if (!limits) return "Not configured";
-    const value = limits[key.replace(/_used$/, "_limit")];
-    if (key === "testcases_used" && value === 0) {
-      return ["basic", "medium", "advanced"].reduce((total, tier) => total + (limits[`testcases_${tier}_limit`] || 0), 0);
-    }
-    return value === null ? "Unlimited" : value ?? "Not configured";
-  }
-
   async function action(work: () => Promise<void>) {
     setBusy(true); setError(""); setMessage("");
     try { await work(); } catch (failure) { setError(failure instanceof Error ? failure.message : "Could not complete request."); }
@@ -77,7 +63,7 @@ export default function AccountSettings({ team = false }: { team?: boolean }) {
         })}>Save account name</button>}
         <p className="workspace-description">{billing?.billing_scope === "ACCOUNT" ? "Your subscription and usage are shared across this customer account." : "Account subscription migration is required before shared billing is enabled."}</p>
       </section>}
-      {!team && billing?.subscription && <section><h2>Subscription & usage</h2><p>{billing.subscription.plan} · {billing.subscription.status}</p><p>Additional account members and pending invitations share the member allowance. Project assignments do not use additional seats.</p><dl>{Object.entries(billing.subscription.usage).filter(([key]) => !/^testcases_(basic|medium|advanced)_used$/.test(key)).map(([key, value]) => <div key={key} className="space-y-2"><div className="workspace-row"><dt>{usageLabel(key)}</dt><dd>{value} / {displayedLimit(key)}</dd></div>{key === "testcases_used" && <div className="pl-6" aria-label="Test case usage by complexity">{["basic", "medium", "advanced"].map(tier => <div className="workspace-row" key={tier}><dt>{tier[0].toUpperCase() + tier.slice(1)}</dt><dd>{billing.subscription?.usage[`testcases_${tier}_used`] ?? 0} / {displayedLimit(`testcases_${tier}_used`)}</dd></div>)}</div>}</div>)}</dl></section>}
+      {!team && billing?.subscription && <SubscriptionUsage subscription={billing.subscription} />}
       {team && <section><h2>Account members</h2>{members.map(member => <div className="workspace-row" key={member.email}><div><strong>{member.name || member.email}</strong><p className="workspace-row-subtitle">{member.email}</p></div><span className="workspace-badge">{member.account_role}</span></div>)}</section>}
       {team && admin && <section className="space-y-4"><h2>Invite a new account member</h2><p className="workspace-description">{emailEnabled ? "Send a seven-day invitation by email." : "Create a seven-day invitation link and share it privately. Email delivery can be enabled later."} Existing members are added to projects under Project assignments below.</p>
         <label>New member email<input type="email" value={email} disabled={busy} onChange={event => setEmail(event.target.value)} /></label>
