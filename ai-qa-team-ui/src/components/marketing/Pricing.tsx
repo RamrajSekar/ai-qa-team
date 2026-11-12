@@ -1,109 +1,37 @@
 "use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { apiFetch } from "@/utils/api";
+
+type Offer = { monthly_usd: number | null; managed_ai_credits_limit: number; byok_ai_requests_limit: number };
+type Catalog = { stage: string; currency: string; free: Offer & { additional_members_limit: number }; managed: Offer; byok: Offer; enterprise: Offer; pilot: { fixed_usd: number } };
 
 export default function Pricing() {
-  return (
-    <section
-      id="pricing"
-      className="border-b border-[var(--qs-border)] bg-[var(--qs-bg-soft)]"
-    >
-      <div className="max-w-6xl mx-auto px-6 py-16 md:py-20">
-        <h2 className="text-3xl md:text-4xl font-bold text-[var(--qs-text)]">
-          Start small, grow with your team.
-        </h2>
-
-        <p className="mt-3 text-base text-[var(--qs-text-soft)] max-w-xl">
-          Usage-based limits that match your team's stage. Upgrade anytime.
-        </p>
-
-        <div className="mt-12 grid gap-8 md:grid-cols-3">
-          {/* FREE PLAN */}
-          <div className="rounded-2xl border border-[var(--qs-border)] bg-[var(--qs-bg)] p-6 shadow flex flex-col">
-            <h3 className="text-xl font-semibold text-[var(--qs-text)]">Free</h3>
-            <p className="mt-1 text-sm text-[var(--qs-text-soft)]">
-              For individuals getting started.
-            </p>
-
-            <p className="mt-6 text-4xl font-bold text-[var(--qs-text)]">$0</p>
-            <p className="text-sm text-[var(--qs-text-soft)]">forever</p>
-
-            <ul className="mt-6 space-y-2 text-sm text-[var(--qs-text-soft)] flex-1">
-              <li>1 Project</li>
-              <li>5 User Stories</li>
-              <li>10 Scenarios</li>
-              <li>20 Executions / month</li>
-              <li>1 Team Member</li>
-              <li>3 AI Generations</li>
-              <li>10 Basic Testcases</li>
-            </ul>
-
-            {/* <AuthTrigger>Get Started Free</AuthTrigger> */}
-            {/* <a href="/auth/signup">Get Started Free</a> */}
-            <Link href="/auth">Get Started Free</Link>
-          </div>
-
-          {/* PRO PLAN */}
-          <div className="relative rounded-2xl border-4 border-violet-600 bg-[var(--qs-bg)] p-6 shadow-2xl flex flex-col scale-[1.02]">
-            <span className="absolute -top-3 right-5 rounded-full bg-violet-600 px-3 py-1 text-xs font-bold text-white shadow">
-              Most popular
-            </span>
-
-            <h3 className="text-xl font-semibold text-[var(--qs-text)]">Pro</h3>
-            <p className="mt-1 text-sm text-[var(--qs-text-soft)]">
-              For growing teams that need more volume.
-            </p>
-
-            <p className="mt-6 text-4xl font-bold text-[var(--qs-text)]">$49</p>
-            <p className="text-sm text-[var(--qs-text-soft)]">per month</p>
-
-            <ul className="mt-6 space-y-2 text-sm text-[var(--qs-text-soft)] flex-1">
-              <li>10 Projects</li>
-              <li>100 User Stories</li>
-              <li>200 Scenarios</li>
-              <li>1,000 Executions / month</li>
-              <li>5 Team Members</li>
-              <li>50 AI Generations</li>
-              <li>500 Basic Testcases</li>
-              <li>200 Medium</li>
-              <li>100 Advanced</li>
-            </ul>
-
-            {/* <AuthTrigger>Choose PRO</AuthTrigger> */}
-            {/* <a href="/auth?plan=pro">Get Started Pro</a> */}
-            <Link href="/auth">Choose PRO</Link>
-          </div>
-
-          {/* ENTERPRISE PLAN */}
-          <div className="rounded-2xl border border-[var(--qs-border)] bg-[var(--qs-bg)] p-6 shadow flex flex-col">
-            <h3 className="text-xl font-semibold text-[var(--qs-text)]">
-              Enterprise
-            </h3>
-            <p className="mt-1 text-sm text-[var(--qs-text-soft)]">
-              For organizations needing custom workflows.
-            </p>
-
-            <p className="mt-6 text-4xl font-bold text-[var(--qs-text)]">
-              Let's talk
-            </p>
-            <p className="text-sm text-[var(--qs-text-soft)]">custom pricing</p>
-
-            <ul className="mt-6 space-y-2 text-sm text-[var(--qs-text-soft)] flex-1">
-              <li>1,000+ Projects</li>
-              <li>2,000 Scenarios</li>
-              <li>10,000 Executions</li>
-              <li>20 Team Members</li>
-              <li>Unlimited AI Generations</li>
-            </ul>
-
-            <a
-              href="/contact"
-              className="mt-6 rounded-xl border border-[var(--qs-border)] bg-[var(--qs-bg)] px-4 py-3 text-center text-sm font-semibold text-[var(--qs-text)] hover:bg-[var(--qs-bg-soft)] shadow"
-            >
-              Contact sales
-            </a>
-          </div>
-        </div>
+  const [catalog, setCatalog] = useState<Catalog | null>(null);
+  const [error, setError] = useState(false);
+  const [reload, setReload] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    apiFetch("/auth/pricing", { signal: controller.signal }).then(response => {
+      if (!response.ok || response.data?.stage !== "EXPERIMENTAL") throw new Error("CATALOG_UNAVAILABLE");
+      if (!controller.signal.aborted) { setCatalog(response.data); setError(false); }
+    }).catch(() => { if (!controller.signal.aborted) setError(true); });
+    return () => controller.abort();
+  }, [reload]);
+  const price = (amount: number | null) => amount === null ? "Let’s discuss" : new Intl.NumberFormat("en-US", {style: "currency", currency: "USD", maximumFractionDigits: 0}).format(amount);
+  return <section id="pricing" className="lp-section lp-container">
+    <p className="lp-eyebrow">Pricing exploration · Not a checkout</p><h1>Choose how your team uses AI.</h1>
+    <p className="lp-intro">Managed AI includes model usage. Bring your own key (BYOK) keeps provider billing with you. Both use the same platform for knowledge review, story analysis and approved test design.</p>
+    <div className="lp-banner">Prices and allowances are experimental hypotheses, subject to pilot validation. Paid subscriptions are not available for self-service purchase.</div>
+    {error ? <div role="alert"><p>Pricing details are temporarily unavailable.</p><button className="lp-button" onClick={() => setReload(value => value + 1)}>Try again</button></div> : !catalog ? <p role="status">Loading pricing details…</p> : <>
+      <div className="lp-pricing-grid">
+        <article className="lp-pricing-card"><h2>Free Evaluation</h2><p className="lp-pricing-price">{price(catalog.free.monthly_usd)}</p><p>Controlled evaluation, not unrestricted browser execution.</p><ul><li>{catalog.free.managed_ai_credits_limit} Included AI Credits / month</li><li>{catalog.free.byok_ai_requests_limit} BYOK AI Requests / month</li><li>Account owner + {catalog.free.additional_members_limit} additional members</li><li>Review stories, scenarios and test cases</li></ul><Link className="lp-button lp-secondary" href="/auth?mode=signup">Create an evaluation account</Link></article>
+        <article className="lp-pricing-card"><h2>Managed AI</h2><p className="lp-pricing-price">~{price(catalog.managed.monthly_usd)}<small>/ month hypothesis</small></p><p>Platform subscription with supported model usage included.</p><ul><li>{catalog.managed.managed_ai_credits_limit} Included AI Credits / month</li><li>Platform-managed provider credentials</li><li>Shared knowledge, approvals and team access</li><li>No separate customer model-provider bill for included requests</li></ul><Link className="lp-button" href="/auth?mode=signup">Explore the pilot</Link></article>
+        <article className="lp-pricing-card"><h2>Bring Your Own Key</h2><p className="lp-pricing-price">~{price(catalog.byok.monthly_usd)}<small>/ month hypothesis</small></p><p>Platform subscription; you pay your AI provider directly.</p><ul><li>{catalog.byok.byok_ai_requests_limit} AI Request Allowance / month</li><li>Supported provider/model combinations only</li><li>Same knowledge and test-design workflow</li><li>Provider charges are additional and separate</li></ul><Link className="lp-button lp-secondary" href="/auth?mode=signup">Explore BYOK</Link></article>
       </div>
-    </section>
-  );
+      <div className="lp-callout"><h2>Fixed-scope pilot</h2><p>~{price(catalog.pilot.fixed_usd)} pricing hypothesis for an agreed scope. Enterprise allowances are configurable and capped; contact the platform team during onboarding to discuss a suitable scope. No automatic plan upgrade or charge occurs here.</p></div>
+    </>}
+    <section className="lp-roadmap"><h2>What does an allowance cover?</h2><dl className="lp-facts"><div><dt>Included AI Credits · Managed</dt><dd>Supported requests use the platform’s credentials and model budget. One request may generate multiple scenarios or test cases.</dd></div><div><dt>AI Request Allowance · BYOK</dt><dd>The platform limits requests; the customer separately pays their provider for tokens. Switching modes does not replenish either allowance.</dd></div><div><dt>Credits are not tokens</dt><dd>Credits count supported requests, not model tokens or a fixed dollar value. Token usage and provider charges vary by model and request size.</dd></div><div><dt>Enterprise BYOK is optional</dt><dd>Managed AI requires no customer key. BYOK requires your organization’s approval for this platform to use a scoped provider key; procurement and security review still apply. Do not submit an unrestricted master key.</dd></div><div><dt>Human review and correction</dt><dd>Editing or approving content is separate from asking AI to generate or analyze it.</dd></div><div><dt>Execution and delivery scope</dt><dd>Test Design is the current priority. Recording upload/transcription and customer-app automated execution remain gated. Future execution AI requires a separate bounded budget; these prices do not promise unlimited execution or production readiness.</dd></div></dl></section>
+  </section>;
 }

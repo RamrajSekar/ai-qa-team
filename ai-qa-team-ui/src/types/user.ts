@@ -6,6 +6,8 @@ export interface UsageStats {
   executions_used: number;
   team_members_used: number;
   ai_gen_used: number;
+  managed_ai_credits_used?: number;
+  byok_ai_requests_used?: number;
   projects_used: number;
 }
 
@@ -15,11 +17,14 @@ export interface UsageLimits {
   executions_limit: number;
   team_members_limit: number;
   ai_gen_limit: number;
+  managed_ai_credits_limit?: number;
+  byok_ai_requests_limit?: number;
   projects_limit: number;
   description?: string;
 }
 
 export interface Subscription {
+  ai_allowance_version?: number | null;
   plan: string;           // "free", "pro", etc.
   start_date?: string;
   expiry_date?: string;

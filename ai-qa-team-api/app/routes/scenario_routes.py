@@ -392,7 +392,7 @@ async def generate_scenarios_from_story(
         rem_scen = None if max_scen is None else max(max_scen - existing, 0)
         ai_used = sub["usage"]["ai_gen_used"]
         ai_lim = sub["limits"]["ai_gen_limit"]
-        rem_ai = None if ai_lim is None else max(ai_lim - ai_used, 0)
+        rem_ai = None if ai_lim is None or sub.get("ai_allowance_version") == 1 else max(ai_lim - ai_used, 0)
         knowledge_mode = settings.features.product_knowledge
         allowed = count if rem_scen is None else min(count, rem_scen)
         if not knowledge_mode and sub.get("billing_scope") != "ACCOUNT" and rem_ai is not None:
@@ -518,7 +518,7 @@ async def generate_from_recording(
 
         ai_used = sub["usage"]["ai_gen_used"]
         ai_lim = sub["limits"]["ai_gen_limit"]
-        rem_ai = None if ai_lim is None else max(ai_lim - ai_used, 0)
+        rem_ai = None if ai_lim is None or sub.get("ai_allowance_version") == 1 else max(ai_lim - ai_used, 0)
 
         allowed = count if rem_scen is None else min(count, rem_scen)
         if sub.get("billing_scope") != "ACCOUNT" and rem_ai is not None:

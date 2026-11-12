@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, SecretStr, EmailStr
 class FeatureFlags(BaseModel):
     account_invitation_email: bool = False
     test_execution_ui: bool = False
+    separate_ai_allowances: bool = False
     customer_accounts: bool = False
     account_subscriptions: bool = False
     story_management: bool = False
@@ -43,8 +44,25 @@ class AIUsageSettings(BaseModel):
     rate_limit_window_seconds: int = Field(default=60, ge=1)
     concurrency_ttl_seconds: int = Field(default=300, ge=1)
 
+class AIAllowanceSettings(BaseModel):
+    free_managed: int = Field(default=25, ge=0)
+    free_byok: int = Field(default=25, ge=0)
+    pro_managed: int = Field(default=500, ge=0)
+    pro_byok: int = Field(default=500, ge=0)
+    enterprise_managed: int = Field(default=5000, ge=0)
+    enterprise_byok: int = Field(default=5000, ge=0)
+
+
+class PricingSettings(BaseModel):
+    managed_monthly_usd: int = Field(default=499, ge=0)
+    byok_monthly_usd: int = Field(default=349, ge=0)
+    pilot_fixed_usd: int = Field(default=1000, ge=0)
+
+
 class Settings(BaseSettings):
     features: FeatureFlags = Field(default_factory=FeatureFlags)
+    ai_allowances: AIAllowanceSettings = Field(default_factory=AIAllowanceSettings)
+    pricing: PricingSettings = Field(default_factory=PricingSettings)
     ai_usage: AIUsageSettings = Field(default_factory=AIUsageSettings)
     mongo_uri: str
     mongo_db: str

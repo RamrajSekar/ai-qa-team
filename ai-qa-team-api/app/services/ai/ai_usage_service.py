@@ -67,7 +67,7 @@ class AIUsageService:
         usage_id = f"AIU-{uuid4().hex}"
         started_at = self.now()
         try:
-            reservation = await self._reserve(billing_owner, policy, started_at)
+            reservation = await self._reserve(billing_owner, policy, started_at, mode=context.mode)
             record = self._record(usage_id, project_id, user_id, email, billing_owner, policy, context, request, started_at, reservation)
             await self.db["ai_usage_records"].insert_one(record)
             try:
@@ -76,7 +76,7 @@ class AIUsageService:
                 consume = self._consume_failed_attempt(exc)
                 if not consume:
                     await self._release_reservation(billing_owner, policy, reservation)
-                await self._finish_failed(usage_id, exc, policy.credit_cost if consume else 0)
+                await self._finish_failed(usage_id, exc, reservation["units"] if consume else 0)
                 self._log_provider_failure(policy, project_id, context, bounded_request, usage_id, exc)
                 if isinstance(exc, LLMProviderError):
                     raise
@@ -84,7 +84,7 @@ class AIUsageService:
             await self.db["ai_usage_records"].update_one(
                 {"usage_id": usage_id},
                 {"$set": {
-                    "status": "SUCCEEDED", "credits_consumed": policy.credit_cost,
+                    "status": "SUCCEEDED", "credits_consumed": reservation["units"], "units_consumed": reservation["units"],
                     "provider_id": response.provider_id, "model": response.model,
                     "input_tokens": response.input_tokens, "output_tokens": response.output_tokens,
                     "total_tokens": response.total_tokens, "completed_at": self.now(),
@@ -121,42 +121,61 @@ class AIUsageService:
                 raise AIUsageError("AI_ACCESS_DENIED", 404, "Project not found or access denied.")
         return project, email, user_id
 
-    async def _reserve(self, billing_owner: str, policy: AIUsagePolicy, now: datetime) -> dict:
+    async def _reserve(self, billing_owner: str, policy: AIUsagePolicy, now: datetime, *, mode="MANAGED") -> dict:
+        if mode not in {"MANAGED", "BYOK"}:
+            raise AIUsageError("AI_MODE_UNSUPPORTED", 400, "Unsupported AI billing mode.")
         start, end = _month_period(now)
         start_value, end_value = start.isoformat(), end.isoformat()
         account_mode = billing_owner.startswith("ACC_") and "@" not in billing_owner
-        users = self.db["customer_accounts" if account_mode else "users"]
+        collection = self.db["customer_accounts" if account_mode else "users"]
         identity = {"_id": billing_owner, "billing_version": 1, "status": "ACTIVE"} if account_mode else {"email": billing_owner}
-        await users.update_one(
-            {**identity, "subscription.ai_usage_period_start": {"$ne": start_value}},
-            {"$set": {
-                "subscription.usage.ai_gen_used": 0,
-                "subscription.ai_usage_period_start": start_value,
-                "subscription.ai_usage_period_end": end_value,
-            }},
-        )
-        owner = await users.find_one(identity)
+        owner = await collection.find_one(identity)
         if not owner or owner.get("subscription", {}).get("status") != "active":
             raise AIUsageError("AI_USAGE_LIMIT_EXCEEDED", 403, "No active AI allowance is available.")
-        allowance = owner.get("subscription", {}).get("limits", {}).get("ai_gen_limit")
+        separate = account_mode and owner.get("subscription", {}).get("ai_allowance_version") == 1
+        if settings.features.separate_ai_allowances and not separate:
+            raise AIUsageError("AI_ALLOWANCE_MIGRATION_REQUIRED", 409, "Separate AI allowance migration is required.")
+        usage_field = "managed_ai_credits_used" if mode == "MANAGED" else "byok_ai_requests_used"
+        limit_field = "managed_ai_credits_limit" if mode == "MANAGED" else "byok_ai_requests_limit"
+        if not separate:
+            usage_field, limit_field = "ai_gen_used", "ai_gen_limit"
+        units = 1 if separate and mode == "BYOK" else policy.credit_cost
+        reset = {"subscription.usage.ai_gen_used": 0, "subscription.ai_usage_period_start": start_value,
+                 "subscription.ai_usage_period_end": end_value}
+        if separate:
+            reset.update({"subscription.usage.managed_ai_credits_used": 0, "subscription.usage.byok_ai_requests_used": 0})
+        rollover = {"$or": [{"subscription.ai_usage_period_start": {"$lt": start_value}}, {"subscription.ai_usage_period_start": None}]} if separate else {"subscription.ai_usage_period_start": {"$ne": start_value}}
+        await collection.update_one({**identity, **rollover}, {"$set": reset})
+        owner = await collection.find_one(identity)
+        if not owner or owner.get("subscription", {}).get("status") != "active":
+            raise AIUsageError("AI_USAGE_LIMIT_EXCEEDED", 403, "No active AI allowance is available.")
+        allowance = owner.get("subscription", {}).get("limits", {}).get(limit_field)
+        if separate and (not isinstance(allowance, int) or isinstance(allowance, bool) or allowance < 0):
+            raise AIUsageError("AI_ALLOWANCE_NOT_CONFIGURED", 503, "The AI allowance is not configured.")
         query = {**identity, "subscription.status": "active", "subscription.ai_usage_period_start": start_value}
+        if separate:
+            query["subscription.ai_allowance_version"] = 1
         if allowance is not None:
-            query["subscription.usage.ai_gen_used"] = {"$lte": max(allowance - policy.credit_cost, -1)}
-        updated = await users.find_one_and_update(
-            query, {"$inc": {"subscription.usage.ai_gen_used": policy.credit_cost}},
-            return_document=ReturnDocument.AFTER,
-        )
+            query["subscription.usage." + usage_field] = {"$lte": max(allowance - units, -1)}
+        increments = {"subscription.usage." + usage_field: units}
+        if separate:
+            increments["subscription.usage.ai_gen_used"] = units  # Legacy aggregate for compatibility, not a third pool.
+        updated = await collection.find_one_and_update(query, {"$inc": increments}, return_document=ReturnDocument.AFTER)
         if not updated:
-            raise AIUsageError("AI_USAGE_LIMIT_EXCEEDED", 403, "The AI usage allowance has been reached.")
-        return {"period_start": start_value, "period_end": end_value, "allowance": allowance}
+            raise AIUsageError("AI_USAGE_LIMIT_EXCEEDED", 403, "The " + ("BYOK request" if mode == "BYOK" else "Managed AI credit") + " allowance has been reached.")
+        return {"period_start": start_value, "period_end": end_value, "allowance": allowance,
+                "usage_field": usage_field, "units": units, "mode": mode, "separate": separate}
 
     async def _release_reservation(self, billing_owner: str, policy: AIUsagePolicy, reservation: dict) -> None:
         account_mode = billing_owner.startswith("ACC_") and "@" not in billing_owner
+        field = "subscription.usage." + reservation["usage_field"]
+        units = reservation["units"]
+        changes = {field: -units}
+        if reservation["separate"]:
+            changes["subscription.usage.ai_gen_used"] = -units
         await self.db["customer_accounts" if account_mode else "users"].update_one(
-            {**({"_id": billing_owner} if account_mode else {"email": billing_owner}), "subscription.ai_usage_period_start": reservation["period_start"],
-             "subscription.usage.ai_gen_used": {"$gte": policy.credit_cost}},
-            {"$inc": {"subscription.usage.ai_gen_used": -policy.credit_cost}},
-        )
+            {**({"_id": billing_owner} if account_mode else {"email": billing_owner}), "subscription.ai_usage_period_start": reservation["period_start"], field: {"$gte": units}},
+            {"$inc": changes})
 
     def _record(self, usage_id: str, project_id: str, user_id: str, email: str, billing_owner: str,
                 policy: AIUsagePolicy, context: ResolvedLLMContext, request: LLMRequest,
@@ -165,7 +184,9 @@ class AIUsageService:
             "usage_id": usage_id, "project_id": project_id, "user_id": user_id, "user_email": email,
             "billing_owner": billing_owner, "operation_type": policy.operation.value, "ai_mode": context.mode,
             **({"account_id": billing_owner, "billing_scope": "ACCOUNT"} if billing_owner.startswith("ACC_") and "@" not in billing_owner else {"billing_scope": "USER"}),
-            "provider_id": context.provider_id, "model": context.model, "credits_reserved": policy.credit_cost,
+            "provider_id": context.provider_id, "model": context.model, "credits_reserved": reservation["units"],
+            "units_reserved": reservation["units"], "units_consumed": 0,
+            "usage_unit": ("BYOK_AI_REQUEST" if context.mode == "BYOK" else "MANAGED_AI_CREDIT") if reservation["separate"] else "LEGACY_AI_CREDIT",
             "credits_consumed": 0, "input_units": len(request.prompt), "input_unit_type": "CHARACTERS",
             "prompt_key": request.prompt_key, "prompt_version": request.prompt_version,
             "input_tokens": None, "output_tokens": None, "total_tokens": None, "status": "STARTED",
@@ -178,7 +199,7 @@ class AIUsageService:
         code = exc.code if isinstance(exc, LLMProviderError) else "AI_PROVIDER_FAILED"
         await self.db["ai_usage_records"].update_one(
             {"usage_id": usage_id},
-            {"$set": {"status": "FAILED", "error_code": code, "credits_consumed": credits_consumed, "completed_at": self.now()}},
+            {"$set": {"status": "FAILED", "error_code": code, "credits_consumed": credits_consumed, "units_consumed": credits_consumed, "completed_at": self.now()}},
         )
 
     @staticmethod
