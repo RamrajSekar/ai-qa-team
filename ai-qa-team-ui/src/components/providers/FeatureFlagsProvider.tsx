@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { apiFetch } from "@/utils/api";
 
 export type FeatureName =
-  | "customer_accounts" | "account_subscriptions" | "story_management" | "scenario_generation" | "test_generation" | "recorder"
+  | "test_execution_ui" | "account_invitation_email" | "customer_accounts" | "account_subscriptions" | "story_management" | "scenario_generation" | "test_generation" | "recorder"
   | "native_execution" | "visual_runner_lab" | "visual_runner_batches" | "jira_trigger" | "failure_diagnostics" | "self_healing"
   | "approved_visual_run_admission" | "approved_visual_run_execution" | "approved_workflow_worker" | "bug_reproduction_ui" | "repository_ui" | "reusable_workflows" | "product_knowledge" | "story_analysis"
   | "playwright_repo_adapter" | "selenium_repo_adapter"
@@ -63,7 +63,7 @@ export function FeatureRouteGuard({ children }: { children: ReactNode }) {
   const required: Partial<Record<string, FeatureName>> = {
     knowledge: "product_knowledge", stories: "story_management", scenarios: "scenario_generation", testcases: "test_generation",
     account: "customer_accounts", recorder: "recorder", reproduce: "bug_reproduction_ui", repositories: "repository_ui",
-    "visual-lab": "visual_runner_lab",
+    "visual-lab": "visual_runner_lab", "test-execution": "test_execution_ui",
   };
   const feature = pathname === "/settings/account" || pathname.startsWith("/settings/account/") ? "customer_accounts" : required[segment];
   if (!feature) return children;

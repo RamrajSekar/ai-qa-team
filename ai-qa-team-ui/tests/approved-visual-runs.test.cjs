@@ -14,6 +14,8 @@ test('select a case, approve, preview, admit, reload, start and cancel', async t
   let run = null;
   let startBody;
   let featureEnabled = true;
+  let executionUiEnabled = true;
+  let executionDataReads = 0;
   let admissionReads = 0;
   await context.route('http://feature-api.test/**', async route => {
     const request = route.request();
@@ -24,7 +26,7 @@ test('select a case, approve, preview, admit, reload, start and cancel', async t
     };
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
     let json = [];
-    if (path === '/features') json = { test_generation: true, approved_visual_run_admission: featureEnabled,
+    if (path === '/features') json = { test_generation: true, test_execution_ui: executionUiEnabled, approved_visual_run_admission: featureEnabled,
       approved_visual_run_execution: featureEnabled };
     if (path === '/auth/me') json = { user: { email: 'synthetic@example.test', name: 'Synthetic User',
       onboarding: { onboarding_status: 'completed' }, subscription: { plan: 'free', usage: {}, limits: {} } } };
@@ -32,6 +34,7 @@ test('select a case, approve, preview, admit, reload, start and cancel', async t
     if (path === '/testcases/testcases') json = [{ project_id: 'P1', testcase_id: 'TC1', title: 'Save draft' }];
     if (path === '/environments') json = [{ project_id: 'P1', env_id: 'ENV1', name: 'Example staging' }];
     if (path.startsWith(admissionPath)) admissionReads++;
+    if (["/projects/P1", "/testcases/testcases", "/environments"].includes(path)) executionDataReads++;
     if (path === admissionPath + '/testcases/TC1') json = { approval, latest_run: run };
     if (path.endsWith('/approve')) {
       approval = { ...request.postDataJSON(), version_id: 'a'.repeat(32), story_id: 'ST1' };
@@ -51,7 +54,7 @@ test('select a case, approve, preview, admit, reload, start and cancel', async t
   const page = await context.newPage();
   page.setDefaultTimeout(30000);
   page.setDefaultNavigationTimeout(90000);
-  await page.goto(base + '/projects/P1', { waitUntil: 'domcontentloaded' });
+  await page.goto(base + '/projects/P1/test-execution', { waitUntil: 'domcontentloaded' });
   const panel = page.getByRole('region', { name: 'Approved visual run' });
   await panel.getByLabel('Test case').selectOption('TC1');
   await panel.getByLabel('Visible button label').fill('Save draft');
@@ -77,7 +80,17 @@ test('select a case, approve, preview, admit, reload, start and cancel', async t
   featureEnabled = false;
   const previousReads = admissionReads;
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.getByRole('heading', { name: 'Recent Testcases' }).waitFor();
+  await page.getByText('Test execution is currently hidden.').waitFor();
   assert.equal(await panel.count(), 0);
   assert.equal(admissionReads, previousReads);
+  featureEnabled = true;
+  executionUiEnabled = false;
+  const previousDataReads = executionDataReads;
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByText('This feature is disabled.').waitFor();
+  assert.equal(executionDataReads, previousDataReads);
+  assert.equal(admissionReads, previousReads);
+  await page.goto(base + '/projects/P1');
+  await page.getByRole('heading', { name: 'Recent Testcases' }).waitFor();
+  assert.equal(await panel.count(), 0);
 });

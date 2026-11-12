@@ -23,7 +23,7 @@ test('story scenario approval creates a selectable visual-run test case and hide
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
     let json = [];
     if (url.pathname === '/features') json = { story_management: true, scenario_generation: true,
-      test_generation: true, approved_visual_run_admission: true, bug_reproduction_ui: bugEnabled };
+      test_generation: true, test_execution_ui: true, approved_visual_run_admission: true, bug_reproduction_ui: bugEnabled };
     if (url.pathname === '/auth/me') json = { user: { email: 'fixture@example.test', name: 'Fixture',
       onboarding: { onboarding_status: 'completed' }, subscription: { usage: {}, limits: {} } } };
     if (url.pathname === '/projects/P1') json = { project_id: 'P1', name: 'Fixture project', current_user_role: 'ADMIN' };
@@ -70,6 +70,7 @@ test('story scenario approval creates a selectable visual-run test case and hide
   await page.getByRole('button', { name: 'Approve scenario' }).click();
   await page.getByRole('button', { name: 'Generate test case' }).click();
   await page.getByRole('link', { name: 'Open Project Overview' }).click();
+  await page.goto(base + '/projects/P1/test-execution');
   await page.getByRole('region', { name: 'Approved visual run' }).getByRole('option', { name: 'Draft scenario' }).waitFor({ state: 'attached' });
   assert.equal(await page.getByRole('link', { name: 'AI Generator' }).count(), 0);
   assert.equal(await page.getByRole('link', { name: 'Reproduce Bug' }).count(), 0);

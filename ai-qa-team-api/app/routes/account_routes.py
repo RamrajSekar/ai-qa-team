@@ -22,6 +22,7 @@ class Invitation(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: EmailStr
     role: Literal["ADMIN", "MEMBER"] = "MEMBER"
+    delivery: Literal["LINK", "EMAIL"] = "LINK"
 
 
 @router.get("")
@@ -69,14 +70,33 @@ async def invitations(response: Response, user=Depends(get_current_user)):
     account = await CustomerAccounts(db).admin(user)
     response.headers["Cache-Control"] = "private, no-store"
     docs = await db["account_invitations"].find({"account_id": account["_id"], "status": "PENDING"}).to_list(500)
-    return [{key: doc[key] for key in ("invitation_id", "expires_at", "role")} | {"email": doc["_id"]} for doc in docs]
+    return [{key: doc[key] for key in ("invitation_id", "expires_at", "role")} | {"email": doc["_id"], "email_delivery": doc.get("email_delivery")} for doc in docs]
 
 
 @router.post("/invitations", status_code=201)
 async def invite(payload: Invitation, response: Response, user=Depends(get_current_user)):
     response.headers["Cache-Control"] = "private, no-store"
-    # The invitation credential is returned once to its administrator, never in lists/logs.
-    return await CustomerAccounts(db).invite(user, str(payload.email), payload.role)
+    service = CustomerAccounts(db)
+    account = await service.admin(user)
+    if payload.delivery == "EMAIL":
+        from app.services.invitation_email import require_configuration, send_invitation
+        require_configuration()  # No invitation or seat is created when unavailable.
+    invitation = await service.invite(user, str(payload.email), payload.role)
+    if payload.delivery == "LINK":
+        # Manual credentials are returned once; email mode never exposes the token.
+        return invitation
+    identity = {"account_id": account["_id"], "invitation_id": invitation["invitation_id"]}
+    await db["account_invitations"].update_one(identity, {"$set": {"email_delivery": "SENDING"}})
+    try:
+        await send_invitation(invitation["email"], invitation["token"], account.get("name"))
+    except Exception:
+        # A timeout can occur after SMTP accepted the email. Retain the invitation
+        # and seat; never blindly resend, revoke or fall back to another delivery.
+        await db["account_invitations"].update_one(identity, {"$set": {"email_delivery": "UNKNOWN"}})
+        from fastapi import HTTPException
+        raise HTTPException(502, "Email delivery could not be confirmed. Review the pending invitation before revoking or trying again.") from None
+    await db["account_invitations"].update_one(identity, {"$set": {"email_delivery": "SENT"}})
+    return {key: value for key, value in invitation.items() if key != "token"} | {"email_delivery": "SENT"}
 
 
 @router.delete("/invitations/{invitation_id}")

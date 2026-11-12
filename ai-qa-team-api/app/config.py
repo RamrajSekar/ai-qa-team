@@ -1,8 +1,10 @@
 from pydantic_settings import BaseSettings
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr, EmailStr
 
 
 class FeatureFlags(BaseModel):
+    account_invitation_email: bool = False
+    test_execution_ui: bool = False
     customer_accounts: bool = False
     account_subscriptions: bool = False
     story_management: bool = False
@@ -81,6 +83,11 @@ class Settings(BaseSettings):
     google_redirect_uri: str | None = None
     frontend_url: str | None = None
     platform_owner_email: str | None = None
+    smtp_host: str | None = None
+    smtp_port: int = Field(default=587, ge=1, le=65535)
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_from_email: EmailStr | None = None
 
     github_client_id: str | None = None
     github_client_secret: str | None = None

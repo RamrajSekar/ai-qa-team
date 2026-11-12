@@ -185,3 +185,6 @@ Live training/meeting participation; customer-hosted runners/private-network int
 ## Customer ownership amendment (2026-11-12)
 
 Each subscribing customer has one account containing its users/projects; each user belongs to exactly one account. Name the account in existing first-project onboarding. Account OWNER/ADMIN invites users; project ADMIN assigns only existing same-account users to projects. Account subscription/usage ownership and per-account display numbering are target follow-ups, not delivered by the default-off ownership slice. See [Customer accounts](CUSTOMER_ACCOUNTS.md) for current implementation and rollout gates.
+
+
+Account presentation/Free team amendment (2026-11-12): [ACCOUNT_UI_REFINEMENTS.md](ACCOUNT_UI_REFINEMENTS.md) records hidden account IDs, centralized workspace order, grouped testcase usage, two additional Free account members, optional SMTP delivery (disabled; manual links retained), and the relocated/default-hidden Test Execution page. Other quotas and execution qualification gates remain unchanged.

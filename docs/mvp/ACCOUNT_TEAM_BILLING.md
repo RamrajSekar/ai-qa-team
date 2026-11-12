@@ -103,3 +103,6 @@ The user requested existing billing migration and confirmed backend/workers were
 Final static checks: TypeScript and focused ESLint on the seven changed account/team/navigation files passed. `git diff --check` passed.
 
 Final UI rerun: all 6 intercepted account UI tests passed (about 136 seconds, including local development rendering). The earlier 5/6 failure and targeted correction remain recorded above. This establishes account naming, invitation/revocation, member restrictions, fragment signup, centralized project assignment/hidden project Team navigation and shared subscription display under intercepted APIs. It does not establish normal-browser real-service qualification or improve the separately open local navigation-performance issue.
+
+
+Account presentation/Free team amendment (2026-11-12): [ACCOUNT_UI_REFINEMENTS.md](ACCOUNT_UI_REFINEMENTS.md) records hidden account IDs, centralized workspace order, grouped testcase usage, two additional Free account members, optional SMTP delivery (disabled; manual links retained), and the relocated/default-hidden Test Execution page. Other quotas and execution qualification gates remain unchanged.

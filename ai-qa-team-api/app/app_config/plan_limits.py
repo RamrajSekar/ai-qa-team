@@ -5,7 +5,7 @@ PLAN_LIMITS = {
         "stories_limit": 5,
         "scenarios_limit": 10,
         "executions_limit": 20,
-        "team_members_limit": 1,
+        "team_members_limit": 2,
         "ai_gen_limit": 3,
         # 🆕 testcases per complexity
         "testcases_basic_limit": 10,
