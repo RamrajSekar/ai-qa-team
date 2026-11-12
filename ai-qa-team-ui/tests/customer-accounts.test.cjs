@@ -7,7 +7,7 @@ let browser;
 before(async () => { browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || 'msedge' }); });
 after(async () => browser?.close());
 
-async function fixture(t, { role = 'OWNER', pending = false, signup = false, emailDelivery = false } = {}) {
+async function fixture(t, { role = 'OWNER', pending = false, signup = false, emailDelivery = false, aiUnlimited = false } = {}) {
   const context = await browser.newContext(); t.after(() => context.close());
   await context.addCookies([{ name: 'access_token', value: 'intercepted-ui-fixture', url: base }]);
   let authenticated = !signup;
@@ -34,7 +34,7 @@ async function fixture(t, { role = 'OWNER', pending = false, signup = false, ema
       json = account;
     }
     if (url.pathname === '/account/projects') json = [project];
-    if (url.pathname === '/account/subscription') json = { billing_scope: 'ACCOUNT', subscription: { plan: 'free', status: 'active', usage: { projects_used: 1, testcases_used: 3, testcases_basic_used: 1, testcases_medium_used: 1, testcases_advanced_used: 1, team_members_used: 1 }, limits: { projects_limit: 1, testcases_limit: 0, testcases_basic_limit: 10, testcases_medium_limit: 0, testcases_advanced_limit: 0, team_members_limit: 2 } } };
+    if (url.pathname === '/account/subscription') json = { billing_scope: 'ACCOUNT', subscription: { plan: 'free', status: 'active', usage: { projects_used: 1, stories_used: 1, scenarios_used: 2, testcases_used: 3, testcases_basic_used: 3, testcases_medium_used: 0, testcases_advanced_used: 0, team_members_used: 1, executions_used: 0, ai_gen_used: 1 }, limits: { ai_gen_limit: aiUnlimited ? null : 3, stories_limit: 5, scenarios_limit: 10, executions_limit: 20, projects_limit: 1, testcases_limit: 0, testcases_basic_limit: 10, testcases_medium_limit: 0, testcases_advanced_limit: 0, team_members_limit: 2 } } };
     if (url.pathname === '/account/members') json = [{ email: user.email, account_role: role }];
     if (url.pathname === '/account/invitations') {
       if (request.method() === 'POST') {
@@ -159,4 +159,37 @@ test('configured email mode sends without exposing a manual invitation link', as
   await page.getByRole('status').filter({ hasText: 'Invitation email sent.' }).waitFor();
   assert.equal(calls.find(call => call.method === 'POST' && call.path === '/account/invitations').body.delivery, 'EMAIL');
   assert.equal(await page.getByLabel('Private invitation link').count(), 0);
+});
+
+
+test('subscription redesign has bold plan/status and explains monthly AI credits separately from execution', async t => {
+  const { page } = await fixture(t);
+  await page.goto(base + '/settings/account');
+  const section = page.getByRole('region', { name: 'Subscription & usage' });
+  await section.getByRole('heading', { name: 'AI Credits', exact: true }).waitFor();
+  for (const text of ['Free', 'Active']) {
+    const label = section.locator('strong').filter({ hasText: new RegExp('^' + text + '$') });
+    assert.equal(await label.count(), 1);
+    assert.ok(await label.evaluate(node => Number(getComputedStyle(node).fontWeight) >= 700));
+  }
+  const meter = section.getByRole('progressbar', { name: 'AI Credits usage', exact: true });
+  assert.equal(await meter.getAttribute('value'), '1');
+  assert.equal(await meter.getAttribute('max'), '3');
+  await section.getByText(/Monthly allowance shared by product knowledge extraction/).waitFor();
+  await section.getByText('AI used during browser execution is not included in this counter yet.', { exact: true }).waitFor();
+  await section.getByRole('heading', { name: 'Workspace Capacity', exact: true }).waitFor();
+  await section.getByRole('heading', { name: 'Team Capacity', exact: true }).waitFor();
+  await section.getByRole('heading', { name: 'Execution Usage', exact: true }).waitFor();
+  assert.equal(await section.getByText('AI Generations', { exact: true }).count(), 0);
+  if (process.env.ACCOUNT_UI_SCREENSHOT) await page.screenshot({path: process.env.ACCOUNT_UI_SCREENSHOT, fullPage: true});
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await section.evaluate(node => node.scrollWidth <= node.clientWidth + 1));
+});
+
+test('unlimited AI allowance has no misleading bounded progress bar', async t => {
+  const { page } = await fixture(t, { aiUnlimited: true });
+  await page.goto(base + '/settings/account');
+  const section = page.getByRole('region', { name: 'Subscription & usage' });
+  await section.getByText('Unlimited allowance', { exact: true }).waitFor();
+  assert.equal(await section.getByRole('progressbar', { name: 'AI Credits usage', exact: true }).count(), 0);
 });
