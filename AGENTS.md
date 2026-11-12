@@ -193,3 +193,6 @@ Customer accounts (2026-11-12): see `docs/mvp/CUSTOMER_ACCOUNTS.md`. Default-off
 
 
 Account Team/shared billing amendment (2026-11-12): see `docs/mvp/ACCOUNT_TEAM_BILLING.md`. Account OWNER/ADMIN manages same-account project assignments centrally; project-content/evidence access still requires membership. `account_subscriptions` is default off; billing cutover is an explicit reviewed migration, after which the account subscription is canonical even if the flag is disabled. Preserve legacy user subscriptions and histories; do not silently reset usage or apply existing-data migration at startup. Account-local display IDs remain future work.
+
+
+Account UI refinement: see `docs/mvp/ACCOUNT_UI_REFINEMENTS.md`. Keep `test_execution_ui` and `account_invitation_email` default off. Manual invitation links remain active until SMTP is configured; never blind-retry ambiguous mail submission or expose email-mode invitation tokens. Free account member allowance is two additional identities, not per-project assignments.

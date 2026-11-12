@@ -7,7 +7,7 @@ let browser;
 before(async () => { browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || 'msedge' }); });
 after(async () => browser?.close());
 
-async function fixture(t, { role = 'OWNER', pending = false, signup = false } = {}) {
+async function fixture(t, { role = 'OWNER', pending = false, signup = false, emailDelivery = false } = {}) {
   const context = await browser.newContext(); t.after(() => context.close());
   await context.addCookies([{ name: 'access_token', value: 'intercepted-ui-fixture', url: base }]);
   let authenticated = !signup;
@@ -23,7 +23,7 @@ async function fixture(t, { role = 'OWNER', pending = false, signup = false } = 
     const body = request.postData() ? request.postDataJSON() : null;
     calls.push({ method: request.method(), path: url.pathname, body });
     let json = [];
-    if (url.pathname === '/features') json = { customer_accounts: true };
+    if (url.pathname === '/features') json = { customer_accounts: true, account_invitation_email: emailDelivery };
     if (url.pathname === '/auth/me') {
       if (!authenticated) return route.fulfill({ status: 401, headers, json: { detail: 'Fixture signed out' } });
       json = { user };
@@ -34,12 +34,12 @@ async function fixture(t, { role = 'OWNER', pending = false, signup = false } = 
       json = account;
     }
     if (url.pathname === '/account/projects') json = [project];
-    if (url.pathname === '/account/subscription') json = { billing_scope: 'ACCOUNT', subscription: { plan: 'free', status: 'active', usage: { projects_used: 1 }, limits: { projects_limit: 1 } } };
+    if (url.pathname === '/account/subscription') json = { billing_scope: 'ACCOUNT', subscription: { plan: 'free', status: 'active', usage: { projects_used: 1, testcases_used: 3, testcases_basic_used: 1, testcases_medium_used: 1, testcases_advanced_used: 1, team_members_used: 1 }, limits: { projects_limit: 1, testcases_limit: 0, testcases_basic_limit: 10, testcases_medium_limit: 0, testcases_advanced_limit: 0, team_members_limit: 2 } } };
     if (url.pathname === '/account/members') json = [{ email: user.email, account_role: role }];
     if (url.pathname === '/account/invitations') {
       if (request.method() === 'POST') {
         const item = { invitation_id: 'a'.repeat(32), email: body.email, role: body.role, expires_at: '2026-12-01T00:00:00Z' };
-        invites.push(item); json = { ...item, token: 'synthetic-ui-invitation' };
+        invites.push(item); json = body.delivery === 'EMAIL' ? { ...item, email_delivery: 'SENT' } : { ...item, token: 'synthetic-ui-invitation' };
       } else json = invites;
     }
     if (url.pathname.startsWith('/account/invitations/') && request.method() === 'DELETE') { invites.length = 0; json = { revoked: true }; }
@@ -132,4 +132,31 @@ test('account details displays shared plan and usage', async t => {
   await page.goto(base + '/settings/account');
   await page.getByRole('heading', { name: 'Subscription & usage' }).waitFor();
   await page.getByText('1 / 1', { exact: true }).waitFor();
+});
+
+
+test('account details hides its ID, groups Test Cases and uses title-case usage labels', async t => {
+  const { page } = await fixture(t);
+  await page.goto(base + '/settings/account');
+  await page.getByRole('heading', { name: 'Subscription & usage' }).waitFor();
+  assert.equal(await page.getByText('ACC_one', { exact: false }).count(), 0);
+  assert.equal(await page.locator('dt').filter({ hasText: /^Test Cases$/ }).count(), 1);
+  const tiers = page.getByLabel('Test case usage by complexity');
+  await tiers.getByText('Basic', { exact: true }).waitFor();
+  await tiers.getByText('Medium', { exact: true }).waitFor();
+  await tiers.getByText('Advanced', { exact: true }).waitFor();
+  assert.equal(await page.locator('dt').filter({ hasText: /testcases|projects|team_members/ }).count(), 0);
+  const links = await page.locator('aside .workspace-nav-link').allTextContents();
+  assert.deepEqual(links.slice(0, 4), ['Dashboard', 'Account', 'AI Configuration', 'Projects']);
+});
+
+
+test('configured email mode sends without exposing a manual invitation link', async t => {
+  const { page, calls } = await fixture(t, { emailDelivery: true });
+  await page.goto(base + '/settings/account/team');
+  await page.getByLabel('New member email').fill('synthetic@example.com');
+  await page.getByRole('button', { name: 'Send Invitation', exact: true }).click();
+  await page.getByRole('status').filter({ hasText: 'Invitation email sent.' }).waitFor();
+  assert.equal(calls.find(call => call.method === 'POST' && call.path === '/account/invitations').body.delivery, 'EMAIL');
+  assert.equal(await page.getByLabel('Private invitation link').count(), 0);
 });

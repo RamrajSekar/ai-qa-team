@@ -1,7 +1,7 @@
 'use client';
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MoreHorizontal, Plus, ArrowUpRight, History, Globe } from 'lucide-react';
@@ -11,7 +11,6 @@ import { apiFetch } from '@/utils/api';
 import EditProjectModal from '@/components/projects/EditProjectModal';
 import AgentSettingsModal from '@/components/projects/AgentSettingsModal';
 import DeleteProjectModal from '@/components/projects/DeleteProjectModal';
-import ApprovedVisualRunPanel from '@/components/visual-lab/ApprovedVisualRunPanel';
 
 // ---------------------- Types ----------------------
 interface Project {
@@ -21,7 +20,7 @@ interface Project {
   description?: string;
   created_by: string;
   created_at: string;
-  agent_identities: Record<string, any>;
+  agent_identities: Record<string, string>;
   current_user_role?: "ADMIN" | "TESTER";
 }
 
@@ -304,12 +303,7 @@ export default function ProjectPage() {
           />
         )}
       />}
-      {testsEnabled && enabled("approved_visual_run_admission") && project && (
-        <ApprovedVisualRunPanel key={projectId} projectId={projectId}
-          cases={testcases.filter(testcase => testcase.project_id === projectId && testcase.testcase_id)}
-          environments={environments.filter(environment => environment.project_id === projectId)}
-          canApprove={project.current_user_role === "ADMIN"} />
-      )}
+
 
     </div>
   );
@@ -317,7 +311,7 @@ export default function ProjectPage() {
 
 // ---------------------- COMPONENTS ----------------------
 
-function KpiCard({ label, value }: { label: string; value: any }) {
+function KpiCard({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="workspace-metric">
       <div className="workspace-metric-label">{label}</div>
@@ -326,7 +320,7 @@ function KpiCard({ label, value }: { label: string; value: any }) {
   );
 }
 
-function Section({ title, viewAllHref, viewAllLabel = 'View all →', items, maxItems, renderItem, emptyText = 'No items yet.' }: any) {
+function Section<T>({ title, viewAllHref, viewAllLabel = 'View all →', items, maxItems, renderItem, emptyText = 'No items yet.' }: { title: string; viewAllHref?: string; viewAllLabel?: string; items: T[]; maxItems: number; renderItem: (item: T) => ReactNode; emptyText?: string }) {
   return (
     <div className="bg-white border rounded-xl shadow-sm p-4 space-y-4">
       <div className="flex justify-between items-center">
@@ -340,7 +334,7 @@ function Section({ title, viewAllHref, viewAllLabel = 'View all →', items, max
         <p className="text-xs text-gray-500">{emptyText}</p>
       ) : (
         <div className="space-y-2">
-          {items.slice(0, maxItems).map((item: any, idx: number) => (
+          {items.slice(0, maxItems).map((item, idx) => (
             <div key={idx}>{renderItem(item)}</div>
           ))}
         </div>

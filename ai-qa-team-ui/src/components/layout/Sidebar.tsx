@@ -18,9 +18,9 @@ export default function Sidebar() {
   const project = projects.find((item) => item.project_id === projectId);
   const globalMenu = [
     { name: "Dashboard", icon: LayoutGrid, href: "/dashboard" },
-    { name: "Projects", icon: FolderOpen, href: "/projects" },
     ...(enabled("customer_accounts") ? [{ name: "Account", icon: Users, href: "/settings/account" }] : []),
     ...(projects.some(item => item.current_user_role === "ADMIN") ? [{ name: "AI Configuration", icon: BrainCircuit, href: "/settings/ai" }] : []),
+    { name: "Projects", icon: FolderOpen, href: "/projects" },
   ];
   const platformMenu = user?.platform_role === "OWNER" || user?.platform_role === "ADMIN" ? [
     { name: "Admin Dashboard", icon: ShieldCheck, href: "/platform-admin" },
@@ -34,6 +34,7 @@ export default function Sidebar() {
     ...(enabled("story_management") ? [{ name: "Stories", icon: FileText, href: `/projects/${projectId}/stories` }] : []),
     ...(enabled("scenario_generation") ? [{ name: "Scenarios", icon: Layers, href: `/projects/${projectId}/scenarios` }] : []),
     ...(enabled("test_generation") ? [{ name: "Test Cases", icon: FileText, href: `/projects/${projectId}/testcases` }] : []),
+    ...(enabled("test_execution_ui", "test_generation", "approved_visual_run_admission") ? [{ name: "Test Execution", icon: Zap, href: `/projects/${projectId}/test-execution` }] : []),
     { name: "Environments", icon: FolderOpen, href: `/projects/${projectId}/environments` },
     ...(enabled("repository_ui", "repository_discovery", "test_registry") ? [{ name: "Repositories", icon: GitBranch, href: `/projects/${projectId}/repositories` }] : []),
     ...(!enabled("customer_accounts") && project?.current_user_role === "ADMIN" ? [{ name: "Team", icon: Users, href: `/projects/${projectId}/settings/team` }] : []),
