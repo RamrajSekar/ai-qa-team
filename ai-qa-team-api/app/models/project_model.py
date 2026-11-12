@@ -14,6 +14,7 @@ class ProjectCreate(BaseModel):
     agent_identities: AgentIdentities = Field(default_factory=AgentIdentities)
 
 class ProjectResponse(BaseModel):
+    account_id: Optional[str] = None
     id: Optional[str]
     project_id: str
     name: str

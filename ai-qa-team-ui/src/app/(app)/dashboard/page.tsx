@@ -21,7 +21,8 @@ export default function DashboardPage() {
   const [dismissedOnboarding, setDismissedOnboarding] = useState<string | null>(null);
   const hasNoProjects = !loading && !failed && projects.length === 0;
   const onboardingKey = `${user?.email}:${user?.onboarding?.onboarding_status}:${hasNoProjects}`;
-  const openOnboarding = !!user && (hasNoProjects || user.onboarding?.onboarding_status !== "completed")
+  const canCreateProject = !enabled("customer_accounts") || user?.account_role === "OWNER" || user?.account_role === "ADMIN";
+  const openOnboarding = canCreateProject && !!user && (hasNoProjects || user.onboarding?.onboarding_status !== "completed")
     && dismissedOnboarding !== onboardingKey;
 
   if (!user) return <p className="p-8">Loading...</p>;
@@ -47,6 +48,7 @@ export default function DashboardPage() {
         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
 
         <button
+          disabled={!canCreateProject}
           onClick={() => setOpenProjectModal(true)}
           className="workspace-button workspace-primary"
         >
@@ -88,7 +90,8 @@ export default function DashboardPage() {
           <div className="border rounded-md p-10 text-center text-gray-500 bg-white shadow-sm">
             <p>No projects created yet.</p>
             <button
-              onClick={() => setOpenProjectModal(true)}
+              disabled={!canCreateProject}
+          onClick={() => setOpenProjectModal(true)}
               className="mt-4 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition"
             >
               Create your first project

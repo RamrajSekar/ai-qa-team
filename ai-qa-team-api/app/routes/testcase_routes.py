@@ -115,6 +115,8 @@ async def generate_testcases(
         total_limit = sum(value or 0 for value in tier_limits.values())
     testcase_owner = {"created_by": user_email}
     used_total = await db["testcases"].count_documents(testcase_owner)
+    if sub.get("billing_scope") == "ACCOUNT":
+        used_total = sub["usage"].get("testcases_used", 0)
     allowed = count if total_limit is None else min(count, max(total_limit - used_total, 0))
     tier_limit = tier_limits[complexity]
     if tier_limit is not None:
@@ -126,6 +128,8 @@ async def generate_testcases(
                 {"complexity": None, "level": {"$in": legacy_levels}},
             ],
         })
+        if sub.get("billing_scope") == "ACCOUNT":
+            used_tier = sub["usage"].get(f"testcases_{complexity}_used", 0)
         allowed = min(allowed, max(tier_limit - used_tier, 0))
 
     if allowed <= 0:
@@ -223,6 +227,8 @@ async def generate_testcases(
 
         # Increment testcase usage
         await increment_usage(user_id, "testcases_used")
+        if sub.get("billing_scope") == "ACCOUNT":
+            await increment_usage(user_id, f"testcases_{complexity}_used")
 
     return generated_cases
 
@@ -396,7 +402,8 @@ async def edit_catalog_testcase(testcase_id: str, payload: CatalogTestCaseEdit,
 async def delete_catalog_testcase(testcase_id: str, project_id: str, current_user=Depends(get_current_user)):
     await require_project_member(project_id, current_user)
     scope = {"project_id": project_id, "testcase_id": testcase_id, "created_by": current_user["email"]}
-    if not await db["testcases"].find_one(scope):
+    existing_case = await db["testcases"].find_one(scope)
+    if not existing_case:
         raise HTTPException(404, "Test case not found or access denied")
     for collection in ("approved_visual_tests", "approved_visual_runs", "visual_test_spec_versions", "test_design_documents", "executions"):
         if await db[collection].find_one({"project_id": project_id, "testcase_id": testcase_id}):
@@ -405,6 +412,11 @@ async def delete_catalog_testcase(testcase_id: str, project_id: str, current_use
     if result.deleted_count:
         from app.services.subscription_services import decrement_usage
         await decrement_usage(current_user["email"], "testcases_used")
+        sub = await get_subscription(current_user["email"])
+        if sub and sub.get("billing_scope") == "ACCOUNT":
+            tier = existing_case.get("complexity") or existing_case.get("level") or "basic"
+            if tier in ("basic", "medium", "advanced"):
+                await decrement_usage(current_user["email"], f"testcases_{tier}_used")
     return {"ok": True}
 
 
@@ -430,6 +442,9 @@ async def create_catalog_testcase(payload: CatalogTestCaseEdit, project_id: str,
     owner = {"created_by": current_user["email"]}
     total = await db["testcases"].count_documents(owner)
     basic = await db["testcases"].count_documents({**owner, "complexity": {"$in": ["basic", None]}})
+    if subscription.get("billing_scope") == "ACCOUNT":
+        total = subscription["usage"].get("testcases_used", 0)
+        basic = subscription["usage"].get("testcases_basic_used", 0)
     if (total_limit is not None and total >= total_limit) or (tier_limits[0] is not None and basic >= tier_limits[0]):
         raise HTTPException(403, "Test case limit reached")
     doc = {"project_id": project_id, "scenario_id": scenario_id,
@@ -441,4 +456,6 @@ async def create_catalog_testcase(payload: CatalogTestCaseEdit, project_id: str,
            "created_at": datetime.now(timezone.utc).isoformat()}
     await db["testcases"].insert_one(doc.copy())
     await increment_usage(current_user.get("_id") or current_user["email"], "testcases_used")
+    if subscription.get("billing_scope") == "ACCOUNT":
+        await increment_usage(current_user.get("_id") or current_user["email"], "testcases_basic_used")
     return TestCaseResponse(**doc)

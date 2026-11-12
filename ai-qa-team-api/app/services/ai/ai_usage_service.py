@@ -1,3 +1,5 @@
+from app.services.customer_accounts import CustomerAccounts, enabled as accounts_enabled
+from app.services.account_billing import billing_account
 import asyncio
 import logging
 from dataclasses import replace
@@ -45,6 +47,9 @@ class AIUsageService:
 
         project, email, user_id = await self._authorize(project_id, user)
         billing_owner = str(project.get("created_by") or "").strip().lower()
+        account = await billing_account(self.db, user)
+        if account:
+            billing_owner = account["_id"]
         try:
             context = await self.gateway.resolve(project_id, request)
         except LLMProviderError as exc:
@@ -102,6 +107,11 @@ class AIUsageService:
         project = await self.db["projects"].find_one({"project_id": project_id})
         if not project or not email:
             raise AIUsageError("AI_ACCESS_DENIED", 404, "Project not found or access denied.")
+        if accounts_enabled() or user.get("account_id") or project.get("account_id"):
+            try:
+                await CustomerAccounts(self.db).project(project, user)
+            except Exception:
+                raise AIUsageError("AI_ACCESS_DENIED", 404, "Project not found or access denied.") from None
         owner = str(project.get("created_by") or "").strip().lower()
         if owner != email:
             membership = await self.db["project_memberships"].find_one({
@@ -114,20 +124,22 @@ class AIUsageService:
     async def _reserve(self, billing_owner: str, policy: AIUsagePolicy, now: datetime) -> dict:
         start, end = _month_period(now)
         start_value, end_value = start.isoformat(), end.isoformat()
-        users = self.db["users"]
+        account_mode = billing_owner.startswith("ACC_") and "@" not in billing_owner
+        users = self.db["customer_accounts" if account_mode else "users"]
+        identity = {"_id": billing_owner, "billing_version": 1, "status": "ACTIVE"} if account_mode else {"email": billing_owner}
         await users.update_one(
-            {"email": billing_owner, "subscription.ai_usage_period_start": {"$ne": start_value}},
+            {**identity, "subscription.ai_usage_period_start": {"$ne": start_value}},
             {"$set": {
                 "subscription.usage.ai_gen_used": 0,
                 "subscription.ai_usage_period_start": start_value,
                 "subscription.ai_usage_period_end": end_value,
             }},
         )
-        owner = await users.find_one({"email": billing_owner})
+        owner = await users.find_one(identity)
         if not owner or owner.get("subscription", {}).get("status") != "active":
             raise AIUsageError("AI_USAGE_LIMIT_EXCEEDED", 403, "No active AI allowance is available.")
         allowance = owner.get("subscription", {}).get("limits", {}).get("ai_gen_limit")
-        query = {"email": billing_owner, "subscription.ai_usage_period_start": start_value}
+        query = {**identity, "subscription.status": "active", "subscription.ai_usage_period_start": start_value}
         if allowance is not None:
             query["subscription.usage.ai_gen_used"] = {"$lte": max(allowance - policy.credit_cost, -1)}
         updated = await users.find_one_and_update(
@@ -139,8 +151,10 @@ class AIUsageService:
         return {"period_start": start_value, "period_end": end_value, "allowance": allowance}
 
     async def _release_reservation(self, billing_owner: str, policy: AIUsagePolicy, reservation: dict) -> None:
-        await self.db["users"].update_one(
-            {"email": billing_owner, "subscription.ai_usage_period_start": reservation["period_start"]},
+        account_mode = billing_owner.startswith("ACC_") and "@" not in billing_owner
+        await self.db["customer_accounts" if account_mode else "users"].update_one(
+            {**({"_id": billing_owner} if account_mode else {"email": billing_owner}), "subscription.ai_usage_period_start": reservation["period_start"],
+             "subscription.usage.ai_gen_used": {"$gte": policy.credit_cost}},
             {"$inc": {"subscription.usage.ai_gen_used": -policy.credit_cost}},
         )
 
@@ -150,6 +164,7 @@ class AIUsageService:
         return {
             "usage_id": usage_id, "project_id": project_id, "user_id": user_id, "user_email": email,
             "billing_owner": billing_owner, "operation_type": policy.operation.value, "ai_mode": context.mode,
+            **({"account_id": billing_owner, "billing_scope": "ACCOUNT"} if billing_owner.startswith("ACC_") and "@" not in billing_owner else {"billing_scope": "USER"}),
             "provider_id": context.provider_id, "model": context.model, "credits_reserved": policy.credit_cost,
             "credits_consumed": 0, "input_units": len(request.prompt), "input_unit_type": "CHARACTERS",
             "prompt_key": request.prompt_key, "prompt_version": request.prompt_version,

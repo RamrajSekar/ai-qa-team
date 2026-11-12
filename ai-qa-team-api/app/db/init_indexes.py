@@ -1,7 +1,14 @@
 from app.db.connection import db
+from app.config import settings
 
 
 async def init_indexes():
+    if settings.features.customer_accounts:
+        # Enable only after the dry-run migration audit resolves duplicate identities.
+        await db["users"].create_index("email", unique=True)
+        await db["users"].create_index("account_id")
+        await db["projects"].create_index("account_id")
+        await db["account_invitations"].create_index([("account_id", 1), ("status", 1)])
     # Unique IDs
     await db["projects"].create_index("project_id", unique=True)
     await db["stories"].create_index("story_id", unique=True)
@@ -34,3 +41,4 @@ async def init_indexes():
         ("project_id", 1), ("user_id", 1), ("operation_type", 1), ("started_at", -1)
     ])
     await db["ai_usage_records"].create_index([("billing_owner", 1), ("billing_period_start", 1)])
+    await db["ai_usage_records"].create_index([("account_id", 1), ("billing_period_start", 1)])

@@ -48,6 +48,9 @@ export interface OnboardingInfo {
 }
 
 export interface User {
+  account_id?: string;
+  account_role?: "OWNER" | "ADMIN" | "MEMBER";
+  account_state?: "ACTIVE" | "PROVISIONING";
   id?: string;
   _id?: string;
   name?: string;

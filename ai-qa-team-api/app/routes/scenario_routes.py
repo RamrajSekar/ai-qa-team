@@ -166,6 +166,10 @@ async def create_scenario(
 
         result = await db["scenarios"].insert_one(doc)
         doc["_id"] = result.inserted_id
+        if current_user.get("account_id"):
+            from app.services.account_billing import billing_account
+            if await billing_account(db, current_user):
+                await increment_usage(user_email, "scenarios_used")
         return _build_scenario_response(doc)
 
     except HTTPException:
@@ -382,6 +386,8 @@ async def generate_scenarios_from_story(
 
         await require_project_member(story["project_id"], current_user)
         existing = await db["scenarios"].count_documents({"created_by": email})
+        if sub.get("billing_scope") == "ACCOUNT":
+            existing = sub["usage"].get("scenarios_used", 0)
         max_scen = sub["limits"]["scenarios_limit"]
         rem_scen = None if max_scen is None else max(max_scen - existing, 0)
         ai_used = sub["usage"]["ai_gen_used"]
@@ -389,7 +395,7 @@ async def generate_scenarios_from_story(
         rem_ai = None if ai_lim is None else max(ai_lim - ai_used, 0)
         knowledge_mode = settings.features.product_knowledge
         allowed = count if rem_scen is None else min(count, rem_scen)
-        if not knowledge_mode and rem_ai is not None:
+        if not knowledge_mode and sub.get("billing_scope") != "ACCOUNT" and rem_ai is not None:
             allowed = min(allowed, rem_ai)
         if allowed <= 0 or rem_ai == 0:
             return ScenarioGenerationResponse(scenarios=[], summary=ScenarioGenerationSummary(
@@ -410,7 +416,8 @@ async def generate_scenarios_from_story(
             resolved_prompt = await get_active_prompt("LEGACY_STORY_SCENARIOS", database=db)
             prompt = build_scenario_prompt_from_story(agent, story, allowed, complexity, template=resolved_prompt["system_prompt"])
             ai_list = (await generate_scenarios_from_prompt(story["project_id"], prompt,
-                prompt_key=resolved_prompt["prompt_key"], prompt_version=str(resolved_prompt["resolved_version"])))[:allowed]
+                prompt_key=resolved_prompt["prompt_key"], prompt_version=str(resolved_prompt["resolved_version"]),
+                **({"user": current_user} if sub.get("billing_scope") == "ACCOUNT" else {})))[:allowed]
 
         created = []
 
@@ -449,12 +456,12 @@ async def generate_scenarios_from_story(
 
             created.append(_build_scenario_response(doc))
 
-            if not knowledge_mode:
+            if not knowledge_mode and sub.get("billing_scope") != "ACCOUNT":
                 await increment_usage(user_id, "ai_gen_used")
             await increment_usage(user_id, "scenarios_used")
 
         actual = len(created)
-        spent = 1 if knowledge_mode else actual
+        spent = 1 if knowledge_mode or sub.get("billing_scope") == "ACCOUNT" else actual
         return ScenarioGenerationResponse(scenarios=created, summary=ScenarioGenerationSummary(
             message=f"{actual} of {count} requested scenarios generated (allowed {allowed}).",
             requested_count=count, allowed_count=allowed, generated_count=actual,
@@ -504,14 +511,20 @@ async def generate_from_recording(
         sub = await get_subscription(user_id)
 
         total_existing = await db["scenarios"].count_documents({"created_by": email})
+        if sub.get("billing_scope") == "ACCOUNT":
+            total_existing = sub["usage"].get("scenarios_used", 0)
         max_scen = sub["limits"]["scenarios_limit"]
-        rem_scen = max_scen - total_existing
+        rem_scen = None if max_scen is None else max(max_scen - total_existing, 0)
 
         ai_used = sub["usage"]["ai_gen_used"]
         ai_lim = sub["limits"]["ai_gen_limit"]
-        rem_ai = ai_lim - ai_used
+        rem_ai = None if ai_lim is None else max(ai_lim - ai_used, 0)
 
-        allowed = min(count, rem_ai, rem_scen)
+        allowed = count if rem_scen is None else min(count, rem_scen)
+        if sub.get("billing_scope") != "ACCOUNT" and rem_ai is not None:
+            allowed = min(allowed, rem_ai)
+        if rem_ai == 0:
+            allowed = 0
         if allowed <= 0:
             return ScenarioGenerationResponse(
                 scenarios=[],
@@ -535,7 +548,8 @@ async def generate_from_recording(
             agent_name, story, recording, allowed, complexity, template=resolved_prompt["system_prompt"]
         )
         ai_result = await generate_scenarios_from_prompt(story["project_id"], prompt,
-            prompt_key=resolved_prompt["prompt_key"], prompt_version=str(resolved_prompt["resolved_version"]))
+            prompt_key=resolved_prompt["prompt_key"], prompt_version=str(resolved_prompt["resolved_version"]),
+            **({"user": current_user} if sub.get("billing_scope") == "ACCOUNT" else {}))
 
         created_docs = []
         ai_result = ai_result[:allowed]
@@ -569,15 +583,16 @@ async def generate_from_recording(
             doc["_id"] = result.inserted_id
             created_docs.append(_build_scenario_response(doc))
 
-            await increment_usage(user_id, "ai_gen_used")
+            if sub.get("billing_scope") != "ACCOUNT":
+                await increment_usage(user_id, "ai_gen_used")
             await increment_usage(user_id, "scenarios_used")
 
         return ScenarioGenerationResponse(
             scenarios=created_docs,
             summary=ScenarioGenerationSummary(
                 message=f"{allowed} scenarios generated from recording.",
-                remaining_ai_generations=max(rem_ai - allowed, 0),
-                remaining_scenario_slots=max(rem_scen - allowed, 0),
+                remaining_ai_generations=None if rem_ai is None else max(rem_ai - (1 if sub.get("billing_scope") == "ACCOUNT" else len(created_docs)), 0),
+                remaining_scenario_slots=None if rem_scen is None else max(rem_scen - len(created_docs), 0),
                 plan=sub["plan"],
             ),
         )

@@ -16,9 +16,11 @@ from app.models.subscription import Subscription
 from app.services.sync_usage import sync_usage
 from app.services.project_team_service import activate_pending_memberships
 from app.services.platform_role_service import ensure_platform_owner
+from app.services.customer_accounts import CustomerAccounts, enabled as accounts_enabled
+from app.utils.safe_validation_route import SafeValidationRoute
 
 
-router = APIRouter(prefix="/auth", tags=["Auth"])
+router = APIRouter(prefix="/auth", tags=["Auth"], route_class=SafeValidationRoute)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -49,7 +51,8 @@ def to_json_safe(obj):
 async def signup(user: User):
     try:
         # 1️⃣ Check for existing email BEFORE doing anything else
-        existing = await db["users"].find_one({"email": user.email})
+        normalized_email = str(user.email).strip().lower()
+        existing = await db["users"].find_one({"email": normalized_email})
         if existing:
             raise HTTPException(400, "Email already exists")
 
@@ -65,7 +68,7 @@ async def signup(user: User):
         # 4️⃣ Prepare user document (NOT Pydantic model)
         user_doc = {
             "name": user.name,
-            "email": user.email,
+            "email": normalized_email,
             "password": hashed_pw,
             "provider": "local",
             "role": "admin",
@@ -76,35 +79,47 @@ async def signup(user: User):
         }
 
         # 5️⃣ Insert ONLY AFTER everything validated
-        result = await db["users"].insert_one(user_doc)
-        user_doc["_id"] = str(result.inserted_id)
+        if accounts_enabled():
+            await CustomerAccounts(db).register(user_doc, user.invitation_token.get_secret_value() if user.invitation_token else None)
+        else:
+            result = await db["users"].insert_one(user_doc)
+            user_doc["_id"] = str(result.inserted_id)
         await ensure_platform_owner(user_doc, trusted_for_bootstrap=True, users_collection=db["users"])
 
         # 6️⃣ Generate tokens
-        access = create_access_token({"email": user.email, "role": "admin"})
-        refresh = create_refresh_token({"email": user.email, "role": "admin"})
-        store_refresh_token(user.email, refresh)
+        access = create_access_token({"email": normalized_email, "role": "admin"})
+        refresh = create_refresh_token({"email": normalized_email, "role": "admin"})
+        store_refresh_token(normalized_email, refresh)
         safe_user_doc = serialize_public_user(user_doc)
         response = JSONResponse({"user": safe_user_doc})
         set_auth_cookies(response, access, refresh)
         return response
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail=f"Signup failed: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=503, detail="Signup could not be completed. Contact support before retrying a partially created account.") from None
 
 
 @router.post("/login")
 async def login(credentials: dict):
     # print("LOGIN REQ =", credentials["email"], credentials["password"])
-    user = await db["users"].find_one({"email": credentials["email"]})
+    user = await db["users"].find_one({"email": str(credentials["email"]).strip().lower()})
     if not user:
         raise HTTPException(401, "Invalid credentials")
 
     if not pwd_context.verify(credentials["password"], user["password"]):
         raise HTTPException(401, "Invalid credentials")
 
+    if accounts_enabled() or user.get("account_id"):
+        await CustomerAccounts(db).require(user)
     await ensure_platform_owner(user, trusted_for_bootstrap=True, users_collection=db["users"])
     user_data = serialize_public_user(user)
+    if user.get("account_id"):
+        from app.services.account_billing import billing_account
+        account = await billing_account(db, user)
+        if account:
+            user_data["subscription"] = to_json_safe(account["subscription"])
+            user_data["billing_scope"] = "ACCOUNT"
 
     access = create_access_token({"email": user_data["email"], "role": user_data["role"]})
     refresh = create_refresh_token({"email": user_data["email"], "role": user_data["role"]})
@@ -158,7 +173,16 @@ async def oauth_callback(request: Request, provider: str):
         else:
             raise HTTPException(status_code=400, detail="Unsupported provider response")
 
-        email = user_info.get("email")
+        if accounts_enabled() and provider == "github":
+            email_response = await client.get("user/emails", token=token)
+            verified = next((item for item in email_response.json() if item.get("primary") and item.get("verified")), None)
+            if not verified:
+                raise HTTPException(400, "A verified primary provider email is required.")
+            user_info["email"] = verified["email"]
+            user_info["email_verified"] = True
+        if accounts_enabled() and user_info.get("email_verified") is not True:
+            raise HTTPException(400, "A verified provider email is required.")
+        email = str(user_info.get("email") or "").strip().lower()
         name = user_info.get("name") or user_info.get("login")
 
         if not email:
@@ -181,7 +205,7 @@ async def oauth_callback(request: Request, provider: str):
         if not existing:
             # brand new user
             new_user = User(
-                _id=user_info.get("id"),
+                _id=str(user_info["id"]) if user_info.get("id") is not None else None,
                 name=name,
                 email=email,
                 provider=provider,
@@ -203,10 +227,17 @@ async def oauth_callback(request: Request, provider: str):
 
             user_doc["integrations"] = {provider: integration_data}
 
-            await db["users"].insert_one(user_doc)
+            if accounts_enabled():
+                await CustomerAccounts(db).register(user_doc, verified_email=True)
+            else:
+                await db["users"].insert_one(user_doc)
             persisted_role = user_doc["role"]
 
         else:
+            if accounts_enabled() or existing.get("account_id"):
+                if user_info.get("email_verified") is not True:
+                    raise HTTPException(400, "A verified provider email is required.")
+                await CustomerAccounts(db).require(existing)
             # existing user → update integrations
             await db["users"].update_one(
                 {"email": email},
@@ -253,7 +284,7 @@ async def oauth_callback(request: Request, provider: str):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"OAuth callback failed: {str(e)}")
+        raise HTTPException(status_code=503, detail="OAuth sign-in could not be completed.") from None
 
 @router.post("/refresh")
 async def refresh_token(request: Request):
@@ -271,6 +302,11 @@ async def refresh_token(request: Request):
     if stored != refresh_token:
         raise HTTPException(status_code=401, detail="Refresh token expired or revoked")
 
+    user = await db["users"].find_one({"email": email})
+    if accounts_enabled() or (user and user.get("account_id")):
+        if not user:
+            raise HTTPException(401, "User not found.")
+        await CustomerAccounts(db).require(user)
     # Issue NEW access token
     new_access = create_access_token({"email": email, "role": payload.get("role")})
     response = JSONResponse({"status": "ok"})
@@ -301,9 +337,13 @@ async def update_user_role(
     if new_role not in ["tester", "lead", "admin"]:
         raise HTTPException(status_code=400, detail="Invalid role value")
 
+    account_scope = {}
+    if accounts_enabled() or current_user.get("account_id"):
+        account = await CustomerAccounts(db).admin(current_user)
+        account_scope["account_id"] = account["_id"]
     # Update the role in MongoDB
     result = await db["users"].update_one(
-        {"email": email},
+        {"email": email, **account_scope},
         {"$set": {"role": new_role}}
     )
 
@@ -336,6 +376,8 @@ async def get_my_profile(request: Request, refresh_usage: bool = True):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    if accounts_enabled() or user.get("account_id"):
+        await CustomerAccounts(db).require(user)
     if refresh_usage:
         await sync_usage(user_email)
         user = await db["users"].find_one({"email": user_email})
@@ -350,6 +392,12 @@ async def get_my_profile(request: Request, refresh_usage: bool = True):
     user_data = serialize_public_user(user)
 
     user_data["token_issued_to"] = user_email
+    if user.get("account_id"):
+        from app.services.account_billing import billing_account
+        account = await billing_account(db, user)
+        if account:
+            user_data["subscription"] = to_json_safe(account["subscription"])
+            user_data["billing_scope"] = "ACCOUNT"
     user_data["token_checked_at"] = datetime.utcnow().isoformat()
 
     return {"ok": True, "user": user_data}

@@ -20,6 +20,8 @@ def subscription_required(resource_type: str):
         if not sub:
             logger.error(f"❌ No subscription found for {user_id}")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No active subscription.")
+        if sub.get("billing_scope") == "ACCOUNT" and sub.get("status") != "active":
+            raise HTTPException(403, "No active account subscription.")
 
         plan = sub.get("plan", "free")
         usage = sub.get("usage", {})

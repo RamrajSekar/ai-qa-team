@@ -19,7 +19,7 @@ TEST_ENV = {
     "JWT_SECRET_KEY": "jwt-test-only", "OPENAI_API_KEY": "", "FEATURES": "{}",
 }
 # Override all feature env values, even if a developer enables them locally.
-OFF = ["visual_runner_lab", "visual_runner_batches", "approved_visual_run_admission", "approved_visual_run_execution", "approved_workflow_worker", "bug_reproduction_ui", "repository_ui", "reusable_workflows", "product_knowledge", "story_analysis", "story_management", "scenario_generation", "test_generation", "recorder",
+OFF = ["account_subscriptions", "customer_accounts", "visual_runner_lab", "visual_runner_batches", "approved_visual_run_admission", "approved_visual_run_execution", "approved_workflow_worker", "bug_reproduction_ui", "repository_ui", "reusable_workflows", "product_knowledge", "story_analysis", "story_management", "scenario_generation", "test_generation", "recorder",
        "native_execution", "jira_trigger", "failure_diagnostics", "self_healing",
        "playwright_repo_adapter", "selenium_repo_adapter"]
 ON = ["repository_discovery", "test_registry", "test_data_generation"]

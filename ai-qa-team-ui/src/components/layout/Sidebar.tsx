@@ -19,6 +19,7 @@ export default function Sidebar() {
   const globalMenu = [
     { name: "Dashboard", icon: LayoutGrid, href: "/dashboard" },
     { name: "Projects", icon: FolderOpen, href: "/projects" },
+    ...(enabled("customer_accounts") ? [{ name: "Account", icon: Users, href: "/settings/account" }] : []),
     ...(projects.some(item => item.current_user_role === "ADMIN") ? [{ name: "AI Configuration", icon: BrainCircuit, href: "/settings/ai" }] : []),
   ];
   const platformMenu = user?.platform_role === "OWNER" || user?.platform_role === "ADMIN" ? [
@@ -35,7 +36,7 @@ export default function Sidebar() {
     ...(enabled("test_generation") ? [{ name: "Test Cases", icon: FileText, href: `/projects/${projectId}/testcases` }] : []),
     { name: "Environments", icon: FolderOpen, href: `/projects/${projectId}/environments` },
     ...(enabled("repository_ui", "repository_discovery", "test_registry") ? [{ name: "Repositories", icon: GitBranch, href: `/projects/${projectId}/repositories` }] : []),
-    ...(project?.current_user_role === "ADMIN" ? [{ name: "Team", icon: Users, href: `/projects/${projectId}/settings/team` }] : []),
+    ...(!enabled("customer_accounts") && project?.current_user_role === "ADMIN" ? [{ name: "Team", icon: Users, href: `/projects/${projectId}/settings/team` }] : []),
     // Execution history is shown on the overview; there is no separate execution page yet.
   ] : [];
   const destination = [...globalMenu, ...platformMenu, ...projectMenu].filter((item) => pathname === item.href || pathname.startsWith(item.href + "/"))

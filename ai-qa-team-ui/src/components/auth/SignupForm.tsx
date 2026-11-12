@@ -9,6 +9,7 @@ function signupError(status: number, detail?: unknown) {
   if (status === 400 || message.includes("already exists")) {
     return "An account with this email already exists.";
   }
+  if (status === 403 || status === 409) return "Check your invitation link, or sign in if you already have an account.";
   if (status === 422) {
     return "Please check your name, email, and password.";
   }

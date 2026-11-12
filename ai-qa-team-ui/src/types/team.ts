@@ -7,7 +7,7 @@ export interface ProjectMembership {
   email: string;
   name?: string | null;
   role: ProjectRole;
-  status: "INVITED" | "ACTIVE";
+  status: "INVITED" | "ACTIVE" | "LEGACY_REVIEW_REQUIRED";
   invited_by?: string | null;
   created_at: string;
   updated_at: string;

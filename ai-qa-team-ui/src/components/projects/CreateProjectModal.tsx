@@ -1,5 +1,7 @@
 "use client";
 
+import { useAuth } from "@/components/providers/AuthProvider";
+import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 import { useState } from "react";
 import { WorkspaceDialog } from "@/components/ui/workspace-dialog";
 import { apiFetch } from "@/utils/api";
@@ -17,6 +19,9 @@ export default function CreateProjectModal({
   onCreated,
   createdBy,
 }: Props) {
+  const { user } = useAuth();
+  const { enabled } = useFeatures();
+  const canCreate = !enabled("customer_accounts") || user?.account_role === "OWNER" || user?.account_role === "ADMIN";
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,6 +31,7 @@ export default function CreateProjectModal({
 
   async function submit() {
     setError("");
+    if (!canCreate) { setError("Ask an account administrator to create a project."); return; }
     if (!name.trim()) {
       setError("Project name is required.");
       return;

@@ -180,3 +180,8 @@ Commercial hypotheses only: $1,000 fixed-scope pilot; approximately $499/month m
 ## Deferred scope
 
 Live training/meeting participation; customer-hosted runners/private-network integrations; BrowserStack/Sauce Labs; more browsers/OSs; streaming/takeover; advanced file/native-dialog/drag/drop; general MFA/CAPTCHA; scheduling/high concurrency; arbitrary AI endpoints; multi-agent coordination/fine-tuning; autonomous release approval. Retain related existing features and data unless a separately reviewed migration authorizes changes.
+
+
+## Customer ownership amendment (2026-11-12)
+
+Each subscribing customer has one account containing its users/projects; each user belongs to exactly one account. Name the account in existing first-project onboarding. Account OWNER/ADMIN invites users; project ADMIN assigns only existing same-account users to projects. Account subscription/usage ownership and per-account display numbering are target follow-ups, not delivered by the default-off ownership slice. See [Customer accounts](CUSTOMER_ACCOUNTS.md) for current implementation and rollout gates.

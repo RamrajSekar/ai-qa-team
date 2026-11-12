@@ -4,6 +4,7 @@ from fastapi import HTTPException
 
 from app.db.connection import db
 from app.services.story_service import get_next_sequence
+from app.services.customer_accounts import CustomerAccounts, enabled as accounts_enabled
 
 
 ADMIN = "ADMIN"
@@ -16,6 +17,8 @@ def user_id(user: dict) -> str:
 
 async def ensure_creator_membership(project: dict, user: dict) -> dict | None:
     """Lazily backfill an ADMIN membership when legacy ownership is unambiguous."""
+    if accounts_enabled() or user.get("account_id") or project.get("account_id"):
+        await CustomerAccounts(db).project(project, user)
     email = user.get("email", "").strip().lower()
     if project.get("created_by", "").strip().lower() != email:
         return None
@@ -26,6 +29,7 @@ async def ensure_creator_membership(project: dict, user: dict) -> dict | None:
     membership = {
         "membership_id": await get_next_sequence("membership_id", "MEM"),
         "project_id": project["project_id"],
+        **({"account_id": project["account_id"]} if project.get("account_id") else {}),
         "user_id": user_id(user) or None,
         "email": email,
         "role": ADMIN,
@@ -48,6 +52,8 @@ async def require_project_member(project_id: str, user: dict) -> tuple[dict, dic
     project = await db["projects"].find_one({"project_id": project_id})
     if not project:
         raise HTTPException(404, "Project not found or access denied")
+    if accounts_enabled() or user.get("account_id") or project.get("account_id"):
+        await CustomerAccounts(db).project(project, user)
     email = user.get("email", "").strip().lower()
     membership = await db["project_memberships"].find_one({
         "project_id": project_id, "email": email, "status": "ACTIVE",

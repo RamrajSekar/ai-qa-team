@@ -11,6 +11,16 @@ router = APIRouter(prefix="/auth", tags=["Subscription"])
 
 @router.patch("/auth/upgrade-plan")
 async def upgrade_plan(plan: str, current_user=Depends(get_current_user)):
+    from app.services.account_billing import billing_account
+    from app.services.customer_accounts import CustomerAccounts
+    account = await billing_account(db, current_user)
+    if account:
+        await CustomerAccounts(db).admin(current_user)
+        if current_user.get("platform_role") not in ("OWNER", "ADMIN"):
+            raise HTTPException(403, "Plan changes require a verified billing or platform administration operation.")
+        from app.services.subscription_services import upgrade_plan as change_plan
+        sub = await change_plan(current_user["email"], plan)
+        return {"message": "Account plan updated.", "subscription": sub}
     user_id = current_user.get("_id") or current_user.get("email")
     if plan not in PLAN_LIMITS:
         raise HTTPException(status_code=400, detail=f"Invalid plan name: {plan}")
@@ -29,7 +39,6 @@ async def upgrade_plan(plan: str, current_user=Depends(get_current_user)):
 
 @router.get("/check-plan")
 async def check_plan(request: Request, current_user=Depends(get_current_user)):
-    print("📌 Cookies received at /auth/check-plan:", request.cookies)
 
     user_id = (
         current_user.get("_id") or 
@@ -38,7 +47,6 @@ async def check_plan(request: Request, current_user=Depends(get_current_user)):
     )
 
     subscription = await get_subscription(user_id)
-    print("current_user in /check-plan:", current_user)
 
     if not subscription:
         # Auto-heal free subscription

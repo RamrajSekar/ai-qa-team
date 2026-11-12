@@ -16,7 +16,7 @@ from app.routes import visual_lab_routes
 from app.services.visual_lab_service import visual_lab
 from app.routes import visual_batch_routes
 from app.routes import approved_visual_runs, visual_specification_routes, product_knowledge_routes
-from app.routes import test_design_routes
+from app.routes import test_design_routes, account_routes
 from app.services import approved_visual_execution
 from app.services.visual_batch_service import visual_batches
 
@@ -132,6 +132,7 @@ app.include_router(visual_lab_routes.router)
 app.include_router(visual_batch_routes.router)
 app.include_router(approved_visual_runs.router)
 app.include_router(test_design_routes.router)
+app.include_router(account_routes.router)
 app.include_router(visual_specification_routes.router)
 app.include_router(product_knowledge_routes.router)
 
