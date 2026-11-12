@@ -13,5 +13,5 @@ export interface ResolvedPrompt {
 
 export interface PromptDefinition {
   prompt_key: string; name: string; description: string; output_contract: string;
-  active_version?: number | null; active: ResolvedPrompt;
+  active_version?: number | null; active: ResolvedPrompt; template_variables?: string[];
 }

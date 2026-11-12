@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends
 
 from app.models.prompt_registry_model import PromptDraftCreate, PromptDraftUpdate
 from app.services.prompt_registry_service import activate_version, create_draft, get_prompt_definition, list_prompts, list_versions, update_draft
+from app.utils.safe_validation_route import SafeValidationRoute
 from app.utils.platform_authorization import require_platform_admin
 
-router = APIRouter(prefix="/platform-admin", tags=["Platform Administration"])
+router = APIRouter(prefix="/platform-admin", tags=["Platform Administration"], route_class=SafeValidationRoute)
 
 
 @router.get("")

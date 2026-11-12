@@ -34,12 +34,14 @@ export default function EnvironmentCard({ env, refresh, onEdit, canManage = true
 
         {canManage && <div className="flex gap-2">
           <button
+            aria-label={`Edit ${env.env_type} environment`}
             onClick={() => onEdit(env)}
             className="p-2 rounded-md hover:bg-gray-100"
           >
             <Pencil size={16} />
           </button>
           <button
+            aria-label={`Delete ${env.env_type} environment`}
             onClick={handleDelete}
             className="p-2 rounded-md hover:bg-red-100 text-red-500"
           >

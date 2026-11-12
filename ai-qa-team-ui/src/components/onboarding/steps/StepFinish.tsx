@@ -18,19 +18,16 @@ export default function StepFinish({
   close,
   back,
 }: StepFinishProps) {
-  const [name] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   async function complete() {
-    await apiFetch("/onboarding/finish", {
-      method: "POST",
-      body: JSON.stringify({
-        name,
-        created_by: user.email,
-      })});
-
-    await refreshUser();
-    await onProjectsReload(); // refresh dashboard project list
-
-    close(); // close onboarding modal
+    setSaving(true); setError("");
+    try {
+      const response = await apiFetch("/onboarding/finish", { method: "POST", body: JSON.stringify({ name: "", created_by: user.email }) });
+      if (!response.ok) throw new Error("Setup could not be saved. Please try again.");
+      await refreshUser(); await onProjectsReload(); close();
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Could not save setup."); }
+    finally { setSaving(false); }
   }
 
   return (
@@ -38,9 +35,10 @@ export default function StepFinish({
       <h2>Project ready</h2>
 
       <p className="text-gray-600 mb-6">
-        Your project setup is saved. You can manage environments and repositories from the project workspace.
+        Your workspace is ready. Add product knowledge, review a story and generate test designs from the project workspace.
       </p>
 
+      {error && <p role="alert" className="repository-error">{error}</p>}
       <div className="flex justify-center gap-3">
         <button
           onClick={back}
@@ -51,9 +49,10 @@ export default function StepFinish({
 
         <button
           className="workspace-button workspace-primary"
+          disabled={saving}
           onClick={complete}
         >
-          Go to Dashboard
+          {saving ? "Saving setup…" : "Open workspace"}
         </button>
       </div>
     </div>

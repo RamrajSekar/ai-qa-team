@@ -1,5 +1,5 @@
 /* Public landing page only; shared auth and protected workspace remain unchanged. */
-.public-landing { --lp-bg:#fff; --lp-soft:#f6f7fa; --lp-text:#202535; --lp-muted:#5d6577; --lp-border:#dee2ec; --lp-accent:#6945b6; --lp-accent-soft:#f0ebfa; background:var(--lp-bg); color:var(--lp-text); font:15px/1.65 system-ui,sans-serif; margin:-8px; }
+.public-landing { --lp-bg:#fff; --lp-soft:#f6f7fa; --lp-text:#202535; --lp-muted:#5d6577; --lp-border:#dee2ec; --lp-accent:#6945b6; --lp-accent-soft:#f0ebfa; background:var(--lp-bg); color:var(--lp-text); font:15px/1.65 system-ui,sans-serif; margin:0; }
 .dark .public-landing { --lp-bg:#14161c; --lp-soft:#1b1e27; --lp-text:#edf0f6; --lp-muted:#adb5c7; --lp-border:#353b4b; --lp-accent:#c4aff3; --lp-accent-soft:#302740; }
 .public-landing * { box-sizing:border-box; }
 .public-landing :is(h1,h2,h3,h4,p,figure) { margin:0; }

@@ -81,17 +81,17 @@ export default function StoriesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="design-page">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Stories</h1>
+      <div className="workspace-page-header">
+        <div><p className="workspace-eyebrow">Test design</p><h1>Stories</h1><p className="workspace-description">Define acceptance criteria, resolve ambiguity and design coverage.</p></div>
 
         <button
           onClick={() => {
             setEditStory(null);
             setOpenModal(true);
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md shadow hover:bg-indigo-700 transition"
+          className="workspace-button workspace-primary"
         >
           <Plus size={18} /> New Story
         </button>
@@ -104,7 +104,7 @@ export default function StoriesPage() {
           <button type="button" className="workspace-button" onClick={() => void loadStories()}>Try again</button>
         </div>
       ) : stories.length === 0 ? <p>No stories yet. Select New Story to create one.</p> : (
-      <div className="overflow-hidden border rounded-lg bg-white shadow-sm">
+      <div className="workspace-table-scroll border rounded-lg bg-white shadow-sm" role="region" aria-label="Story list; scroll horizontally for all columns" tabIndex={0}>
         <table className="w-full border-collapse">
           <thead className="bg-gray-100 text-left text-sm text-gray-600">
             <tr>

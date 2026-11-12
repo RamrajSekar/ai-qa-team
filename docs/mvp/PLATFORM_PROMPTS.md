@@ -28,15 +28,35 @@ Changing/removing the environment value does NOT revoke an already persisted rol
 role revocation needs a deliberate authorized database/admin operation. Project roles
 remain separate. Existing platform ADMIN roles also retain access.
 
-## Phase 2 — remaining legacy migration
+## Phase 2 — legacy migration implemented 2026-11-12
 
-Reviewed remaining code: `app/ai/scenario_prompts.py` builds legacy story/recorder
-prompts; `app/ai/prompts.py` supplies legacy framework-specific testcase instructions.
-They are not migrated in Phase 1. Preserve their output/caller compatibility and
-separate static instructions from dynamic project content before registry migration.
-Never register a rendered customer prompt as a shared platform template. Trace all
-callers (including legacy generator services) and add contract/authorization tests.
-Do not convert legacy code-generation contracts into NLP contracts incidentally.
+Added `LEGACY_STORY_SCENARIOS`, `LEGACY_RECORDING_SCENARIOS` and
+`LEGACY_TESTCASE` to the same platform-only registry. Story and browser-recorder
+scenario routes resolve the selected version; request metadata and new scenario
+records retain its identity. This preserves legacy usage accounting, not a new
+dollar budget or a claim that the legacy gateway is fully metered.
+
+Customer context stays outside the shared registry. Allowlisted `{{name}}` slots
+are substituted once, with no eval, script execution or general template engine.
+Saving/activating templates rejects missing or unknown slots. Existing output fields,
+complexity instructions and fallback text are covered by synthetic golden fixtures
+from the pre-migration implementation. Whitespace around the unused testcase helper
+is normalized. Published content remains immutable; rollback changes the active
+pointer. Knowledge-aware scenario/testcase generation continues to use its separate
+NLP contracts, not these legacy framework-specific instructions.
+
+`app/ai/prompts.py` has no current runtime callers. Its preserved template is editable
+in the admin UI, but editing it does not affect current NLP generation. No unused
+code path was enabled. Existing deterministic `generate_playwright_test` is code,
+not an LLM prompt, and stays unchanged. The generic AIManager facade accepts caller
+prompts and has no embedded domain template. Bug Interpreter was already managed.
+Isolated execution behavior was not changed; execution-specific prompt work remains
+part of the held Execution MVP, not this Test Design migration.
+
+Prompt validation responses now omit submitted input. Admin UI lists required
+placeholders, reports load/save failures, blocks activation of unsaved edits, and
+requires explicit activation confirmation. No customer prompts are stored by this
+migration. Registry defaults need no seed or automatic migration.
 
 ## Phase 3 — controlled preview and release qualification
 
@@ -59,3 +79,11 @@ Phase 1: 13 platform tests and eight knowledge tests passed with database/auth/p
 doubles. TypeScript check passed; no real AI, browser, login or Mongo integration was
 performed. Earlier development attempts failed on an omitted registry registration
 and a missing mock collection; both were corrected before passing checks.
+
+
+2026-11-12 checks: six legacy template/auth/validation tests, 13 platform tests,
+eight knowledge tests, four scenario-count tests and seven NLP review tests passed
+with doubles. The 23 feature/history tests also passed. TypeScript and focused lint
+passed. Nine current-checkout intercepted browser checks passed. Browser evidence and the UI regression commands are recorded in
+[UI/UX refresh](UI_UX_REFRESH.md). Real-login/Mongo/provider qualification and
+synthetic model preview are still NOT RUN. No normal customer environment changed.

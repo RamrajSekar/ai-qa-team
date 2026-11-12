@@ -1,3 +1,4 @@
+from app.services.prompt_registry_service import get_active as get_active_prompt
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import List, Optional
 from datetime import datetime, timezone
@@ -406,8 +407,10 @@ async def generate_scenarios_from_story(
         if knowledge_mode:
             ai_list, context = await KnowledgeTestDesign(db).scenarios(story["project_id"], current_user, story, allowed, complexity)
         else:
-            prompt = build_scenario_prompt_from_story(agent, story, allowed, complexity)
-            ai_list = (await generate_scenarios_from_prompt(story["project_id"], prompt))[:allowed]
+            resolved_prompt = await get_active_prompt("LEGACY_STORY_SCENARIOS", database=db)
+            prompt = build_scenario_prompt_from_story(agent, story, allowed, complexity, template=resolved_prompt["system_prompt"])
+            ai_list = (await generate_scenarios_from_prompt(story["project_id"], prompt,
+                prompt_key=resolved_prompt["prompt_key"], prompt_version=str(resolved_prompt["resolved_version"])))[:allowed]
 
         created = []
 
@@ -422,6 +425,7 @@ async def generate_scenarios_from_story(
 
             doc = {
                 "scenario_id": scenario_id,
+                **({"prompt_key": resolved_prompt["prompt_key"], "prompt_version": str(resolved_prompt["resolved_version"])} if not knowledge_mode else {}),
                 "story_id": story_id,
                 "project_id": story["project_id"],
                 "title": item["title"],
@@ -526,10 +530,12 @@ async def generate_from_recording(
             "scenario_builder", "Scenario Builder"
         )
 
+        resolved_prompt = await get_active_prompt("LEGACY_RECORDING_SCENARIOS", database=db)
         prompt = build_scenario_prompt_from_recording(
-            agent_name, story, recording, allowed, complexity
+            agent_name, story, recording, allowed, complexity, template=resolved_prompt["system_prompt"]
         )
-        ai_result = await generate_scenarios_from_prompt(story["project_id"], prompt)
+        ai_result = await generate_scenarios_from_prompt(story["project_id"], prompt,
+            prompt_key=resolved_prompt["prompt_key"], prompt_version=str(resolved_prompt["resolved_version"]))
 
         created_docs = []
         ai_result = ai_result[:allowed]
@@ -545,6 +551,7 @@ async def generate_from_recording(
 
             doc = {
                 "scenario_id": scenario_id,
+                "prompt_key": resolved_prompt["prompt_key"], "prompt_version": str(resolved_prompt["resolved_version"]),
                 "story_id": story_id,
                 "project_id": story["project_id"],
                 "title": item["title"],

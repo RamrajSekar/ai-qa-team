@@ -137,3 +137,16 @@ request three scenarios and inspect the actual count. Approve an intent and
 generate a detailed case. Approve a knowledge successor and confirm old analyses
 and specifications require review. Knowledge/generation/preview must not launch a
 browser. See [execution gates](APPROVED_EXECUTION_DELIVERY.md).
+
+
+## Independent Test Design review checkpoint
+
+The merged NLP review slice adds project-scoped immutable design drafts and project-admin
+approval, with approved text/JSON exports for manual use. The catalog's Review & approve
+natural-language test design panel pins story, reviewed analysis and knowledge context.
+Changed sources mark history stale and require an acknowledged successor review; exports
+identify historical staleness. This is separate from visual-execution approval and does
+not launch browsers. Per-case compare-and-set coordinates competing approvals; it does
+not establish transactional approval across all source collections. Seven synthetic
+API/database/auth checks cover versions, exports, stale sources and competing drafts.
+Current shared UI styling and its verification limits are in [UI_UX_REFRESH](UI_UX_REFRESH.md).

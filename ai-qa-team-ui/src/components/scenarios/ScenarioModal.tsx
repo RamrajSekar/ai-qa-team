@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
-import { X } from "lucide-react";
+import { WorkspaceDialog } from "@/components/ui/workspace-dialog";
 import { apiFetch } from "@/utils/api";
 import type { Scenario, StepModel } from "@/types/scenario";
 
@@ -76,16 +76,7 @@ export default function ScenarioModal({
   const canSave = title.trim() && (intentMode ? expected.trim() : steps.every(step => step.action.trim()));
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 shadow-xl relative">
-        
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 text-gray-500 hover:text-black"
-        >
-          <X size={20} />
-        </button>
+    <WorkspaceDialog open={open} onClose={onClose} title={isEdit ? "Edit Scenario" : "Create Scenario"} busy={saving} className="workspace-dialog-wide">
 
         <h2 className="text-xl font-semibold mb-4">
           {isEdit ? "Edit Scenario" : "Create Scenario"}
@@ -165,7 +156,6 @@ export default function ScenarioModal({
             {saving ? "Saving..." : "Save Scenario"}
           </button>
         </div>
-      </div>
-    </div>
+    </WorkspaceDialog>
   );
 }

@@ -9,6 +9,12 @@ resolution with bounded visual fallback. It is not implemented and does not sile
 supersede the earlier runtime constraint. H0 explicitly versions the amendment
 before implementation; the training/knowledge/story workflow remains unchanged.
 
+Delivery split (2026-11-12): complete the [Test Design MVP](TEST_DESIGN_MVP.md)
+first, then qualify the Execution MVP. The full scope below remains the target;
+this sequencing does not remove recording intake from Phase 1 or imply that it is
+implemented. Private storage/media processing and real integration gates remain open.
+Existing execution functionality is preserved while Test Design is prioritized.
+
 ## Purpose and relationship to existing work
 
 Deliver a browser-accessible, human-supervised QA service that learns a bounded application module from narrated recordings, obtains approval for knowledge, generates tests from stories and acceptance criteria with that knowledge as context, and executes approved cases visually. Customers write no scripts or selectors. Backend-controlled specialized AI tasks support the workflow; ordinary code controls authorization, approvals, versions, permissions, comparisons, secrets, retries, budgets, and outcomes. No multi-agent swarm, new agent framework, graph database, Obsidian Second Brain, or MAK4I dependency is required.

@@ -30,7 +30,7 @@ export default function DashboardPage() {
   const limits: Partial<UsageLimits> = user.subscription?.limits || {};
 
   return (
-    <div className="px-6 py-8 md:px-10 lg:px-14 space-y-10 max-w-[1400px]">
+    <div className="space-y-8">
 
       {/* ONBOARDING MODAL */}
       {openOnboarding && (
@@ -48,7 +48,7 @@ export default function DashboardPage() {
 
         <button
           onClick={() => setOpenProjectModal(true)}
-          className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition"
+          className="workspace-button workspace-primary"
         >
           + Create Project
         </button>

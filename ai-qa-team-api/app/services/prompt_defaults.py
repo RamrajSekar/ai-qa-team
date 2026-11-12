@@ -1,3 +1,5 @@
+from app.services.legacy_prompt_defaults import LEGACY_PROMPT_DEFAULTS
+
 BUG_INTERPRETER_KEY = "BUG_INTERPRETER"
 
 BUG_INTERPRETER_DEFINITION = {
@@ -32,3 +34,15 @@ PROMPT_DEFAULTS['KNOWLEDGE_EXTRACTION_V1'] = {'prompt_key': 'KNOWLEDGE_EXTRACTIO
 PROMPT_DEFAULTS['STORY_ANALYSIS_V1'] = {'prompt_key': 'STORY_ANALYSIS_V1', 'name': 'Story Analysis', 'description': 'Platform task instructions; approved project knowledge is supplied separately.', 'output_contract': 'StoryAnalysisResult', 'resolved_version': 'CODE_DEFAULT_V1', 'source': 'CODE_FALLBACK', 'system_prompt': 'Find gaps, ambiguity, missing details and conflicts with approved expected knowledge. Ask specific clarification questions. Classify material missing expectations or conflicts as blockers. Cite exact acceptance-criteria quotes where present and only supplied knowledge claim IDs. Observed/inferred/unknown claims are context, not approved expected rules. Do not invent requirements.'}
 PROMPT_DEFAULTS['SCENARIO_DESIGN_V1'] = {'prompt_key': 'SCENARIO_DESIGN_V1', 'name': 'Scenario Design', 'description': 'Platform task instructions; approved project knowledge is supplied separately.', 'output_contract': 'ScenarioIntents', 'resolved_version': 'CODE_DEFAULT_V1', 'source': 'CODE_FALLBACK', 'system_prompt': 'Design distinct scenario coverage intents. A scenario states WHAT behavior and condition to verify, not a detailed browser procedure. Cover useful happy/negative/boundary/exception conditions supported by the story. Return up to requested_count without duplicating titles or inventing requirements. Ground expected outcomes in exact acceptance-criteria excerpts and approved expected rule IDs. Treat reviewed clarifications as explicit reviewer expectations. Keep observed/inferred/unknown knowledge separate from expected rules. Do not include scripts, selectors or credentials.'}
 PROMPT_DEFAULTS['TEST_DESIGN_V1'] = {'prompt_key': 'TEST_DESIGN_V1', 'name': 'Test Design', 'description': 'Platform task instructions; approved project knowledge is supplied separately.', 'output_contract': 'DesignedTestCases', 'resolved_version': 'CODE_DEFAULT_V1', 'source': 'CODE_FALLBACK', 'system_prompt': 'Design concrete natural-language test cases for the approved scenario intent. A case states HOW to verify it: role, preconditions, public data, ordered instructions, explicit expected results, assertions and cleanup. Cases must differ meaningfully; do not clone the scenario. Return up to requested_count. Use exact acceptance-criteria excerpts and approved expected rule IDs. Never invent missing behavior, selectors, scripts or credential values. For login instructions reference the selected environment role instead of real credentials. These are drafts for human approval.'}
+
+
+for _key, _value in LEGACY_PROMPT_DEFAULTS.items():
+    PROMPT_DEFAULTS[_key] = {
+        **_value, "prompt_key": _key, "name": _key.replace("_", " ").title(),
+        "description": "Legacy compatibility template. Preserve named placeholders and the output contract.",
+        "resolved_version": "CODE_DEFAULT_V1", "source": "CODE_FALLBACK",
+    }
+
+PROMPT_DEFAULTS["LEGACY_TESTCASE"]["description"] = (
+    "Preserved framework-specific helper with no current runtime callers. Editing does not change NLP generation."
+)

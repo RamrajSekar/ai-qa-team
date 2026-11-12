@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { apiFetch } from "@/utils/api";
-import { X } from "lucide-react";
+import { WorkspaceDialog } from "@/components/ui/workspace-dialog";
 
 import type { Story } from "@/types/story";
 
@@ -88,16 +88,7 @@ export default function StoryModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg w-full max-w-2xl p-6 shadow-xl relative">
-
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 text-gray-500 hover:text-black"
-        >
-          <X size={20} />
-        </button>
+    <WorkspaceDialog open={open} onClose={onClose} title={isEdit ? "Edit Story" : "Create New Story"} busy={saving} className="workspace-dialog-wide">
 
         {/* Title */}
         <h2 className="text-xl font-semibold mb-4">
@@ -109,8 +100,8 @@ export default function StoryModal({
         <div className="space-y-4">
 
           <div>
-            <label className="font-medium text-sm">Title</label>
-            <input
+            <label htmlFor="story-title" className="font-medium text-sm">Title</label>
+            <input id="story-title"
               className="w-full border p-2 rounded mt-1"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -119,8 +110,8 @@ export default function StoryModal({
           </div>
 
           <div>
-            <label className="font-medium text-sm">Description</label>
-            <textarea
+            <label htmlFor="story-description" className="font-medium text-sm">Description</label>
+            <textarea id="story-description"
               className="w-full border p-2 rounded mt-1"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -129,8 +120,8 @@ export default function StoryModal({
           </div>
 
           <div>
-            <label className="font-medium text-sm">Acceptance Criteria</label>
-            <textarea
+            <label htmlFor="story-acceptance-criteria" className="font-medium text-sm">Acceptance Criteria</label>
+            <textarea id="story-acceptance-criteria"
               className="w-full border p-2 rounded mt-1"
               value={acceptanceCriteria}
               onChange={(e) => setAcceptanceCriteria(e.target.value)}
@@ -139,8 +130,8 @@ export default function StoryModal({
           </div>
 
           <div>
-            <label className="font-medium text-sm">Out of Scope</label>
-            <textarea
+            <label htmlFor="story-out-of-scope" className="font-medium text-sm">Out of Scope</label>
+            <textarea id="story-out-of-scope"
               className="w-full border p-2 rounded mt-1"
               value={outOfScope}
               onChange={(e) => setOutOfScope(e.target.value)}
@@ -168,7 +159,6 @@ export default function StoryModal({
           </button>
         </div>
 
-      </div>
-    </div>
+    </WorkspaceDialog>
   );
 }
