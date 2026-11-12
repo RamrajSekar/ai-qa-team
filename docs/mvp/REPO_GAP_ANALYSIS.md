@@ -173,6 +173,13 @@ Follow-up checks: UI `tsc --noEmit --incremental false` passed; `git diff --chec
 
 ## Knowledge/design and durable admission checkpoint — 2026-11-11
 
+Subsequent delivery: checkpoint `9816300` was pushed to `dev` and
+[draft PR #1](https://github.com/RamrajSekar/ai-qa-team/pull/1) was created, unmerged.
+The following historical checkpoint evidence is preserved. The local continuation
+adds durable readiness dispatch and a separate worker/Robot child; see
+[WORKFLOW_WORKER.md](WORKFLOW_WORKER.md) for its exact measured results, failures,
+fixes and limits. General case execution remains incomplete.
+
 Assessed/edited `dev`; the pre-task head was `d1d79fd`. Current uncommitted work is
 documented in [PRODUCT_KNOWLEDGE.md](PRODUCT_KNOWLEDGE.md) and
 [APPROVED_EXECUTION_DELIVERY.md](APPROVED_EXECUTION_DELIVERY.md). The user's existing

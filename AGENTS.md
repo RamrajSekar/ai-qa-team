@@ -46,6 +46,12 @@ General worker, credential-safe visual execution and real integration remain
 unfinished; never interpret a prepared admission as a queued/started run. BrowserStack
 is the accepted first development provider for the assigned execution work,
 superseding its earlier deferred listing; preserve a reusable adapter boundary.
+The default-off `approved_workflow_worker` now supports a separately queued
+`about:blank` readiness operation via an isolated Robot/HTTPX process, not general
+case execution. Read `docs/mvp/WORKFLOW_WORKER.md` for leases, private event safety,
+cleanup/reconciliation and measured real-Mongo/BrowserStack limits. A ready browser
+cannot pass the approved test; unknown cleanup holds capacity. API startup must
+not launch this worker or attach its jobs to legacy consumers.
 
 - MongoDB is durable truth; Redis is coordination/cache. Reuse existing services and feature configuration where appropriate.
 - Authorize every project reference, query, artifact and job. Platform roles do not bypass project membership. Application roles are distinct from project roles.

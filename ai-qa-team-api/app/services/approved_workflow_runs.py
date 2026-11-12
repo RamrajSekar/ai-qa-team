@@ -20,7 +20,45 @@ class ApprovedWorkflowRuns:
 
     @staticmethod
     def public(document):
-        return {key: value for key, value in document.items() if key != "_id"}
+        # Private execution fencing/session handles must never enter API responses.
+        keys = ("run_id", "project_id", "manifest", "manifest_digest", "state", "verdict", "execution_ready",
+                "reason", "created_at", "queued_at", "started_at", "finished_at", "browser_readiness", "cleanup_confirmed")
+        return {key: document[key] for key in keys if key in document}
+
+    async def validate_current(self, document):
+        require_features("reusable_workflows", "approved_visual_run_admission")
+        manifest = document["manifest"]
+        if not hmac.compare_digest(document["manifest_digest"], digest(manifest, self.key)):
+            raise HTTPException(409, "Run manifest integrity check failed.")
+        if (manifest.get("project_id") != document["project_id"] or manifest.get("execution_adapter") != "browserstack-direct-webdriver-v1"
+                or manifest.get("purpose") != "approved-workflow-run-v1" or manifest.get("runtime_contract") != "robot-visual-workflow-v1"):
+            raise HTTPException(409, "Unsupported run identity.")
+        # Turning knowledge mode off must not bypass the approval pins of a saved run.
+        from app.config import settings
+        if manifest.get("knowledge_version_id") and not settings.features.product_knowledge:
+            raise HTTPException(409, "This run requires its knowledge review policy to remain enabled.")
+        current = await self.specifications.preview(document["project_id"], manifest["testcase_id"],
+            manifest["approved_specification_version_id"], SpecificationPreviewSelection(
+                environment_id=manifest["environment_id"], application_role=manifest.get("application_role")))
+        if not hmac.compare_digest(current.manifest_digest, manifest["preview_digest"]):
+            raise HTTPException(409, "Approved run inputs changed. Prepare a new admission.")
+
+    async def queue_preflight(self, project, run_id, actor):
+        require_features("approved_workflow_worker")
+        from app.config import settings
+        if settings.app_env not in ("development", "dev", "test", "local"):
+            raise HTTPException(403, "Workflow worker is development-only.")
+        await self.status(project, run_id)
+        document = await self.db["approved_workflow_runs"].find_one({"project_id": project, "_id": run_id})
+        await self.validate_current(document)
+        if document["state"] != "prepared":
+            return self.public(document)  # Never replay a completed/interrupted preparation.
+        await self.db["approved_workflow_runs"].find_one_and_update(
+            {"project_id": project, "_id": run_id, "state": "prepared"},
+            {"$set": {"state": "queued", "reason": "BROWSER_PREFLIGHT_QUEUED", "dispatch_requested_by": actor,
+                      "queued_at": datetime.now(timezone.utc).isoformat(), "operation": "browser-readiness-v1"}},
+            return_document=ReturnDocument.AFTER)
+        return await self.status(project, run_id)
 
     async def admit(self, project, testcase, version, actor, payload):
         require_features("reusable_workflows", "approved_visual_run_admission")
@@ -62,10 +100,21 @@ class ApprovedWorkflowRuns:
             raise HTTPException(404, "Run admission not found in this project.")
         return self.public(document)
 
+    async def latest(self, project, testcase):
+        require_features("reusable_workflows", "approved_visual_run_admission")
+        document = await self.db["approved_workflow_runs"].find_one(
+            {"project_id": project, "manifest.testcase_id": testcase}, sort=[("created_at", -1), ("_id", -1)])
+        return self.public(document) if document else None
+
     async def cancel(self, project, run_id):
-        await self.status(project, run_id)
+        current = await self.status(project, run_id)
+        state = current["state"]
+        if state not in ("prepared", "queued", "running", "cancelling"):
+            return current
+        terminal = state in ("prepared", "queued")
         await self.db["approved_workflow_runs"].find_one_and_update(
-            {"project_id": project, "_id": run_id, "state": "prepared"},
-            {"$set": {"state": "cancelled", "verdict": "cancelled", "reason": None,
-                      "finished_at": datetime.now(timezone.utc).isoformat()}}, return_document=ReturnDocument.AFTER)
+            {"project_id": project, "_id": run_id, "state": state},
+            {"$set": {"state": "cancelled" if terminal else "cancelling", "verdict": "cancelled" if terminal else None,
+                      "reason": None, **({"finished_at": datetime.now(timezone.utc).isoformat()} if terminal else {})}},
+            return_document=ReturnDocument.AFTER)
         return await self.status(project, run_id)

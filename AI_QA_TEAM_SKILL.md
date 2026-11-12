@@ -15,6 +15,9 @@ recording ingestion. Scenario intents describe coverage; detailed testcase draft
 describe procedures/expectations. Prepared run manifests do not launch browsers.
 BrowserStack is accepted as the initial development adapter for the assigned
 seven-task execution work; VM/Sauce remain future adapters, not automatic fallbacks.
+`docs/mvp/WORKFLOW_WORKER.md` documents the separately launched default-off readiness
+worker, private protocol, real Mongo/BrowserStack checks and cleanup limits. Its
+`about:blank` operation does not execute approved case actions or establish Passed.
 
 Train an AI QA practitioner through uploaded narrated product demonstrations; validate its understanding; approve tests; execute them through computer vision and natural-language specifications; retain reviewed corrections. One or two days describes supervised onboarding effort, not guaranteed autonomy or model training.
 

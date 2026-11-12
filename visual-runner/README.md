@@ -6,6 +6,12 @@ This is an integrated **mechanical browser smoke check**, not a business test pa
 
 ## Setup
 
+An additional default-off approved-manifest **browser-readiness** worker now uses
+this isolated Robot/HTTPX environment with BrowserStack's remote WebDriver. It opens
+only `about:blank`, makes no model calls, resolves no application credentials and
+cannot pass a business case. See [worker setup/evidence](../docs/mvp/WORKFLOW_WORKER.md).
+It does not replace or qualify the Windows/Linux mechanical runners below.
+
 Windows x64 and Python 3.12 were tested. Use a trusted developer workstation, a non-production API environment and explicitly configured development Mongo/Redis for the existing app. No new worker or Redis consumer is needed. The API's existing dependency environment stays separate and unchanged. Browser/driver must be matching **full versions**; the runner checks the reported session browser version against ChromeDriver before navigating.
 
 From repository root in PowerShell:

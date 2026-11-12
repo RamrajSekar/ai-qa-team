@@ -125,6 +125,32 @@ class VisualSpecificationTests(unittest.IsolatedAsyncioTestCase):
         settings.features.approved_visual_run_admission = False
         self.assertEqual((await self.client.get(self.base + f'/runs/{run["run_id"]}')).status_code, 403)
 
+    async def test_preflight_queue_is_separately_gated_durable_and_cancellable(self):
+        self.db["approved_workflow_runs"] = Collection()
+        settings.features.approved_visual_run_admission = True
+        version = await self.specification([{"action": "assert_text", "expected": "Expected"}])
+        preview = (await self.preview(version)).json()
+        path = self.base + "/cases/TC1/" + version["version_id"] + "/runs"
+        admission = (await self.client.post(path, json={"environment_id": "ENV1", "preview_digest": preview["manifest_digest"], "idempotency_key": "d" * 32})).json()
+        endpoint = self.base + "/runs/" + admission["run_id"]
+        self.assertEqual((await self.client.post(endpoint + "/browser-preflight")).status_code, 403)
+        settings.features.approved_workflow_worker = True
+        response = await self.client.post(endpoint + "/browser-preflight")
+        self.assertEqual(response.status_code, 202, response.text)
+        self.assertEqual(response.json()["state"], "queued")
+        self.assertFalse(response.json()["execution_ready"])
+        self.assertEqual((await self.client.post(endpoint + "/browser-preflight")).json()["state"], "queued")
+        latest = await self.client.get(self.base + "/cases/TC1/runs")
+        self.assertEqual(latest.json()["run_id"], admission["run_id"])
+        stored = self.db["approved_workflow_runs"].docs[0]
+        stored["execution_token"] = "private-token-canary"
+        stored["remote_session_id"] = "private-session-canary"
+        self.assertNotIn("private-", (await self.client.get(endpoint)).text)
+        stored["manifest"]["target_url"] = "https://changed.invalid"
+        self.assertEqual((await self.client.post(endpoint + "/browser-preflight")).status_code, 409)
+        settings.features.approved_workflow_worker = False
+        self.assertEqual((await self.client.post(endpoint + "/cancel")).json()["state"], "cancelled")
+
     async def test_reusable_versions_compile_parameters_and_credential_references(self):
         workflow = await self.workflow([
             {"action": "type", "target": "Username", "value": {"source": "credential", "field": "username"}},

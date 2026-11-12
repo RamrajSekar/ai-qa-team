@@ -7,7 +7,7 @@ import { apiFetch } from "@/utils/api";
 export type FeatureName =
   | "story_management" | "scenario_generation" | "test_generation" | "recorder"
   | "native_execution" | "visual_runner_lab" | "visual_runner_batches" | "jira_trigger" | "failure_diagnostics" | "self_healing"
-  | "approved_visual_run_admission" | "approved_visual_run_execution" | "bug_reproduction_ui" | "repository_ui" | "reusable_workflows" | "product_knowledge" | "story_analysis"
+  | "approved_visual_run_admission" | "approved_visual_run_execution" | "approved_workflow_worker" | "bug_reproduction_ui" | "repository_ui" | "reusable_workflows" | "product_knowledge" | "story_analysis"
   | "playwright_repo_adapter" | "selenium_repo_adapter"
   | "repository_discovery" | "test_registry" | "test_data_generation";
 

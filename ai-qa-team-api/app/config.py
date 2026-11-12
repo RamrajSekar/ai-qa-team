@@ -12,6 +12,7 @@ class FeatureFlags(BaseModel):
     visual_runner_batches: bool = False
     approved_visual_run_admission: bool = False
     approved_visual_run_execution: bool = False
+    approved_workflow_worker: bool = False
     bug_reproduction_ui: bool = False
     repository_ui: bool = False
     reusable_workflows: bool = False

@@ -9,7 +9,7 @@ interface SpecVersion { version_id: string; status: string; steps: AuthoredStep[
 interface SpecState { version: SpecVersion | null; review_required: boolean; reason?: string | null }
 interface EnvironmentChoice { env_id: string; env_type: string; credentials: { role: string }[] }
 interface Preview { target_url: string; requires_credentials: boolean; environment_revision: number; steps: AuthoredStep[]; execution_ready: false; manifest_digest: string }
-interface PreparedRun { run_id: string; state: string; manifest_digest: string; reason: string | null; execution_ready: false }
+interface PreparedRun { run_id: string; state: string; manifest_digest: string; reason: string | null; execution_ready: false; browser_readiness?: string; verdict?: string; cleanup_confirmed?: boolean }
 
 function SavedSteps({ steps }: { steps: AuthoredStep[] }) {
   return <details><summary>Review saved steps</summary><ol className="list-decimal pl-6">
@@ -48,12 +48,14 @@ function AuthoringForm({ projectId, testcaseId, canApprove }: { projectId: strin
   const [busy, setBusy] = useState(false);
   const [admission, setAdmission] = useState<PreparedRun | null>(null);
   const [admissionKey, setAdmissionKey] = useState<string | null>(null);
+  const admissionEnabled = enabled("approved_visual_run_admission");
 
   const load = useCallback(async (signal?: AbortSignal) => {
-    const [response, specification, savedEnvironments] = await Promise.all([
+    const [response, specification, savedEnvironments, savedAdmission] = await Promise.all([
       apiFetch(`${base}/workflows`, { signal }),
       testcaseId ? apiFetch(casePath, { signal }) : Promise.resolve(null),
       testcaseId ? apiFetch(`/environments?project_id=${encodeURIComponent(projectId)}`, { signal }) : Promise.resolve(null),
+      testcaseId && admissionEnabled ? apiFetch(`${casePath}/runs`, { signal }) : Promise.resolve(null),
     ]);
     if (!response.ok || !Array.isArray(response.data)) throw new Error("Could not load reusable workflows.");
     if (testcaseId && (!specification?.ok || !savedEnvironments?.ok || !Array.isArray(savedEnvironments.data))) {
@@ -62,8 +64,9 @@ function AuthoringForm({ projectId, testcaseId, canApprove }: { projectId: strin
     if (!signal?.aborted) {
       setWorkflows(response.data);
       if (specification && savedEnvironments) { setState(specification.data); setEnvironments(savedEnvironments.data); }
+      if (savedAdmission?.ok) setAdmission(savedAdmission.data);
     }
-  }, [base, casePath, projectId, testcaseId]);
+  }, [admissionEnabled, base, casePath, projectId, testcaseId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -117,6 +120,17 @@ function AuthoringForm({ projectId, testcaseId, canApprove }: { projectId: strin
     finally { setBusy(false); }
   }
 
+  async function controlPreflight(queue: boolean) {
+    if (!admission) return;
+    setBusy(true); setError("");
+    try {
+      const response = await apiFetch(`${base}/runs/${admission.run_id}${queue ? "/browser-preflight" : ""}`, queue ? { method: "POST" } : { cache: "no-store" });
+      if (!response.ok) throw new Error(typeof response.data?.detail === "string" ? response.data.detail : "Could not update browser readiness.");
+      setAdmission(response.data);
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Could not update browser readiness."); }
+    finally { setBusy(false); }
+  }
+
   return <div className="mt-4 space-y-4">
     <p>Author and approve bounded steps. Browser execution remains pending hosting, targeting and network qualification.</p>
     {error && <p role="alert">{error}</p>}
@@ -151,9 +165,13 @@ function AuthoringForm({ projectId, testcaseId, canApprove }: { projectId: strin
     </div>}
     {preview && <div role="status">Prepared preview for {preview.target_url} · environment revision {preview.environment_revision} · {preview.steps.length} expanded steps · {preview.requires_credentials ? "Credential role required" : "Public-page workflow"}. Browser execution pending.</div>}
     {preview && enabled("approved_visual_run_admission") && <button className="workspace-button" disabled={busy || !admissionKey} onClick={() => void saveAdmission()}>Save immutable run admission (no execution)</button>}
-    {admission && <div className="border rounded p-3 space-y-2"><p role="status">Run admission {admission.run_id} · {admission.state}. General worker not enabled; no browser has launched.</p>
+    {admission && <div className="border rounded p-3 space-y-2"><p role="status">Run admission {admission.run_id} · {admission.state}. Approved actions and assertions have not been executed.</p>
       <p>Manifest digest: {admission.manifest_digest}</p>
-      {admission.state === "prepared" && <button className="workspace-button" disabled={busy} onClick={() => void saveAdmission(true)}>Cancel prepared admission</button>}
+      {admission.browser_readiness && <p>Browser readiness: {admission.browser_readiness} · Verdict: {admission.verdict}. Cleanup: {admission.cleanup_confirmed ? "confirmed" : "unconfirmed"}.</p>}
+      {admission.reason && <p>Diagnostic: {admission.reason}</p>}
+      {admission.state === "prepared" && enabled("approved_workflow_worker") && <button className="workspace-button" disabled={busy} onClick={() => void controlPreflight(true)}>Check isolated browser readiness only</button>}
+      <button className="workspace-button" disabled={busy} onClick={() => void controlPreflight(false)}>Refresh readiness status</button>
+      {["prepared", "queued", "running", "cancelling"].includes(admission.state) && <button className="workspace-button" disabled={busy || admission.state === "cancelling"} onClick={() => void saveAdmission(true)}>Cancel admission or readiness check</button>}
     </div>}
   </div>;
 }

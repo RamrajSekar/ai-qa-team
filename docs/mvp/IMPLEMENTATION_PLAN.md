@@ -381,6 +381,12 @@ partially implemented; authoring approval is not execution readiness.
 
 ## Knowledge-first implementation and execution sequence, 2026-11-11
 
+Continuation: durable readiness dispatch and a separate worker/Robot child are
+implemented; [WORKFLOW_WORKER.md](WORKFLOW_WORKER.md) records real Mongo and bounded
+BrowserStack evidence, cancellation fixes, and remaining gaps. General case actions
+and assertions are still not executed. Next is the bounded visual action interpreter
+(task 3), retaining network/credential gates and conservative outcomes.
+
 The [knowledge slice](PRODUCT_KNOWLEDGE.md) implements default-off text/transcript
 source review, immutable snapshots, story ambiguity/gap/conflict review, metered
 context-aware design and requested/allowed/actual counts. Scenarios now represent
