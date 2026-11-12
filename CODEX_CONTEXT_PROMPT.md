@@ -9,6 +9,10 @@ for the current development slice and incomplete execution/merge gates. Preserve
 the document/transcript-only limitation, scenario-intent/testcase-procedure distinction
 and non-executable prepared admissions. BrowserStack is the accepted first development
 adapter for this assigned work; do not mistake that decision for customer readiness.
+Read `docs/mvp/WORKFLOW_WORKER.md` before extending dispatch: current real browser
+support is a separately supervised readiness operation, not the general interpreter.
+Preserve session-event delivery outside Robot stdout capture and hold capacity until
+remote cleanup is confirmed. Do not replay interrupted work or weaken its verdict.
 
 Evolve the existing AI QA Team platform into a human-supervised, recording-trained visual QA SaaS. Read `AGENTS.md`, `AI_QA_TEAM_SKILL.md`, and `docs/mvp/{MVP_SPEC,REPO_GAP_ANALYSIS,IMPLEMENTATION_PLAN,DECISIONS}.md`. Current user instructions define the task. Scope documents define targets; inspected code and checks establish current implementation.
 

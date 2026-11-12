@@ -11,8 +11,8 @@ not require Selenium. Hosting changes do not bypass security/assertion controls.
 
 | Task | Current state | Completion evidence still needed |
 | --- | --- | --- |
-| 1. Durable admission | Non-executable prepared admission implemented | Real persistence/restart verification; exact manifest pins covered with doubles |
-| 2. Isolated worker | Not implemented for general workflows | Separate supervisor/runner consuming manifests through Robot/custom Python/direct HTTPX WebDriver; lease, watchdog, cancellation, stale approval checks; no legacy consumers |
+| 1. Durable admission | Saved manifests and separately gated durable readiness dispatch implemented | Real Mongo idempotency/slot contention/fresh-process reads passed; normal-login/API-restart verification remains |
+| 2. Isolated worker | Separate readiness worker and isolated Robot/HTTPX runner implemented | Real BrowserStack readiness/cancellation exercised; general approved actions/assertions remain tasks 3/4; no legacy consumers |
 | 3. General visual actions | Not implemented/qualified | Screenshot proposals, trusted click/type/navigation, bounded wait/scroll and ambiguity stop; single synthetic-button proof is narrower |
 | 4. Independent assertions | Not implemented for general workflows | Every expectation evaluated; reliable contradiction Failed, prerequisite Blocked, ambiguity Needs review; missing assertions cannot pass |
 | 5. Credentials/evidence | Encrypted environment storage exists | Runtime-only resolution, no secret propagation, redaction before provider/storage, echo/redirect cases, private evidence/cleanup |
@@ -52,6 +52,11 @@ browser launched, queue consumed or synthetic/legacy run reinterpreted.
 
 ## Worker/security prerequisites
 
+Current bounded worker implementation, commands, measured failures/fixes and
+verification distinctions are in [WORKFLOW_WORKER.md](WORKFLOW_WORKER.md). Its only
+operation is browser readiness on `about:blank`; it does not execute the selected
+URL or approved case actions. A ready browser leaves the case verdict Blocked.
+
 Separate API admission, durable worker supervision and isolated runner. Atomically
 claim/revalidate access and approvals, resolve scoped runtime references, launch
 only configured executables in the isolated dependency graph. Robot exposes fixed
@@ -80,5 +85,6 @@ sessions or intercepted fixtures. Record first attempts, verdict/assertion detai
 usage/latency, cleanup and failures. The user subsequently authorized a checkpoint commit and PR before tasks 1–7
 are complete. That PR must describe unfinished execution work; merging still
 requires the applicable verification/review gate. An author cannot approve their
-own GitHub PR; required independent review must not be bypassed. No commit, push,
-deployment or merge occurred in this slice.
+own GitHub PR; required independent review must not be bypassed. PR #1 is now
+merged. The user separately authorized committing, creating a PR and merging the
+bounded worker/readiness continuation. General execution remains incomplete.

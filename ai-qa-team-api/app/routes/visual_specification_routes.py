@@ -83,6 +83,19 @@ async def workflow_run_status(project_id: str, run_id: Annotated[str, Path(patte
     return await ApprovedWorkflowRuns(db, settings.jwt_secret_key.encode()).status(project_id, run_id)
 
 
+@router.get("/cases/{testcase_id}/runs", dependencies=[Depends(feature_required("approved_visual_run_admission"))])
+async def latest_workflow_run(project_id: str, testcase_id: CaseId, user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await ApprovedWorkflowRuns(db, settings.jwt_secret_key.encode()).latest(project_id, testcase_id)
+
+
+@router.post("/runs/{run_id}/browser-preflight", status_code=202,
+             dependencies=[Depends(feature_required("approved_workflow_worker")), Depends(feature_required("approved_visual_run_admission"))])
+async def queue_browser_preflight(project_id: str, run_id: Annotated[str, Path(pattern=r"^[0-9a-f]{64}$")], user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await ApprovedWorkflowRuns(db, settings.jwt_secret_key.encode()).queue_preflight(project_id, run_id, actor_id(user))
+
+
 @router.post("/runs/{run_id}/cancel", dependencies=[Depends(feature_required("approved_visual_run_admission"))])
 async def cancel_workflow_run(project_id: str, run_id: Annotated[str, Path(pattern=r"^[0-9a-f]{64}$")], user=Depends(get_current_user)):
     await require_project_member(project_id, user)
