@@ -146,6 +146,20 @@ class PlatformAdminPromptTests(unittest.IsolatedAsyncioTestCase):
         resolved = await prompt_registry_service.get_active("BUG_INTERPRETER")
         self.assertEqual((resolved["source"], resolved["resolved_version"]), ("DATABASE", 1))
 
+    async def test_design_tasks_have_platform_managed_versions(self):
+        keys = {item["prompt_key"] for item in await prompt_registry_service.list_prompts()}
+        for key in ("KNOWLEDGE_EXTRACTION_V1", "STORY_ANALYSIS_V1", "SCENARIO_DESIGN_V1", "TEST_DESIGN_V1"):
+            self.assertIn(key, keys)
+            original = await prompt_registry_service.get_active(key)
+            await prompt_registry_service.create_draft(key, "owner@example.com")
+            await prompt_registry_service.update_draft(key, 1, original["system_prompt"] + " Preserve terminology.")
+            self.assertEqual((await prompt_registry_service.get_active(key))["source"], "CODE_FALLBACK")
+            await prompt_registry_service.activate_version(key, 1)
+            resolved = await prompt_registry_service.get_active(key, database=self.db)
+            self.assertEqual(resolved["resolved_version"], 1)
+            with self.assertRaises(HTTPException):
+                await prompt_registry_service.update_draft(key, 1, original["system_prompt"])
+
     async def test_active_is_immutable_and_invalid_identifiers_fail(self):
         await prompt_registry_service.create_draft("BUG_INTERPRETER", "owner@example.com")
         await prompt_registry_service.activate_version("BUG_INTERPRETER", 1)

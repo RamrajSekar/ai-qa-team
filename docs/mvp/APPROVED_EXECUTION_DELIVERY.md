@@ -13,7 +13,7 @@ not require Selenium. Hosting changes do not bypass security/assertion controls.
 | --- | --- | --- |
 | 1. Durable admission | Saved manifests and separately gated durable readiness dispatch implemented | Real Mongo idempotency/slot contention/fresh-process reads passed; normal-login/API-restart verification remains |
 | 2. Isolated worker | Separate readiness worker and isolated Robot/HTTPX runner implemented | Real BrowserStack readiness/cancellation exercised; general approved actions/assertions remain tasks 3/4; no legacy consumers |
-| 3. General visual actions | Not implemented/qualified | Screenshot proposals, trusted click/type/navigation, bounded wait/scroll and ambiguity stop; single synthetic-button proof is narrower |
+| 3. General actions | Not implemented/qualified; hybrid change planned | H0/H1 semantic-first contract/capability proof, then trusted actions with bounded visual fallback; see HYBRID_EXECUTION_PLAN.md |
 | 4. Independent assertions | Not implemented for general workflows | Every expectation evaluated; reliable contradiction Failed, prerequisite Blocked, ambiguity Needs review; missing assertions cannot pass |
 | 5. Credentials/evidence | Encrypted environment storage exists | Runtime-only resolution, no secret propagation, redaction before provider/storage, echo/redirect cases, private evidence/cleanup |
 | 6. UI controls | Existing synthetic controls retained; general admission save/cancel added | General Start/status/Cancel/evidence, durable refresh/history and clear lifecycle/verdict |
@@ -51,6 +51,12 @@ cancels prepared admission without editing the manifest. No capacity is reserved
 browser launched, queue consumed or synthetic/legacy run reinterpreted.
 
 ## Worker/security prerequisites
+
+The proposed [hybrid execution plan](HYBRID_EXECUTION_PLAN.md) now defines the
+recommended next targeting work. This planning update changes no runtime behavior.
+It explicitly addresses the earlier DOM prohibition at H0 instead of silently
+adding semantic/selector execution. The security and independent-assertion gates
+below continue to apply to every targeting strategy.
 
 Current bounded worker implementation, commands, measured failures/fixes and
 verification distinctions are in [WORKFLOW_WORKER.md](WORKFLOW_WORKER.md). Its only

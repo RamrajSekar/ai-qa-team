@@ -395,14 +395,44 @@ Retain legacy records and flag-off behavior. No recording pipeline is delivered.
 
 The user's seven next execution tasks, exact acceptance gates and unfinished work
 are tracked in [approved execution delivery](APPROVED_EXECUTION_DELIVERY.md).
-Durable compiled admission is implemented as non-executable preparation; the
-recommended next code task is a separately supervised Robot/direct-WebDriver worker
-with manifest revalidation and fail-closed network/evidence policies. BrowserStack
-is the first accepted development provider behind reusable interfaces. Do not
+Durable compiled admission and a separately supervised Robot/direct-WebDriver
+readiness worker are implemented. General actions/assertions and fail-closed
+network/evidence controls remain unfinished. BrowserStack is the first accepted
+development provider behind reusable interfaces. Do not
 reinterpret existing synthetic jobs or attach to legacy consumers.
 
 Real verification needs a dedicated authorized development project/environment and
 provider screenshot permission. Do not merge on unit tests or service pings alone.
-After all seven gates pass, create `dev` → `main` PR and perform authorized merge
-without bypassing required independent review. Current work has not been committed,
-pushed or merged. Existing Windows/five-way reliability issues remain open.
+The bounded knowledge/admission and readiness slices were merged through PRs #1
+and #2; that does not complete the seven gates or qualify the full MVP. Future
+implementation follows the same `dev` → `main` review workflow without bypassing
+required review. Existing Windows/five-way reliability issues remain open.
+
+## Proposed hybrid targeting change — 2026-11-11
+
+The user requested a plan before changing the screenshot-first approach. See
+[HYBRID_EXECUTION_PLAN.md](HYBRID_EXECUTION_PLAN.md), the detailed source for this
+proposed work. It replaces the **recommended next implementation task** above
+with H0 (explicit policy/versioned-contract amendment) and H1 (direct-WebDriver
+semantic capability proof), followed by semantic actions, independent assertions,
+bounded visual fallback and security/UI/integration qualification.
+
+This is planning only: no execution policy, feature flag, application behavior,
+dependency or stored approval is changed. Semantic/accessibility/DOM operations
+must be explicitly introduced during an assigned implementation task; do not
+silently bypass the existing targeting constraint. Customers still write no
+selectors. Preserve all current adapters, histories, isolation and no-replay rules.
+
+Full bounded work is estimated at 19–33 engineer-days (4–7 weeks solo at 30 focused
+hours/week), subject to provider, egress and redaction gates. This excludes the
+rest of the MVP. The initial capability proof is 2–4 days after H0; measure actual
+provider support and RPC overhead before expanding the implementation.
+
+
+## Platform prompt phases (2026-11-11)
+
+See [Platform prompts](PLATFORM_PROMPTS.md). Phase 1 connects knowledge extraction,
+story analysis and knowledge-aware scenario/test design to the existing platform-only
+registry. Phase 2 migrates legacy dynamic templates without changing their contracts.
+Phase 3 adds synthetic draft preview and real-login qualification. Execution stays
+out of this work. Backend owner configuration reuses PLATFORM_OWNER_EMAIL.

@@ -4,6 +4,12 @@ Updated 2026-10-31. Use this context with a concrete task; it is not an instruct
 
 ## Objective and required reading
 
+For the next targeting task, read `docs/mvp/HYBRID_EXECUTION_PLAN.md`. This is a
+planning-only proposal for semantic-first hybrid resolution; H0/H1 are the first
+implementation gates. Preserve the current runtime until an explicit implementation
+task applies the contract/guidance amendment. Do not infer full accessibility-tree
+support, deterministic VLM behavior or automatic conversion of old approved tests.
+
 Also read `docs/mvp/PRODUCT_KNOWLEDGE.md` and `docs/mvp/APPROVED_EXECUTION_DELIVERY.md`
 for the current development slice and incomplete execution/merge gates. Preserve
 the document/transcript-only limitation, scenario-intent/testcase-procedure distinction
@@ -139,3 +145,9 @@ checkpoint/assertion/failure evidence. No DOM/JS targeting fallback or fixed-coo
 claim of visual targeting. Customer execution, production/cloud deployment and
 full MVP readiness remain gated. This amendment records scope only; it does not
 implement M1B or authorize model calls in a documentation task.
+
+
+Platform prompt governance: see `docs/mvp/PLATFORM_PROMPTS.md`. Only platform
+OWNER/ADMIN manages shared task prompts, never project admins. Private backend
+`PLATFORM_OWNER_EMAIL` bootstraps the trusted owner; changing it does not revoke
+persisted roles. Project knowledge remains scoped, reviewed memory, not fine-tuning.

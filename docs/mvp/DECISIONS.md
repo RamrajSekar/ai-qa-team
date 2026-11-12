@@ -204,3 +204,32 @@ execution tasks. Immutable general run admission remains non-executable until th
 isolated worker, network/evidence controls and real checks are complete. See
 PRODUCT_KNOWLEDGE.md and APPROVED_EXECUTION_DELIVERY.md. No production readiness,
 automatic provider fallback or merge approval from test doubles is implied.
+
+### Proposed: semantic-first hybrid targeting — 2026-11-11
+
+The user requested a plan following architectural feedback. The recommendation is
+semantic role/name/label/scoped text first, stable attribute contracts second,
+and permissioned visual proposals for unsupported discovery cases. Unresolved
+ambiguity stops safely. Vision is not a deterministic fallback; failing assertions
+and uncertain actions must never trigger a more permissive execution strategy.
+
+[HYBRID_EXECUTION_PLAN.md](HYBRID_EXECUTION_PLAN.md) defines the phased plan,
+contract migration, provider capability proof, security/qualification gates and
+effort assumptions. This entry records **planning**, not implemented capability or
+blanket approval to alter runtime behavior. H0 must explicitly amend the earlier
+vision-only constraint and version the resolution policy/contracts when an
+implementation task is assigned. No old approved version is automatically converted.
+
+Preserve Robot/custom Python/direct HTTPX WebDriver and dependency isolation.
+Full accessibility-tree/CDP support through BrowserStack is an experiment, not a
+prerequisite or guaranteed capability. Arbitrary JavaScript, generated selectors,
+model code, unrestricted Robot keywords and uncertain-submit retries remain excluded.
+
+
+## Platform prompt ownership (2026-11-11)
+
+Shared task prompts are managed by platform OWNER/ADMIN, not project administrators.
+Approved project knowledge is separate scoped memory, not model fine-tuning. Reuse
+the existing registry/UI and backend PLATFORM_OWNER_EMAIL bootstrap. See
+[implementation and remaining phases](PLATFORM_PROMPTS.md). Editable instructions
+cannot replace code-enforced schemas, isolation, approvals or permissions.

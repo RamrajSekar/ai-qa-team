@@ -25,10 +25,7 @@ class KnowledgeTestDesign:
         context = await self.knowledge.generation_context(project, story["story_id"])
         result = await self.knowledge.ai(AIOperation.SCENARIO_DESIGN, project, user,
             {"story": story, "approved_context": context, "requested_count": count, "complexity": complexity}, ScenarioIntents,
-            "Design distinct scenario coverage intents. A scenario states WHAT behavior and condition to verify, not a detailed browser procedure. "
-            "Cover useful happy/negative/boundary/exception conditions supported by the story. Return up to requested_count without duplicating titles or inventing requirements. "
-            "Ground expected outcomes in exact acceptance-criteria excerpts and approved expected rule IDs. Treat reviewed clarifications as explicit reviewer expectations. "
-            "Keep observed/inferred/unknown knowledge separate from expected rules. Do not include scripts, selectors or credentials.", "scenario_design_v1")
+            "scenario_design_v1")
         items = result.scenarios[:count]
         if len({item.title.strip().lower() for item in items}) != len(items):
             raise HTTPException(502, "AI returned duplicate scenario intents. No scenarios were saved.")
@@ -48,10 +45,7 @@ class KnowledgeTestDesign:
                 "scenario_id", "title", "description", "purpose", "role", "coverage_type", "preconditions",
                 "expected_outcome", "acceptance_criteria_refs", "rule_references")},
              "approved_context": context, "requested_count": count}, DesignedTestCases,
-            "Design concrete natural-language test cases for the approved scenario intent. A case states HOW to verify it: role, preconditions, public data, "
-            "ordered instructions, explicit expected results, assertions and cleanup. Cases must differ meaningfully; do not clone the scenario. "
-            "Return up to requested_count. Use exact acceptance-criteria excerpts and approved expected rule IDs. Never invent missing behavior, selectors, scripts or credential values. "
-            "For login instructions reference the selected environment role instead of real credentials. These are drafts for human approval.", "test_design_v1")
+            "test_design_v1")
         items = result.testcases[:count]
         if len({item.title.strip().lower() for item in items}) != len(items):
             raise HTTPException(502, "AI returned duplicate test cases. No drafts were saved.")
