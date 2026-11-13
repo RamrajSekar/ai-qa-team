@@ -266,3 +266,22 @@ default); project membership and explicit saved-version approval remain mandator
 Record authenticated approver ID/name/role, approval time and policy in immutable
 versions and execution snapshots. No historical approvals are rewritten. The
 stricter AI generation schema is unchanged. See MANUAL_TEST_EXECUTION.md.
+
+
+## Planning follow-up — execution specialization and knowledge retrieval (2026-11-13)
+
+Track a bounded Execution Agent role for the later Execution MVP; implementation
+and framework selection remain undecided. See HYBRID_EXECUTION_PLAN.md. Prefer
+specialized backend-controlled tasks and trusted isolated workers over a swarm.
+
+For knowledge, start with approved versioned context and explicit structured
+selection; evaluate RAG retrieval as corpus size warrants it. No vector database
+or embedding dependency is approved merely by this discussion. See the grounding,
+provenance, prompt-injection and hallucination safeguards in PRODUCT_KNOWLEDGE.md.
+The user paused application work on items 7–10. This update is documentation only;
+no new agent, retrieval service, upload activation or application verification occurred.
+
+
+2026-11-13 scope update: user deferred item 10 (audio/video ingestion). Track it in
+IMPLEMENTATION_PLAN.md; continue items 7–9 only. Existing recorder and timestamped
+text-source behavior remain. No speech/video runtime is delivered by this slice.

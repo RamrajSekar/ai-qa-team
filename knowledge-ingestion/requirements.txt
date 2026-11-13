@@ -1,0 +1,3 @@
+# Separate decoder environment only; never install PDF parsing into the API runtime.
+pypdf==7.1.0
+Pillow==12.0.0

@@ -150,3 +150,54 @@ not launch browsers. Per-case compare-and-set coordinates competing approvals; i
 not establish transactional approval across all source collections. Seven synthetic
 API/database/auth checks cover versions, exports, stale sources and competing drafts.
 Current shared UI styling and its verification limits are in [UI_UX_REFRESH](UI_UX_REFRESH.md).
+
+
+## Grounding and retrieval direction — 2026-11-13
+
+The current service supplies selected source content and an approved project
+knowledge snapshot to specialized tasks. It does not implement embedding/vector
+retrieval. This is grounded context injection, not model fine-tuning. A vector
+system is not required for the pilot's small reviewed corpus.
+
+Recommended next architecture: a reusable, permission-aware context selector over
+Mongo's authoritative approved versions. Initially select explicit rule/source IDs,
+module, application role and workflow, with bounded context and provenance. Do not
+silently truncate away exceptions or material conflicts; request clarification when
+necessary. As corpus size grows, evaluate lexical/hybrid/vector retrieval against a
+representative relevance/exception-coverage dataset before enabling it. Embeddings
+are optional indexes, never approved truth. No graph database or agent framework is
+required. This is a recommendation, not an implemented RAG claim.
+
+Retrieval/grounding safeguards:
+- Filter tenant, account/project, approval status and exact version before retrieval;
+  recheck returned identities. Record the selected context IDs/version digest for
+  each generated artifact. Never retrieve another project's content and filter it
+  only after the model has received it.
+- Separate approved expected behavior from observed, inferred and unknown material.
+  Raw uploads and story proposals remain untrusted evidence requiring review.
+  Story-derived knowledge cannot independently corroborate its own originating story.
+- Require model proposals to cite supplied evidence IDs and exact excerpts, page/image
+  references or transcript timestamps where available. Trusted code checks existence,
+  scope, version and reference validity. A valid quote alone does not prove that a
+  generated statement is logically supported; reviewers and grounding evaluations
+  must assess that separately.
+- Keep platform task instructions separate from quoted source/page content. Source
+  content cannot modify tool permissions, prompts, approvals or network policy.
+  Restrict model tools in ordinary code; instructions and delimiters alone are not
+  prompt-injection protection. Redact secrets before any model input.
+- Require explicit unknowns/questions when evidence is missing or contradictory.
+  Validate structured schemas and cross-references before persistence; do not invent
+  expectations or silently add outside facts. Preserve the labelled manual legacy
+  approval basis rather than fabricating knowledge links for old cases.
+- Human approval produces immutable versions. Corrections create successors and mark
+  affected analyses/tests stale. Generation must not treat its own output as new
+  evidence. Maintain adversarial tests for irrelevant input, injected instructions,
+  conflicting rules, missing evidence, stale context and cross-project leakage.
+
+These reduce hallucination risk; neither RAG nor a prompt guarantees factual output.
+Remaining evaluation and real ingestion security gates are unchanged. The in-progress
+items 7–10 were paused at the user's request; this note does not validate or enable them.
+
+Background: Lewis et al., Retrieval-Augmented Generation for Knowledge-Intensive NLP
+Tasks (https://arxiv.org/abs/2005.11401); NIST AI 600-1 Generative AI Profile
+(https://nvlpubs.nist.gov/nistpubs/AI/NIST.AI.600-1.pdf).

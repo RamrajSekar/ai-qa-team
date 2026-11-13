@@ -17,7 +17,19 @@ with patch.dict(os.environ, {"MONGO_URI": "mongodb://localhost:27017", "MONGO_DB
     from app.services.knowledge_test_design import KnowledgeTestDesign
     from app.models.product_knowledge import KnowledgeSourceInput, KnowledgeDraft
     from app.services.ai.ai_usage_policy import AIOperation, get_ai_usage_policy
-    from test_visual_specifications import Collection
+    from test_visual_specifications import Collection as BaseCollection, Cursor
+
+
+class Collection(BaseCollection):
+    @staticmethod
+    def matches(doc, query):
+        return all(doc.get(key) in value["$in"] if isinstance(value,dict) and "$in" in value else BaseCollection.matches(doc,{key:value}) for key,value in query.items())
+    def aggregate(self,pipeline):
+        rows=[row for row in self.docs if self.matches(row,pipeline[0]["$match"])]
+        rows.sort(key=lambda row:(row["created_at"],row["_id"]),reverse=True)
+        groups={}
+        for row in rows: groups.setdefault(row["story_id"],{"_id":row["story_id"],"latest":row})
+        return Cursor(list(groups.values()))
 
 
 class KnowledgeTests(unittest.IsolatedAsyncioTestCase):
@@ -171,3 +183,32 @@ class KnowledgeTests(unittest.IsolatedAsyncioTestCase):
             self.assertGreater(policy.credit_cost, 0)
             self.assertGreater(policy.max_input_chars, 0)
             self.assertGreater(policy.max_output_tokens, 0)
+
+    async def test_analysis_summaries_states_and_project_scope(self):
+        self.assertEqual((await self.client.get(self.base+'/analysis-summaries?story_ids=ST1')).json()['ST1']['state'],'not_analyzed')
+        await self.approved();analysis=await self.analysis()
+        self.assertEqual((await self.client.get(self.base+'/analysis-summaries?story_ids=ST1')).json()['ST1']['state'],'needs_review')
+        await self.service.review_analysis('P1','reviewer','ST1',analysis['analysis_id'],__import__('app.models.product_knowledge',fromlist=['ReviewStoryAnalysis']).ReviewStoryAnalysis(resolutions=[]))
+        self.assertEqual((await self.client.get(self.base+'/analysis-summaries?story_ids=ST1')).json()['ST1']['state'],'reviewed')
+        self.db['stories'].docs[0]['title']='Changed'
+        self.assertEqual((await self.client.get(self.base+'/analysis-summaries?story_ids=ST1')).json()['ST1']['state'],'stale')
+        self.assertEqual((await self.client.get('/projects/P2/knowledge/analysis-summaries?story_ids=ST1')).status_code,404)
+        self.assertEqual((await self.client.get(self.base+'/analysis-summaries?story_ids=../../private')).status_code,422)
+
+    async def test_story_proposals_are_inferred_reviewed_and_cannot_validate_their_own_story(self):
+        async def extract(*args,**kwargs):
+            source=json.loads(args[3].prompt)
+            return SimpleNamespace(text=json.dumps({'claims':[{'claim_id':'K0','category':'business_rule','statement':'Show Draft saved.','epistemic_status':'expected','source_id':source['source_id'],'segment_index':None,'quote':'Show Draft saved.'}],'clarification_questions':['When is it saved?']}))
+        self.usage.execute.side_effect=extract
+        response=await self.client.post(self.base+'/stories/ST1/suggest-knowledge')
+        self.assertEqual(response.status_code,200,response.text);result=response.json()
+        self.assertTrue(result['requires_review']);self.assertEqual(result['claims'][0]['epistemic_status'],'inferred')
+        self.assertIsNone(await self.service.active('P1'))
+        self.assertEqual(result['source']['origin']['story_id'],'ST1')
+        result['claims'][0]['epistemic_status']='expected'
+        draft=await self.service.create_version('P1','reviewer',KnowledgeDraft(title='Reviewed story proposal',claims=result['claims']))
+        await self.service.approve('P1','reviewer',draft['version_id'])
+        with self.assertRaises(HTTPException) as failure:await self.service.analyze('P1',self.user,'ST1')
+        self.assertEqual(failure.exception.status_code,409)
+        self.assertEqual(self.usage.execute.await_count,1)
+        self.assertEqual((await self.client.post('/projects/P2/knowledge/stories/ST1/suggest-knowledge')).status_code,404)
