@@ -227,7 +227,7 @@ export default function ProjectPage() {
       </section>
       {canManage && <EnvironmentModal open={openEnvironmentModal} onClose={() => setOpenEnvironmentModal(false)} mode="create" projectId={projectId} onSaved={loadAll} />}
       <section id="execution-history" className="workspace-panel" aria-labelledby="history-title">
-        <div className="workspace-panel-header"><h2 id="history-title">Execution history</h2>{!historyError && !historyLoading && <span className="workspace-badge">{executions.length} recorded</span>}</div>
+        <div className="workspace-panel-header"><h2 id="history-title">Execution history</h2><Link href={`/projects/${projectId}/execution-history`}>View history →</Link>{!historyError && !historyLoading && <span className="workspace-badge">{executions.length} recorded</span>}</div>
         {historyLoading ? <p className="workspace-empty" role="status">Loading execution history…</p>
           : historyError ? <div className="workspace-empty" role="alert"><strong>Execution history unavailable</strong>Project details are available. Check your connection and try again.<button className="workspace-button" onClick={loadAll}>Try again</button></div> : executions.length ? <div className="workspace-panel-body">
           {executions.map((execution) => <div key={execution.execution_id} className="workspace-row"><div><div className="workspace-row-title">Execution #{execution.execution_id}</div><div className="workspace-row-subtitle">{execution.started_at ? new Date(execution.started_at).toLocaleString() : "No start time recorded"}</div></div><span className="workspace-badge">{execution.status}</span></div>)}

@@ -409,4 +409,73 @@ html[data-workspace-theme] [data-slot="dialog-content"].environment-dialog { pad
 .prompt-row-meta { flex-wrap: wrap; justify-content: flex-end; overflow-wrap: anywhere; }
 .prompt-layout { margin-top: 24px; }
 .prompt-history .workspace-row { min-height: 62px; padding-inline: 0; border-radius: 0; }
+
+/* Test design and execution: shared, theme-aware review surfaces. */
+.design-page { min-width: 0; }
+.design-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
+.design-stats > div { display: grid; gap: 8px; padding: 18px 22px; border: 1px solid var(--ws-border); border-radius: 12px; background: var(--ws-surface); }
+.design-stats span { color: var(--ws-muted); font-size: 12px; }
+.design-stats strong { font-size: 26px; font-weight: 650; line-height: 1.2; }
+.design-guide { border-left: 3px solid var(--ws-accent); border-radius: 0 10px 10px 0; padding: 16px 20px; background: var(--ws-soft); font-size: 13px; }
+.design-guide p { color: var(--ws-muted); margin-top: 5px; line-height: 1.65; }
+.design-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; }
+.design-toolbar > label { font-size: 12px; color: var(--ws-muted); min-width: 170px; }
+.design-toolbar .design-search { display: flex; align-items: center; flex: 1; gap: 9px; padding-left: 14px; background: var(--ws-surface); border: 1px solid var(--ws-border); border-radius: 9px; min-width: min(100%, 220px); }
+.workspace-shell .design-search input { border: 0; box-shadow: none; background: transparent; min-width: 0; width: 100%; }
+.design-search:focus-within { outline: 2px solid var(--ws-accent); outline-offset: 2px; }
+.design-table { border: 1px solid var(--ws-border); border-radius: 12px; background: var(--ws-surface); }
+.design-table table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+.workspace-shell .design-table :is(th,td) { padding: 16px 18px; border: 0; border-bottom: 1px solid var(--ws-border); vertical-align: middle; }
+.design-table th { color: var(--ws-muted); background: var(--ws-soft); font-size: 11px; letter-spacing: .04em; font-weight: 600; text-transform: uppercase; }
+.design-table tr:last-child td { border-bottom: 0; }
+.design-table tbody tr:hover { background: var(--ws-soft); }
+.design-excerpt { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-width: 140px; max-width: 300px; }
+.design-state { display: grid; gap: 8px; justify-items: center; text-align: center; padding: 40px 24px; border: 1px dashed var(--ws-border); border-radius: 12px; background: var(--ws-surface); }
+.design-state > div { color: var(--ws-muted); font-size: 13px; line-height: 1.7; max-width: 620px; }
+.design-state .workspace-button { margin-top: 12px; }
+.design-state-error { border-style: solid; }
+.design-badge { display: inline-flex; padding: 5px 10px; border-radius: 7px; border: 1px solid var(--ws-border); background: var(--ws-soft); color: var(--ws-muted); font-size: 11px; font-weight: 650; line-height: 1.4; text-transform: capitalize; white-space: normal; }
+.design-badge-positive { background: color-mix(in srgb, #169265 12%, var(--ws-surface)); color: var(--ws-text); }
+.design-badge-warning { background: color-mix(in srgb, #d49b21 13%, var(--ws-surface)); color: var(--ws-text); }
+.design-record-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.design-record-heading h2 { font-size: 17px; font-weight: 650; line-height: 1.5; }
+.design-record-id { color: var(--ws-muted); font-size: 11px; margin-bottom: 5px; }
+.catalog-card { overflow-wrap: anywhere; }
+.catalog-card details { padding: 13px 16px; border: 1px solid var(--ws-border); border-radius: 9px; }
+.catalog-card summary { font-size: 13px; cursor: pointer; font-weight: 600; }
+.catalog-actions { border-top: 1px solid var(--ws-border); padding-top: 14px; }
+.design-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; font-size: 12px; color: var(--ws-muted); }
+.design-create { border: 1px solid var(--ws-border); border-radius: 12px; padding: 18px; background: var(--ws-surface); }
+.design-create-body { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--ws-border); }
+.design-create label { max-width: 580px; font-size: 13px; }
+.design-create select { margin-left: 0; width: 100%; }
+.workspace-shell .design-danger { color: #c2414b; }
+.design-back-link { color: var(--ws-accent); font-size: 13px; }
+.design-story-summary { display: grid; gap: 20px; padding: 24px; border: 1px solid var(--ws-border); border-radius: 12px; background: var(--ws-surface); }
+.design-story-summary h1 { font-size: 26px; font-weight: 650; }
+.design-story-fields { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; }
+.design-story-fields > div { border-top: 1px solid var(--ws-border); padding-top: 16px; }
+.design-story-fields h2 { font-size: 12px; font-weight: 650; margin-bottom: 8px; }
+.design-story-fields p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; color: var(--ws-muted); }
+.execution-workspace #approved-visual-run { margin-bottom: 0; padding: 24px; }
+.execution-workspace form { display: grid; gap: 16px; padding: 20px; border: 1px solid var(--ws-border); border-radius: 10px; background: var(--ws-soft); }
+.execution-workspace :is(input, select) { width: 100%; max-width: 580px; }
+.execution-workspace code { overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .design-record-heading { flex-wrap: wrap; }
+  .design-toolbar > label { width: 100%; }
+  .design-stats { grid-template-columns: 1fr; gap: 8px; }
+  .design-stats > div { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; }
+  .design-stats strong { font-size: 22px; }
+  .design-story-fields { grid-template-columns: 1fr; }
+  .design-story-summary, .execution-workspace #approved-visual-run { padding: 16px; }
+}
 @media (max-width: 640px) { .workspace-panel .workspace-row { flex-wrap: wrap; } .prompt-row-meta { justify-content: flex-start; } }
+
+.design-page > header.workspace-page-header { display: flex; flex-wrap: wrap; }
+.workspace-shell .design-search input:focus { outline: none; box-shadow: none; }
+
+.design-page > * { min-width: 0; }
+.design-story-summary > div > div { flex: 1; min-width: 0; }
+.story-coverage-actions { align-items: end; max-width: 100%; }
+.design-table tbody tr { border: 0; }
