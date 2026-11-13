@@ -8,7 +8,6 @@ import type { Scenario } from "@/types/scenario";
 import { useProjects } from "@/hooks/useProjects";
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 import CreateManualExecution from "./CreateManualExecution";
-import ManualResultPanel from "./ManualResultPanel";
 import { useAuth } from "@/components/providers/AuthProvider";
 import ScenarioModal from "@/components/scenarios/ScenarioModal";
 import TestCaseEditor from "@/components/projects/TestCaseEditor";
@@ -61,7 +60,6 @@ export default function ProjectTestCatalog({ kind }: { kind: "scenarios" | "test
   const [selectedCases, setSelectedCases] = useState<{ testcase_id: string; version_id: string; title: string }[]>([]);
   const [creatingExecution, setCreatingExecution] = useState(false);
   const [reviewCase, setReviewCase] = useState<CatalogCase | null>(null);
-  const [resultCase, setResultCase] = useState<CatalogCase | null>(null);
   const [summaries, setSummaries] = useState<Record<string, ResultSummary> | null>(null);
   const [summaryError, setSummaryError] = useState("");
   const manualEnabled = kind === "testcases" && enabled("manual_test_results");
@@ -167,7 +165,6 @@ export default function ProjectTestCatalog({ kind }: { kind: "scenarios" | "test
             {manualEnabled && <td>{summaries ? <DesignBadge>{summaries[testcase.testcase_id]?.manual?.verdict.replaceAll("_", " ") || "Not run"}</DesignBadge> : (summaryError ? "Unavailable" : "Loading…")}{summaries?.[testcase.testcase_id]?.manual?.execution_id && <Link className="design-result-link" title={summaries[testcase.testcase_id].manual!.execution_id!} aria-label={`Open test execution ${summaries[testcase.testcase_id].manual!.execution_id}`} href={`${projectPath}/test-execution?execution=${encodeURIComponent(summaries[testcase.testcase_id].manual!.execution_id!)}`}>Execution {summaries[testcase.testcase_id].manual!.execution_id!.slice(0, 8)}</Link>}</td>}
             {automationEnabled && <td>{summaries?.[testcase.testcase_id]?.automated?.verdict.replaceAll("_", " ") || "Not recorded in this result system"}</td>}
             <td><div className="design-row-actions"><button className="workspace-button" onClick={() => setReviewCase(testcase)} aria-label="Review test case">Review</button>
-              {manualEnabled && <button className="workspace-button" onClick={() => setResultCase(testcase)}>Record manual result</button>}
               {testcase.created_by === user?.email && <><button className="workspace-button" onClick={() => setEditingCase(testcase)} aria-label="Edit test case">Edit</button><button className="workspace-button design-danger" disabled={deleting} onClick={() => { setActionError(""); setDeleteId(testcase.testcase_id); }} aria-label="Delete test case">Delete</button></>}
             </div></td>
           </tr>)}</tbody></table>
@@ -186,7 +183,6 @@ export default function ProjectTestCatalog({ kind }: { kind: "scenarios" | "test
           {(manualEnabled || enabled("product_knowledge", "story_analysis")) && <TestDesignReview key={`${reviewCase.testcase_id}:${reviewCase.updated_at || ""}`} testcase={reviewCase} projectId={projectId} canApprove={canApprove} />}
         </div>
       </WorkspaceDialog>}
-      {manualEnabled && resultCase && <ManualResultPanel key={resultCase.testcase_id} projectId={projectId} testcaseId={resultCase.testcase_id} title={resultCase.title} onClose={() => setResultCase(null)} onSaved={() => loadSummaries(cases)} />}
       {deleteId && <WorkspaceDialog open title="Delete record" onClose={() => setDeleteId(null)} busy={deleting}>
         <h2 className="text-lg font-semibold">Delete {deleteId}?</h2><p>This cannot be undone. Records with dependent tests, approvals or execution history are protected.</p>
         {actionError && <p role="alert">{actionError}</p>}<div className="catalog-actions"><button className="workspace-button" disabled={deleting} onClick={() => setDeleteId(null)}>Cancel</button><button className="workspace-button design-danger" disabled={deleting} onClick={() => void removeRecord(deleteId)}>{deleting ? "Deleting…" : "Delete record"}</button></div>

@@ -48,6 +48,8 @@ class DB(dict):
 
 class PlatformAdminPromptTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
+        feature_patch = patch.object(settings, "features", settings.features.model_copy(update={"customer_accounts": False, "account_subscriptions": False, "separate_ai_allowances": False}))
+        feature_patch.start(); self.addCleanup(feature_patch.stop)
         self.db = DB()
         self.patches = [patch.object(prompt_registry_service, "db", self.db), patch.object(platform_role_service, "db", self.db)]
         for item in self.patches: item.start()
@@ -148,7 +150,7 @@ class PlatformAdminPromptTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_design_tasks_have_platform_managed_versions(self):
         keys = {item["prompt_key"] for item in await prompt_registry_service.list_prompts()}
-        for key in ("KNOWLEDGE_EXTRACTION_V1", "STORY_ANALYSIS_V1", "SCENARIO_DESIGN_V1", "TEST_DESIGN_V1"):
+        for key in ("KNOWLEDGE_EXTRACTION_V1", "STORY_ANALYSIS_V1", "SCENARIO_DESIGN_V1", "TEST_DESIGN_V1", "BUG_REPORT_DRAFT_V1"):
             self.assertIn(key, keys)
             original = await prompt_registry_service.get_active(key)
             await prompt_registry_service.create_draft(key, "owner@example.com")

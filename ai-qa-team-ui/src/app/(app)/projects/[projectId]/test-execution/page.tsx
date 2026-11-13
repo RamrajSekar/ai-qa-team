@@ -21,8 +21,12 @@ export default function TestExecutionPage() {
 function ExecutionRouter() {
   const { enabled } = useFeatures();
   const executionId = useSearchParams().get("execution");
+  const [automationOpen, setAutomationOpen] = useState(false);
   const { projectId } = useParams<{ projectId: string }>();
-  if (enabled("manual_test_results", "test_generation")) return <ManualExecutions key={`${projectId}:${executionId || "list"}`} projectId={projectId} executionId={executionId} />;
+  if (enabled("manual_test_results", "test_generation")) return <>
+    <ManualExecutions key={`${projectId}:${executionId || "list"}`} projectId={projectId} executionId={executionId} />
+    {enabled("automation_execution_ui", "test_execution_ui", "test_generation", "approved_visual_run_admission") && <details onToggle={event => setAutomationOpen(event.currentTarget.open)}><summary>Automation setup</summary>{automationOpen && <ExecutionWorkspace key={projectId} projectId={projectId} />}</details>}
+  </>;
   return <ExecutionWorkspace key={projectId} projectId={projectId} />;
 }
 
@@ -32,6 +36,7 @@ function ExecutionWorkspace({ projectId }: { projectId: string }) {
   const [data, setData] = useState<{project: Project; cases: Case[]; environments: Environment[]} | null>(null);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
+  const [selectedCase, setSelectedCase] = useState("");
   useEffect(() => {
     if (!available) return;
     const controller = new AbortController();
@@ -47,6 +52,10 @@ function ExecutionWorkspace({ projectId }: { projectId: string }) {
     {!available ? <DesignState title="Test execution is currently hidden."><p>Execution requires explicitly enabled development controls. You can continue designing and reviewing test cases.</p><Link className="workspace-button" href={`/projects/${encodeURIComponent(projectId)}/testcases`}>Review test cases</Link></DesignState> : <>
       <div className="design-guide"><strong>Development controls · controlled sample only</strong><p>Approval, admission and browser start are separate actions. A saved environment does not authorize customer-site execution. Review explicit expectations before starting; use the selected case’s status and evidence below.</p></div>
       {error ? <DesignState error title={error}><button className="workspace-button" onClick={() => { setData(null); setError(""); setRevision(value => value + 1); }}>Try again</button></DesignState> : !data ? <DesignState title="Loading test execution…" /> : <>
+        {data.cases.length > 0 && enabled("reusable_workflows") && <section>
+          <label>Test case for automation specification<select aria-label="Test case for automation specification" value={data.cases.some(item => item.testcase_id === selectedCase) ? selectedCase : data.cases[0].testcase_id} onChange={event => setSelectedCase(event.target.value)}>{data.cases.map(item => <option key={item.testcase_id} value={item.testcase_id}>{item.title}</option>)}</select></label>
+          <VisualSpecificationPanel key={selectedCase || data.cases[0].testcase_id} projectId={projectId} testcaseId={selectedCase || data.cases[0].testcase_id} canApprove={data.project.current_user_role === "ADMIN"} />
+        </section>}
         {enabled("reusable_workflows") && <VisualSpecificationPanel projectId={projectId} canApprove={data.project.current_user_role === "ADMIN"} />}
         <DesignStats items={[{ label: "Available test cases", value: data.cases.length }, { label: "Saved environments", value: data.environments.length }, { label: "Your review access", value: data.project.current_user_role === "ADMIN" ? "Project admin" : "Project member" }]} />
         {!data.cases.length ? <DesignState title="Add a test case first"><p>Create and review a specification before preparing a development run.</p><Link className="workspace-button" href={`/projects/${encodeURIComponent(projectId)}/testcases`}>Open test cases</Link></DesignState> : <ApprovedVisualRunPanel key={projectId} projectId={projectId} cases={data.cases} environments={data.environments} canApprove={data.project.current_user_role === "ADMIN"} />}

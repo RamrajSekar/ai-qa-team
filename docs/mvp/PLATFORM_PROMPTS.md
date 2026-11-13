@@ -87,3 +87,9 @@ with doubles. The 23 feature/history tests also passed. TypeScript and focused l
 passed. Nine current-checkout intercepted browser checks passed. Browser evidence and the UI regression commands are recorded in
 [UI/UX refresh](UI_UX_REFRESH.md). Real-login/Mongo/provider qualification and
 synthetic model preview are still NOT RUN. No normal customer environment changed.
+
+
+Bug Report Draft (2026-11-13): `BUG_REPORT_DRAFT_V1` uses the existing platform-only
+versioned registry. Explicit Draft with AI is metered as BUG_REPORT_DRAFT and returns
+summary/clarification suggestions for a failed attempt. Supplied facts remain separate
+and immutable; reviewed local saving never publishes externally. See ATTEMPT_BUGS.md.

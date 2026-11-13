@@ -1,4 +1,5 @@
 "use client";
+import AttemptBugPanel from "./AttemptBugPanel";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/utils/api";
@@ -84,6 +85,7 @@ export default function ManualResultPanel({ projectId, testcaseId, title, onClos
           {state.records.map(result => <details className="manual-attempt" key={result.run_id}><summary><DesignBadge>{labels[result.verdict]}</DesignBadge> · {result.mode} · {new Date(result.recorded_at).toLocaleString()}</summary>
             <p className="whitespace-pre-wrap">Actual result: {result.actual_result}</p><p>Executed by {result.executor_display_name || "Name not recorded"} · {result.lifecycle}</p>{result.specification.approved_by && <p>Specification approved by {result.specification.approved_by_display_name || "Project member"}{result.specification.approved_at ? ` · ${new Date(result.specification.approved_at).toLocaleString()}` : ""}</p>}<p>Environment: {result.environment?.name || "Not specified"}</p>
             <ol className="list-decimal pl-6">{result.specification.case.procedure.map((step, i) => <li key={i}>{step.instruction} — Expected: {step.expected}</li>)}</ol>
+            {result.verdict === "failed" && <AttemptBugPanel projectId={projectId} runId={result.run_id} />}
           </details>)}
           <nav className="design-pagination" aria-label="Attempt history pages"><button type="button" className="workspace-button" disabled={busy || skip === 0} onClick={() => historyPage(skip - 20)}>Previous attempts</button><span>Page {skip / 20 + 1}</span><button type="button" className="workspace-button" disabled={busy || !state.has_more} onClick={() => historyPage(skip + 20)}>Next attempts</button></nav>
         </section>

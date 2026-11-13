@@ -20,10 +20,13 @@ creation with Release/Cycle notes. This is manual testing, not browser automatio
    every approved step expectation and assertion to be explicitly confirmed.
 6. Completed means all selected cases have terminal results; it does not mean Passed.
    Refresh/reopen retains the manifest, per-case results and historical versions.
-   A new execution is required to retest a completed case. Individual standalone
-   attempts are also supported through Record manual result on Test Cases.
+   A new execution is required to retest a completed case. Standalone attempt APIs
+   and histories remain compatible, but result entry now lives in Test Execution.
 
-Release/Cycle is bounded free text, not a release-management integration. No bugs,
+The original slice below was extended on 2026-11-13: see [ATTEMPT_BUGS](ATTEMPT_BUGS.md)
+for local bug drafts/linking, the platform prompt and execution-spec separation.
+
+Historical initial scope: Release/Cycle is bounded free text, not a release-management integration. No bugs,
 external issue publication, attachments, recording ingestion, AI calls or browser
 jobs are created by this slice. Bug drafting/linking remains the next milestone.
 

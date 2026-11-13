@@ -3,19 +3,25 @@ const {test,before,after}=require('node:test');const assert=require('node:assert
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE_PATH||'playwright');const {mkdirSync}=require('node:fs');
 const base=process.env.FEATURE_UI_URL||'http://127.0.0.1:3123';let browser;
 before(async()=>{browser=await chromium.launch({channel:'msedge',headless:true});});after(async()=>browser?.close());
-async function fixture(t,{inReview=false}={}){
+async function fixture(t,{inReview=false,failedExecution=false,automation=false}={}){
  const context=await browser.newContext({colorScheme:"light"});t.after(()=>context.close());await context.addCookies([{name:'access_token',value:'synthetic-only',url:base}]);
  const cases=[{testcase_id:'TC1',project_id:'P1',scenario_id:'SC1',title:'Save a draft',status:'draft',created_by:'fixture@example.test',steps:[{action:'Click Save',expected:'Draft saved'}]},{testcase_id:'TC2',project_id:'P1',scenario_id:'SC1',title:'Reject missing name',status:'draft',steps:[{action:'Save blank',expected:'Name required'}]}];
  const approved=id=>({version_id:(id==='TC1'?'a':'b').repeat(32),case:{title:cases.find(x=>x.testcase_id===id).title,procedure:[{instruction:'Click Save',expected:'Draft saved'}],assertions:['Draft saved appears']},expectations:[{id:'step:0',text:'Draft saved'},{id:'assertion:0',text:'Draft saved appears'}]});
- let manifest=null;const results=[];const calls=[];
+ let manifest=failedExecution?{title:'Release 2 regression',release_cycle:'Release 2 / Cycle A',mode:'manual',cases:[{testcase_id:'TC1',specification:{version_id:'a'.repeat(32),case:approved('TC1').case}}]}:null;
+ const results=failedExecution?[{run_id:'f'.repeat(32),execution_id:'e'.repeat(32),testcase_id:'TC1',verdict:'failed',actual_result:'Confirmation absent',mode:'manual',lifecycle:'completed',recorded_at:'2026-11-13',specification:{version_id:'a'.repeat(32),case:approved('TC1').case}}]:[];const calls=[];const bugs=[];
+ const bugDraft={title:'Failure: Save a draft',summary:'Reported confirmation absent',steps:['Click Save'],expected_result:'Draft saved',actual_result:'Confirmation absent',context:'Release 2',missing_information:['Severity not supplied']};
  await context.route('http://feature-api.test/**',async route=>{
   const req=route.request(),url=new URL(req.url()),path=url.pathname;calls.push({path,method:req.method(),body:req.postData()?req.postDataJSON():null});
   const headers={'access-control-allow-origin':base,'access-control-allow-credentials':'true','access-control-allow-headers':'content-type','access-control-allow-methods':'GET,POST,PATCH,DELETE,OPTIONS'};
   if(req.method()==='OPTIONS')return route.fulfill({status:204,headers});let json=[];
-  if(path==='/features')json={manual_test_results:true,automation_execution_ui:false,test_generation:true,scenario_generation:true,story_management:true,reusable_workflows:true,test_execution_ui:false,visual_runner_lab:true};
+  if(path==='/features')json={manual_test_results:true,automation_execution_ui:automation,test_generation:true,scenario_generation:true,story_management:true,reusable_workflows:true,test_execution_ui:automation,approved_visual_run_admission:automation,visual_runner_lab:true};
   if(path==='/auth/me')json={user:{email:'fixture@example.test',name:'Fixture',onboarding:{onboarding_status:'completed'},subscription:{usage:{},limits:{}}}};
   if(path==='/projects')json=[{project_id:'P1',name:'Synthetic project',current_user_role:'ADMIN'}];
-  if(path==='/testcases/project-list')json=cases;
+  if(path==='/testcases/project-list'||path==='/testcases/testcases')json=cases;
+  if(path==='/projects/P1')json={project_id:'P1',current_user_role:'ADMIN'};
+  if(path==='/environments')json=[];
+  if(path.endsWith('/attempts/'+'f'.repeat(32)+'/bugs')){if(req.method()==='POST'){const body=req.postDataJSON();bugs.push({...body,bug_id:String(bugs.length+1)});json=bugs.at(-1);}else json={draft:bugDraft,links:bugs};}
+  if(path.endsWith('/bug-draft-ai'))json={draft:{...bugDraft,summary:'AI suggested summary'},proposal_id:'d'.repeat(32),requires_review:true};
   if(path==='/projects/P1/test-results')json=Object.fromEntries(cases.map(row=>[row.testcase_id,{design_status:inReview&&row.testcase_id==='TC2'?'in_review':'approved',approved_version_id:approved(row.testcase_id).version_id,manual:results.filter(x=>x.testcase_id===row.testcase_id).at(-1)||null,automated:null}]));
   if(path==='/scenarios/project-list')json=[{scenario_id:'SC1',story_id:'ST1',title:'Draft coverage',steps:[],approved:true,created_by:'fixture@example.test'}];
   if(path==='/projects/P1/test-results/executions'){
@@ -40,13 +46,41 @@ test('select approved cases, create Release/Cycle execution, record and retain s
  await page.getByText('2/2 case results recorded',{exact:false}).waitFor();await page.getByRole('columnheader',{name:'Executed By',exact:true}).waitFor();assert.equal(await page.getByRole('cell',{name:'Fixture Tester',exact:true}).count(),2);const completed=page.locator('.design-badge').filter({hasText:/^completed$/i});assert.equal(await completed.evaluate(el=>getComputedStyle(el).color),'rgb(22, 101, 52)');assert.equal(results.length,2);const outcomeBadges=page.getByRole('region',{name:'Execution cases'}).locator('.design-badge');assert.equal(await outcomeBadges.filter({hasText:/^passed$/i}).evaluate(el=>getComputedStyle(el).color),'rgb(22, 101, 52)');assert.equal(await outcomeBadges.filter({hasText:/^failed$/i}).evaluate(el=>getComputedStyle(el).color),'rgb(185, 28, 28)');await page.getByRole('columnheader',{name:'Result',exact:true}).waitFor();assert.equal(await page.getByRole('columnheader',{name:'Manual verdict',exact:true}).count(),0);assert.equal(await page.getByText('a'.repeat(32),{exact:true}).count(),0);await page.reload();await page.getByText('Required-field message absent',{exact:true}).waitFor();await shot(page,'execution-results');await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await shot(page,'execution-mobile');await page.goto(base+'/projects/P1/testcases');const executionLink=page.getByRole('link',{name:'Open test execution '+'e'.repeat(32)}).first();await executionLink.waitFor();assert.ok((await executionLink.getAttribute('href')).endsWith('execution='+'e'.repeat(32)));const manualCell=page.getByRole('row').filter({hasText:'Save a draft'}).getByRole('cell').nth(4);assert.equal((await manualCell.innerText()).includes('Version'),false);await executionLink.click();await page.getByRole('heading',{name:'Release 2 regression'}).waitFor();
  assert.equal(calls.filter(x=>/approved-visual|visual-specifications|\/execute|\/visual-lab/.test(x.path)).length,0);
 });
-test('individual manual result requires explicit expectation checks and survives reopening',async t=>{
- const{page,results}=await fixture(t);await page.goto(base+'/projects/P1/testcases');await page.getByRole('button',{name:'Record manual result'}).first().click();const dialog=page.getByRole('dialog');await dialog.getByLabel('Actual result',{exact:true}).fill('Prerequisite missing');await dialog.getByLabel('Result',{exact:true}).selectOption('blocked');await dialog.getByRole('button',{name:'Save manual result'}).click();await dialog.getByRole('status').filter({hasText:'Manual result saved'}).waitFor();await dialog.getByRole('button',{name:'Close',exact:true}).click();await page.reload();await page.getByRole('button',{name:'Record manual result'}).first().click();await page.getByRole('dialog').getByText('Attempt history',{exact:true}).waitFor();assert.equal(results.length,1);await page.getByText('Blocked',{exact:false}).last().waitFor();await shot(page,'manual-history');
+test('Test Cases removes standalone result entry and retains execution creation',async t=>{
+ const{page,calls}=await fixture(t);await page.goto(base+'/projects/P1/testcases');await page.getByRole('button',{name:'Review test case'}).first().waitFor();
+ assert.equal(await page.getByRole('button',{name:'Record manual result'}).count(),0);
+ assert.equal(await page.getByText('Visual execution specification',{exact:true}).count(),0);
+ assert.equal(calls.filter(call=>call.method==='POST').length,0);
 });
+
 test('automation direct routes stay hidden while manual Test Execution remains accessible',async t=>{
  const{page,calls}=await fixture(t);await page.goto(base+'/projects/P1/visual-lab');await page.getByText('Automation execution is hidden.',{exact:true}).waitFor();assert.equal(calls.filter(x=>x.path.includes('visual-lab')).length,0);await page.goto(base+'/projects/P1/test-execution');await page.getByText('No manual executions on this page',{exact:true}).waitFor();assert.equal(calls.filter(x=>x.method==='POST').length,0);
 });
 
 test('design statuses use clear labels and readable theme-aware text colors',async t=>{
  const{page}=await fixture(t,{inReview:true});await page.goto(base+'/projects/P1/testcases');const approved=page.locator('.design-badge').filter({hasText:/^Approved$/}).first();const review=page.locator('.design-badge').filter({hasText:/^In Review$/});await review.waitFor();assert.equal(await approved.evaluate(el=>getComputedStyle(el).color),'rgb(22, 101, 52)');await page.getByRole('button',{name:'Account and appearance'}).click();await page.getByRole('menuitemradio',{name:'Dark',exact:true}).click();await page.waitForFunction(()=>document.documentElement.dataset.workspaceTheme==='dark');assert.equal(await approved.evaluate(el=>getComputedStyle(el).color),'rgb(134, 239, 172)');await shot(page,'status-colors-dark');
+});
+
+test('failed execution supports reviewed local bug drafts, explicit AI and HTTPS linking',async t=>{
+ const{page,calls}=await fixture(t,{failedExecution:true});await page.goto(base+'/projects/P1/test-execution?execution='+'e'.repeat(32));
+ await page.getByRole('button',{name:'Create bug',exact:true}).click();
+ await page.getByLabel('Bug title',{exact:true}).waitFor();
+ assert.equal(calls.filter(call=>call.path.endsWith('bug-draft-ai')).length,0);
+ const save=page.getByRole('button',{name:'Save bug draft',exact:true});assert.equal(await save.isDisabled(),true);
+ await page.getByLabel('Bug title',{exact:true}).fill('Editable failure report');
+ await page.getByLabel('I reviewed this bug information and its link to the failed attempt.').check();await save.click();
+ await page.getByText('Bug draft saved locally. Nothing was published externally.',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Link existing bug',exact:true}).click();await page.getByLabel('Existing bug HTTPS URL').fill('http://bugs.example.test/1');assert.equal(await page.getByRole('button',{name:'Save bug link'}).isDisabled(),true);
+ await page.getByLabel('Existing bug HTTPS URL').fill('https://bugs.example.test/1');await page.getByLabel('I reviewed this bug information and its link to the failed attempt.').check();await page.getByRole('button',{name:'Save bug link'}).click();
+ await page.getByRole('link',{name:'Open linked bug'}).waitFor();assert.equal(await page.getByRole('link',{name:'Open linked bug'}).getAttribute('rel'),'noopener noreferrer');
+ await page.getByRole('button',{name:'Create bug',exact:true}).click();await page.getByRole('button',{name:'Draft with AI',exact:true}).click();await page.getByText(/AI summary proposed from the saved attempt/).waitFor();
+ assert.equal(await page.getByLabel('Bug summary',{exact:true}).inputValue(),'AI suggested summary');assert.equal(await page.getByRole('button',{name:'Save bug draft'}).isDisabled(),true);
+ assert.equal(calls.filter(call=>call.path.endsWith('/bug-draft-ai')&&call.method==='POST').length,1);
+});
+test('automation specifications live in explicitly opened execution setup only',async t=>{
+ const{page,calls}=await fixture(t,{automation:true});await page.goto(base+'/projects/P1/test-execution');
+ await page.getByText('Automation setup',{exact:true}).waitFor();assert.equal(calls.filter(call=>call.path.includes('visual-specifications')).length,0);
+ await page.getByText('Automation setup',{exact:true}).click();await page.getByLabel('Test case for automation specification',{exact:true}).waitFor();
+ await page.getByText('Visual execution specification',{exact:true}).waitFor();
+ assert.equal(calls.filter(call=>call.method==='POST').length,0);
 });

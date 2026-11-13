@@ -90,6 +90,8 @@ class Gateway:
 
 class AIUsageTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
+        feature_patch = patch.object(settings, "features", settings.features.model_copy(update={"customer_accounts": False, "account_subscriptions": False, "separate_ai_allowances": False}))
+        feature_patch.start(); self.addCleanup(feature_patch.stop)
         self.db = DB(); self.redis = LocalCache(); self.now = datetime(2026, 9, 17, tzinfo=timezone.utc)
         self.owner = {"_id": "U1", "email": "owner@example.com", "subscription": {"status": "active", "plan": "free",
             "usage": {"ai_gen_used": 0}, "limits": {"ai_gen_limit": 3}}}
@@ -98,6 +100,11 @@ class AIUsageTests(unittest.IsolatedAsyncioTestCase):
 
     def service(self, gateway=None):
         return AIUsageService(database=self.db, redis_backend=self.redis, gateway=gateway or Gateway(), now=lambda: self.now)
+
+    async def test_bug_report_draft_uses_existing_meter_and_usage_identity(self):
+        await self.service().execute(AIOperation.BUG_REPORT_DRAFT, "PRJ1", self.owner, LLMRequest(prompt="synthetic failure"))
+        self.assertEqual(self.db["users"].documents[0]["subscription"]["usage"]["ai_gen_used"], 1)
+        self.assertEqual(self.db["ai_usage_records"].documents[0]["operation_type"], "BUG_REPORT_DRAFT")
 
     def test_known_and_unknown_operation_policy_and_configurable_defaults(self):
         with patch.object(settings.ai_usage, "bug_interpreter_max_input_chars", 123):
