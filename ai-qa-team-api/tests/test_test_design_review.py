@@ -29,11 +29,13 @@ class TestDesignReviewTests(unittest.IsolatedAsyncioTestCase):
         self.user = {"_id": "reviewer", "role": "ADMIN"}
         async def member(project, user):
             if project != "P1": raise HTTPException(404)
+            return {}, {"role": user["role"]}
         async def admin(project, user):
-            await member(project, user)
+            result = await member(project, user)
             if user["role"] != "ADMIN": raise HTTPException(403)
+            return result
         for target, key, value in ((routes, "db", self.db), (routes, "require_project_member", member), (routes, "require_project_admin", admin),
-            (settings, "features", FeatureFlags(test_generation=True, product_knowledge=True, story_analysis=True))):
+            (settings, "features", FeatureFlags(test_design_admin_review=True, test_generation=True, product_knowledge=True, story_analysis=True))):
             patcher = patch.object(target, key, value); patcher.start(); self.addCleanup(patcher.stop)
         app = FastAPI(); app.include_router(routes.router)
         app.dependency_overrides[routes.get_current_user] = lambda: self.user
@@ -79,7 +81,7 @@ class TestDesignReviewTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.client.get(self.base)).status_code, 403)
 
     async def test_missing_or_blank_expectations_and_wrong_references_reject(self):
-        for field, invalid in (("assertions", []), ("assertions", ["   "]), ("procedure", [{"instruction": "Save", "expected": ""}])):
+        for field, invalid in (("assertions", ["   "]), ("procedure", [{"instruction": "Save", "expected": ""}])):
             payload = {**self.case, field: invalid}
             response = await self.client.post(self.base, json={"case": payload, "idempotency_key": "1" * 32, "secret": "CANARY"})
             self.assertEqual(response.status_code, 422)
@@ -133,3 +135,40 @@ class TestDesignReviewTests(unittest.IsolatedAsyncioTestCase):
         version = await self.draft()
         self.db["testcases"].docs[0]["title"] = "Material edit"
         self.assertEqual((await self.client.post(self.base + f'/{version["version_id"]}/approve')).status_code, 409)
+
+    async def test_optional_fields_can_be_omitted_without_weakening_step_expectations(self):
+        minimal = {key: value for key, value in self.case.items() if key not in ('assertions', 'cleanup', 'acceptance_criteria_refs', 'rule_references')}
+        response = await self.client.post(self.base, json={'case': minimal, 'idempotency_key': '8' * 32})
+        self.assertEqual(response.status_code, 201, response.text)
+        version = await self.approve(response.json())
+        self.assertEqual(version['case']['assertions'], [])
+        self.assertEqual(version['case']['acceptance_criteria_refs'], [])
+        self.assertTrue(version['case']['procedure'][0]['expected'])
+        from app.models.test_design import DesignedTestCase
+        from pydantic import ValidationError
+        with self.assertRaises(ValidationError): DesignedTestCase(**{**self.case, 'assertions': [], 'acceptance_criteria_refs': []})
+
+    async def test_admin_signoff_is_optional_but_membership_and_explicit_approval_remain(self):
+        version=await self.draft()
+        self.user['role']='TESTER';settings.features.test_design_admin_review=False
+        state=(await self.client.get(self.base)).json()
+        self.assertEqual(state['approval_policy'],{'admin_only':False,'can_approve':True})
+        approved=await self.client.post(self.base+'/'+version['version_id']+'/approve')
+        self.assertEqual(approved.status_code,200,approved.text)
+        self.assertEqual((await self.client.post('/projects/P2/test-design/cases/TC1/'+version['version_id']+'/approve')).status_code,404)
+
+    async def test_approver_identity_is_server_owned_and_preserved(self):
+        self.user['name']='Original reviewer'
+        draft=await self.draft()
+        response=await self.client.post(self.base+'/'+draft['version_id']+'/approve',json={'approved_by':'spoofed','approved_by_display_name':'spoofed'})
+        self.assertEqual(response.status_code,200)
+        version=response.json()
+        self.assertEqual(version['approved_by'],'reviewer')
+        self.assertEqual(version['approved_by_display_name'],'Original reviewer')
+        self.assertEqual(version['approved_by_project_role'],'ADMIN')
+        self.assertEqual(version['approval_policy'],'admin_required')
+        self.assertTrue(version['approved_at'])
+        self.user['name']='Renamed reviewer'
+        again=await self.approve(version)
+        self.assertEqual(again['approved_by_display_name'],'Original reviewer')
+        self.assertEqual(again['approved_at'],version['approved_at'])

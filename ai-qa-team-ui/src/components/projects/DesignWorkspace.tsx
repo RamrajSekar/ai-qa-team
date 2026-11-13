@@ -20,6 +20,14 @@ export function DesignState({ title, children, error = false }: { title: string;
   </div>;
 }
 
-export function DesignBadge({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "positive" | "warning" }) {
-  return <span className={`design-badge design-badge-${tone}`}>{children}</span>;
+export function designStatusLabel(value?: string | null): string {
+  const key = (value || "draft").toLowerCase().replaceAll(" ", "_");
+  const labels: Record<string, string> = { draft: "Draft", in_review: "In Review", pending_review: "In Review", pending_approval: "In Review", pending: "In Review", approved_version_available: "Approved", approved: "Approved", review_required: "Needs Review", needs_review: "Needs Review", rejected: "Rejected", archived: "Archived" };
+  return labels[key] || key.split("_").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+}
+
+export function DesignBadge({ children, tone }: { children: ReactNode; tone?: "neutral" | "positive" | "warning" | "negative" }) {
+  const key = typeof children === "string" ? children.toLowerCase().replaceAll(" ", "_") : "";
+  const inferred = ["approved", "pass", "passed", "completed"].includes(key) ? "positive" : ["fail", "failed", "rejected"].includes(key) ? "negative" : ["in_review", "pending_approval", "blocked", "needs_review", "in_progress", "running", "queued"].includes(key) ? "warning" : "neutral";
+  return <span className={`design-badge design-badge-${tone || inferred}`}>{children}</span>;
 }

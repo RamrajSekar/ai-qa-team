@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { apiFetch } from "@/utils/api";
 
 export type FeatureName =
-  | "separate_ai_allowances" | "test_execution_ui" | "account_invitation_email" | "customer_accounts" | "account_subscriptions" | "story_management" | "scenario_generation" | "test_generation" | "recorder"
+  | "manual_test_results" | "automation_execution_ui" | "separate_ai_allowances" | "test_execution_ui" | "account_invitation_email" | "customer_accounts" | "account_subscriptions" | "story_management" | "scenario_generation" | "test_generation" | "recorder"
   | "native_execution" | "visual_runner_lab" | "visual_runner_batches" | "jira_trigger" | "failure_diagnostics" | "self_healing"
   | "approved_visual_run_admission" | "approved_visual_run_execution" | "approved_workflow_worker" | "bug_reproduction_ui" | "repository_ui" | "reusable_workflows" | "product_knowledge" | "story_analysis"
   | "playwright_repo_adapter" | "selenium_repo_adapter"
@@ -66,6 +66,11 @@ export function FeatureRouteGuard({ children }: { children: ReactNode }) {
     "visual-lab": "visual_runner_lab", "test-execution": "test_execution_ui",
   };
   const feature = pathname === "/settings/account" || pathname.startsWith("/settings/account/") ? "customer_accounts" : required[segment];
+  if (segment === "test-execution" && ready && enabled("manual_test_results", "test_generation")) return children;
+  if (["visual-lab", "test-execution", "execution-history"].includes(segment)) {
+    if (!ready) return <p role="status">Loading features...</p>;
+    if (!enabled("automation_execution_ui")) return <p role="status">Automation execution is hidden.</p>;
+  }
   if (!feature) return children;
   if (!ready) return <p role="status">Loading features...</p>;
   if (failed) return <p role="alert">Feature availability could not be loaded. Reload to try again.</p>;

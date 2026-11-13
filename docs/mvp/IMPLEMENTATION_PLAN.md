@@ -454,3 +454,12 @@ Account Team/shared billing amendment (2026-11-12): see [ACCOUNT_TEAM_BILLING.md
 
 
 Account presentation/Free team amendment (2026-11-12): [ACCOUNT_UI_REFINEMENTS.md](ACCOUNT_UI_REFINEMENTS.md) records hidden account IDs, centralized workspace order, grouped testcase usage, two additional Free account members, optional SMTP delivery (disabled; manual links retained), and the relocated/default-hidden Test Execution page. Other quotas and execution qualification gates remain unchanged.
+
+# Manual testing priority amendment — 2026-11-13
+
+Current assigned slice: Test Cases/Scenarios tables, reusable final-result contract,
+manual results and selected-case Test Execution with Release/Cycle notes. See
+[MANUAL_TEST_EXECUTION](MANUAL_TEST_EXECUTION.md) for delivered boundaries, gates and
+verification. Automation remains hidden/default-off. Next bounded task is reviewed
+bug drafting/linking and its platform prompt; this task does not implement it.
+Knowledge/story-analysis visibility and ingestion remain subsequent priorities.

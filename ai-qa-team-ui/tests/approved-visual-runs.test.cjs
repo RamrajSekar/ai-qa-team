@@ -26,7 +26,7 @@ test('select a case, approve, preview, admit, reload, start and cancel', async t
     };
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
     let json = [];
-    if (path === '/features') json = { test_generation: true, test_execution_ui: executionUiEnabled, approved_visual_run_admission: featureEnabled,
+    if (path === '/features') json = { automation_execution_ui: true, test_generation: true, test_execution_ui: executionUiEnabled, approved_visual_run_admission: featureEnabled,
       approved_visual_run_execution: featureEnabled };
     if (path === '/auth/me') json = { user: { email: 'synthetic@example.test', name: 'Synthetic User',
       onboarding: { onboarding_status: 'completed' }, subscription: { plan: 'free', usage: {}, limits: {} } } };

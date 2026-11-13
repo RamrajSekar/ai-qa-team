@@ -18,7 +18,7 @@ async function fixture(t,{execution=false}={}){
   const request=route.request(),url=new URL(request.url());calls.push({path:url.pathname,method:request.method()});
   const headers={'access-control-allow-origin':base,'access-control-allow-credentials':'true','access-control-allow-headers':'content-type','access-control-allow-methods':'GET,POST,PATCH,DELETE,OPTIONS'};
   if(request.method()==='OPTIONS')return route.fulfill({status:204,headers});let json=[];
-  if(url.pathname==='/features')json={story_management:true,scenario_generation:true,test_generation:true,test_execution_ui:execution,approved_visual_run_admission:true};
+  if(url.pathname==='/features')json={automation_execution_ui:true,story_management:true,scenario_generation:true,test_generation:true,test_execution_ui:execution,approved_visual_run_admission:true};
   if(url.pathname==='/auth/me')json={user:{email:'fixture@example.test',name:'Fixture',onboarding:{onboarding_status:'completed'},subscription:{usage:{},limits:{}}}};
   if(url.pathname==='/projects')json=[project];if(url.pathname==='/projects/P1')json=project;
   if(url.pathname==='/stories')json=[story,{...story,story_id:'ST2',title:'Cancel an order',acceptance_criteria:''}];
@@ -50,17 +50,17 @@ test('stories search, protected deletion feedback and accessible cancellation',a
  await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await capture(page,'stories-mobile');
 });
 test('scenario review separates approval and coverage with page-local filters',async t=>{
- const{page,calls}=await fixture(t);await page.goto(base+'/projects/P1/scenarios');await page.getByRole('heading',{name:'Save a valid order'}).waitFor();
- await page.getByLabel('Status',{exact:true}).selectOption('pending');await page.getByRole('heading',{name:'Save a valid order'}).waitFor({state:'hidden'});assert.equal(await page.getByRole('heading',{name:'Save a valid order'}).count(),0);await page.getByRole('heading',{name:'Reject empty order'}).waitFor();
- await page.getByLabel('Status',{exact:true}).selectOption('all');await page.getByRole('searchbox').fill('SC1');await page.getByRole('heading',{name:'Save a valid order'}).waitFor();assert.equal(calls.filter(x=>x.method==='POST').length,0);await capture(page,'scenarios');await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await capture(page,'scenarios-mobile');
+ const{page,calls}=await fixture(t);await page.goto(base+'/projects/P1/scenarios');await page.getByRole('button',{name:'Save a valid order',exact:true}).waitFor();
+ await page.getByLabel('Status',{exact:true}).selectOption('pending');await page.getByRole('button',{name:'Save a valid order',exact:true}).waitFor({state:'hidden'});assert.equal(await page.getByRole('button',{name:'Save a valid order',exact:true}).count(),0);await page.getByRole('button',{name:'Reject empty order',exact:true}).waitFor();
+ await page.getByLabel('Status',{exact:true}).selectOption('all');await page.getByRole('searchbox').fill('SC1');await page.getByRole('button',{name:'Save a valid order',exact:true}).waitFor();assert.equal(calls.filter(x=>x.method==='POST').length,0);await capture(page,'scenarios');await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await capture(page,'scenarios-mobile');
 });
 test('test cases retain expected results and hide execution entry when disabled',async t=>{
- const{page}=await fixture(t);await page.goto(base+'/projects/P1/testcases');await page.getByRole('heading',{name:'Save order with required data'}).waitFor();
- await page.getByText('Steps and expected results',{exact:true}).click();await page.getByText('Expected result — Order saved',{exact:true}).waitFor();assert.equal(await page.getByRole('link',{name:'Review execution setup'}).count(),0);
+ const{page}=await fixture(t);await page.goto(base+'/projects/P1/testcases');await page.getByRole('button',{name:'Save order with required data',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Review test case',exact:true}).click();await page.getByText('Expected result — Order saved',{exact:true}).waitFor();assert.equal(await page.getByRole('link',{name:'Review execution setup'}).count(),0);await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();
  await page.getByRole('button',{name:'Add or generate test case'}).click();await page.getByLabel('Approved source scenario').selectOption('SC1');assert.equal(await page.getByRole('option',{name:/SC2/}).count(),0);await capture(page,'testcases');await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await capture(page,'testcases-mobile');
 });
 test('history filters project records, retries read failures and never submits execution',async t=>{
- const{page,calls,setHistoryFails}=await fixture(t);await page.goto(base+'/projects/P1/execution-history');await page.getByRole('cell',{name:'EX1',exact:true}).waitFor();assert.equal(await page.getByRole('cell',{name:'EX2',exact:true}).count(),0);
+ const{page,calls,setHistoryFails}=await fixture(t);await page.goto(base+'/projects/P1/execution-history');try { await page.getByRole('cell',{name:'EX1',exact:true}).waitFor(); } catch(error) { t.diagnostic(await page.locator('body').innerText()); throw error; }assert.equal(await page.getByRole('cell',{name:'EX2',exact:true}).count(),0);
  await page.getByRole('searchbox').fill('TC1');await page.getByRole('cell',{name:'EX1',exact:true}).waitFor();await capture(page,'history');
  setHistoryFails(true);await page.getByRole('button',{name:'Refresh history'}).click();await page.getByRole('alert').filter({hasText:'Execution history unavailable'}).waitFor();setHistoryFails(false);await page.getByRole('button',{name:'Try again'}).click();await page.getByRole('cell',{name:'EX1',exact:true}).waitFor();assert.equal(calls.filter(x=>x.method!=='GET'&&x.method!=='OPTIONS').length,0);
  await page.getByRole('button',{name:'Account and appearance'}).click();await page.getByRole('menuitemradio',{name:'Dark',exact:true}).click();await capture(page,'history-dark');await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await capture(page,'history-mobile');

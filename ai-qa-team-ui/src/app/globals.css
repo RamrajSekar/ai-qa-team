@@ -479,3 +479,29 @@ html[data-workspace-theme] [data-slot="dialog-content"].environment-dialog { pad
 .design-story-summary > div > div { flex: 1; min-width: 0; }
 .story-coverage-actions { align-items: end; max-width: 100%; }
 .design-table tbody tr { border: 0; }
+
+/* Manual test design tables/results; automation remains separately gated. */
+.design-row-actions, .design-selection-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.design-selection-bar { justify-content: space-between; padding: 16px; border: 1px solid var(--ws-border); border-radius: 12px; background: var(--ws-surface); font-size: 13px; }
+.workspace-shell .design-title-link { display: block; text-align: left; color: var(--ws-accent); font-weight: 650; padding: 4px 0; border: 0; background: transparent; box-shadow: none; }
+.design-table .design-record-id { display: block; }
+.design-row-actions { min-width: 180px; }
+.manual-results { overflow-wrap: anywhere; }
+.manual-results form { display: grid; gap: 16px; }
+.manual-results details { padding: 14px; border: 1px solid var(--ws-border); border-radius: 10px; }
+.manual-results summary { cursor: pointer; font-weight: 600; }
+.manual-results .manual-expectation { display: flex; flex-direction: row; align-items: start; gap: 10px; }
+.manual-results .manual-expectation input { width: auto; margin-top: 4px; }
+.manual-attempt { margin-block: 12px; }
+
+.manual-results :is(p,h2,h3) { margin: 0; }
+.test-design-review .review-choice { display: flex; align-items: start; gap: 10px; } .test-design-review .review-choice input { flex-shrink: 0; width: 16px; margin-top: 4px; }
+
+/* Status text remains readable with or without color perception. */
+.design-badge-positive { color: #166534; }
+.design-badge-negative { color: #b91c1c; background: color-mix(in srgb, #dc2626 10%, var(--ws-surface)); }
+.design-badge-warning { color: #854d0e; }
+html[data-workspace-theme="dark"] .design-badge-positive { color: #86efac; }
+html[data-workspace-theme="dark"] .design-badge-negative { color: #fca5a5; }
+html[data-workspace-theme="dark"] .design-badge-warning { color: #fde68a; }
+.design-result-link { display: block; margin-top: 7px; font-size: 12px; color: var(--ws-accent); text-decoration: underline; }

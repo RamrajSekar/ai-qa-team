@@ -74,6 +74,7 @@ interface Execution {
 
 export default function ProjectPage() {
   const { enabled, ready } = useFeatures();
+  const automationEnabled = enabled("automation_execution_ui");
   const storiesEnabled = enabled("story_management");
   const scenariosEnabled = storiesEnabled && enabled("scenario_generation");
   const testsEnabled = enabled("test_generation");
@@ -121,7 +122,7 @@ export default function ProjectPage() {
     setScenarioLoading(scenariosEnabled);
     setScenarios([]);
 
-    void get('/execute?skip=0&limit=200').then(result => {
+    if (automationEnabled) void get('/execute?skip=0&limit=200').then(result => {
       if (!result.ok || !Array.isArray(result.data)) throw new Error('HISTORY_UNAVAILABLE');
       if (!controller.signal.aborted) setExecutions(result.data.filter((item: Execution) => item.project_id === projectId));
     }).catch(() => {
@@ -165,7 +166,7 @@ export default function ProjectPage() {
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }, [projectId, storiesEnabled, scenariosEnabled, testsEnabled]);
+  }, [projectId, storiesEnabled, scenariosEnabled, testsEnabled, automationEnabled]);
 
   useEffect(() => {
     if (ready) void loadAll();
@@ -208,7 +209,7 @@ export default function ProjectPage() {
       </div>
       <div className="workspace-metrics">
         <KpiCard label="Environments" value={environments.length} />
-        <KpiCard label="Recorded executions" value={historyLoading || historyError ? '—' : executions.length} />
+        {automationEnabled && <KpiCard label="Recorded executions" value={historyLoading || historyError ? '—' : executions.length} />}
         {storiesEnabled && <KpiCard label="Stories" value={stories.length} />}
         {scenariosEnabled && <KpiCard label="Scenarios" value={scenarioTotal ?? '—'} />}
         {testsEnabled && <KpiCard label="Testcases" value={testcases.length} />}
@@ -226,13 +227,13 @@ export default function ProjectPage() {
         </div> : <div className="workspace-empty"><Globe size={24} /><strong>No environments configured</strong>{canManage ? "Add your first environment to keep project settings in one place." : "A Project Admin can add an environment."}</div>}
       </section>
       {canManage && <EnvironmentModal open={openEnvironmentModal} onClose={() => setOpenEnvironmentModal(false)} mode="create" projectId={projectId} onSaved={loadAll} />}
-      <section id="execution-history" className="workspace-panel" aria-labelledby="history-title">
+      {automationEnabled && <section id="execution-history" className="workspace-panel" aria-labelledby="history-title">
         <div className="workspace-panel-header"><h2 id="history-title">Execution history</h2><Link href={`/projects/${projectId}/execution-history`}>View history →</Link>{!historyError && !historyLoading && <span className="workspace-badge">{executions.length} recorded</span>}</div>
         {historyLoading ? <p className="workspace-empty" role="status">Loading execution history…</p>
           : historyError ? <div className="workspace-empty" role="alert"><strong>Execution history unavailable</strong>Project details are available. Check your connection and try again.<button className="workspace-button" onClick={loadAll}>Try again</button></div> : executions.length ? <div className="workspace-panel-body">
           {executions.map((execution) => <div key={execution.execution_id} className="workspace-row"><div><div className="workspace-row-title">Execution #{execution.execution_id}</div><div className="workspace-row-subtitle">{execution.started_at ? new Date(execution.started_at).toLocaleString() : "No start time recorded"}</div></div><span className="workspace-badge">{execution.status}</span></div>)}
         </div> : <div className="workspace-empty"><History size={24} /><strong>No execution history yet</strong>Recorded results for this project will appear here.</div>}
-      </section>
+      </section>}
 
       {/* --- Modals --- */}
 

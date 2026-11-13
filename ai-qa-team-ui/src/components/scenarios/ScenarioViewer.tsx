@@ -106,7 +106,7 @@ export default function ScenarioViewer({ open, scenario, onClose, onApproved }: 
         {error && <p role="alert" className="mt-4 text-sm text-red-700">{error}</p>}
         {generatedIds.length > 0 && <p role="status" className="mt-4 text-sm">
           Generated {generatedIds.join(", ")}.{" "}
-          <Link className="underline" href={`/projects/${projectId}#approved-visual-run`}>Open Project Overview</Link>
+          <Link className="underline" href={`/projects/${projectId}/testcases`}>Open Test Cases</Link>
         </p>}
         <div className="flex flex-wrap justify-end gap-2 mt-6">
           {!scenario.approved && <button type="button" className="workspace-button" disabled={busy || (!hasIntent && !scenario.steps.length)}

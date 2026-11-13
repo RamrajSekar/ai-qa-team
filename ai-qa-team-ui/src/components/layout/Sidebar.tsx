@@ -29,16 +29,16 @@ export default function Sidebar() {
   const projectMenu = projectId ? [
     { name: "Overview", icon: Layers, href: `/projects/${projectId}` },
     ...(enabled("product_knowledge") ? [{ name: "Product Knowledge", icon: BrainCircuit, href: `/projects/${projectId}/knowledge` }] : []),
-    ...(enabled("visual_runner_lab") ? [{ name: "Visual Runner Lab", icon: Zap, href: `/projects/${projectId}/visual-lab` }] : []),
+    ...(enabled("automation_execution_ui", "visual_runner_lab") ? [{ name: "Visual Runner Lab", icon: Zap, href: `/projects/${projectId}/visual-lab` }] : []),
     ...(enabled("bug_reproduction_ui") ? [{ name: "Reproduce Bug", icon: Bug, href: `/projects/${projectId}/reproduce` }] : []),
     ...(enabled("story_management") ? [{ name: "Stories", icon: FileText, href: `/projects/${projectId}/stories` }] : []),
     ...(enabled("scenario_generation") ? [{ name: "Scenarios", icon: Layers, href: `/projects/${projectId}/scenarios` }] : []),
     ...(enabled("test_generation") ? [{ name: "Test Cases", icon: FileText, href: `/projects/${projectId}/testcases` }] : []),
-    ...(enabled("test_execution_ui", "test_generation", "approved_visual_run_admission") ? [{ name: "Test Execution", icon: Zap, href: `/projects/${projectId}/test-execution` }] : []),
+    ...((enabled("manual_test_results", "test_generation") || enabled("automation_execution_ui", "test_execution_ui", "test_generation", "approved_visual_run_admission")) ? [{ name: "Test Execution", icon: Zap, href: `/projects/${projectId}/test-execution` }] : []),
     { name: "Environments", icon: FolderOpen, href: `/projects/${projectId}/environments` },
     ...(enabled("repository_ui", "repository_discovery", "test_registry") ? [{ name: "Repositories", icon: GitBranch, href: `/projects/${projectId}/repositories` }] : []),
     ...(!enabled("customer_accounts") && project?.current_user_role === "ADMIN" ? [{ name: "Team", icon: Users, href: `/projects/${projectId}/settings/team` }] : []),
-    { name: "Execution history", icon: Zap, href: `/projects/${projectId}/execution-history` },
+    ...(enabled("automation_execution_ui") ? [{ name: "Execution history", icon: Zap, href: `/projects/${projectId}/execution-history` }] : []),
   ] : [];
   const destination = [...globalMenu, ...platformMenu, ...projectMenu].filter((item) => pathname === item.href || pathname.startsWith(item.href + "/"))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;

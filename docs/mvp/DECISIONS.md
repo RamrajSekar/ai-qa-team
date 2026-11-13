@@ -244,3 +244,25 @@ Account Team/shared billing amendment (2026-11-12): see [ACCOUNT_TEAM_BILLING.md
 
 
 Account presentation/Free team amendment (2026-11-12): [ACCOUNT_UI_REFINEMENTS.md](ACCOUNT_UI_REFINEMENTS.md) records hidden account IDs, centralized workspace order, grouped testcase usage, two additional Free account members, optional SMTP delivery (disabled; manual links retained), and the relocated/default-hidden Test Execution page. Other quotas and execution qualification gates remain unchanged.
+# Manual Test Execution amendment — 2026-11-13
+
+Accepted: reuse one approved test specification for manual and future automated
+results, with independent mode/adapter identity and historical attempts. The user
+also approved selecting up to 10 approved cases, recording Release/Cycle notes and
+creating an immutable manual execution before recording per-case results.
+See [MANUAL_TEST_EXECUTION](MANUAL_TEST_EXECUTION.md). No automation adapter or
+automatic verdict evaluator is delivered by that slice. Keep automation UI hidden.
+Explicit reviewer-authored legacy expectations may be approved in manual mode when
+both knowledge flags are off; knowledge-linked cases cannot use that path. This is
+a labelled manual-development approval basis, not an invented knowledge version or
+a claim that the knowledge-trained MVP release gates are complete.
+
+# Approval UX/policy amendment — 2026-11-13
+
+User-approved update: supporting outcomes, cleanup and explicit criterion/rule
+selections are optional for human test-case approval; step expected results remain
+mandatory. Admin-only sign-off is optional (`test_design_admin_review=false` by
+default); project membership and explicit saved-version approval remain mandatory.
+Record authenticated approver ID/name/role, approval time and policy in immutable
+versions and execution snapshots. No historical approvals are rewritten. The
+stricter AI generation schema is unchanged. See MANUAL_TEST_EXECUTION.md.

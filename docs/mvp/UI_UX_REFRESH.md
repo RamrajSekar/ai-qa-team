@@ -1,5 +1,12 @@
 # Test Design UI/UX refresh
 
+2026-11-13 superseding catalog amendment: Scenarios and Test Cases now use tables
+with on-demand review; manual result and Release/Cycle execution UI is documented in
+[MANUAL_TEST_EXECUTION](MANUAL_TEST_EXECUTION.md). The automated Lab/execution/history
+surfaces require the new default-off `automation_execution_ui` presentation flag.
+Existing automation controls/history are preserved. The verification below is prior
+evidence unless specifically rerun for this slice.
+
 ## Project review pages amendment — 2026-11-12
 
 The current refresh extends the shared workspace to Stories (list and detail),

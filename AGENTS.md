@@ -1,5 +1,22 @@
 # AGENTS.md — AI QA Squad
 
+Approval usability amendment (2026-11-13): human-review supporting outcomes,
+cleanup and source-rule/criterion selections are optional; per-step expected results
+remain required. `test_design_admin_review` defaults false: authorized project
+members can explicitly approve saved versions; true requires project ADMIN.
+Persist the authenticated approver identity/name/role, time and policy immutably.
+See `docs/mvp/MANUAL_TEST_EXECUTION.md`; do not weaken AI generation contracts or
+silently auto-approve tests to satisfy optional fields.
+
+Manual testing amendment (2026-11-13): see `docs/mvp/MANUAL_TEST_EXECUTION.md`.
+Manual execution manifests and final results are separate from approved cases and
+automation queues. Public manual input cannot choose an automated mode or verdict
+source. A manual Passed report requires confirmation of all approved expectations.
+Knowledge-linked cases cannot bypass review; explicit legacy manual approval has
+a labelled reviewer-authored basis. Keep `automation_execution_ui` default off;
+`manual_test_results` is a separate default-off gate. No browser/model call is
+authorized by recording a manual result.
+
 Account AI allowance/pricing amendment (2026-11-12): see
 `docs/mvp/AI_ALLOWANCES_PRICING.md`. Versioned accounts retain separate Managed
 credits and BYOK requests even when the rollout flag is disabled. Never reset

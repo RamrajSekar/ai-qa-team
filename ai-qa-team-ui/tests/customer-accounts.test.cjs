@@ -207,5 +207,6 @@ test('split AI allowances show separate Managed credits and BYOK requests', asyn
   assert.equal(await byok.getAttribute('value'), '2'); assert.equal(await byok.getAttribute('max'), '25');
   await section.getByText(/Credits count requests, not tokens/).waitFor();
   await section.getByText(/You pay the provider separately/).waitFor();
+  assert.equal(await section.getByRole('heading', { name: 'Execution Usage', exact: true }).count(), 0);
   assert.equal(await section.getByRole('progressbar', { name: 'AI Credits usage', exact: true }).count(), 0);
 });

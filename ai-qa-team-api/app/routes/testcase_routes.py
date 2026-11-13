@@ -405,7 +405,7 @@ async def delete_catalog_testcase(testcase_id: str, project_id: str, current_use
     existing_case = await db["testcases"].find_one(scope)
     if not existing_case:
         raise HTTPException(404, "Test case not found or access denied")
-    for collection in ("approved_visual_tests", "approved_visual_runs", "visual_test_spec_versions", "test_design_documents", "executions"):
+    for collection in ("approved_visual_tests", "approved_visual_runs", "visual_test_spec_versions", "test_design_documents", "test_results", "executions"):
         if await db[collection].find_one({"project_id": project_id, "testcase_id": testcase_id}):
             raise HTTPException(409, "This test case has approvals or execution history and cannot be deleted.")
     result = await db["testcases"].delete_one(scope)
