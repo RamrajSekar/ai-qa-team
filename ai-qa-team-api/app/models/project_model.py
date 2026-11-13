@@ -17,6 +17,7 @@ class ProjectResponse(BaseModel):
     account_id: Optional[str] = None
     id: Optional[str]
     project_id: str
+    display_id: Optional[str] = None
     name: str
     description: Optional[str] = None
     agent_identities: Dict

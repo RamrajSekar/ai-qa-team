@@ -35,6 +35,15 @@ async def create_project(
     data = project.model_dump()
     if account:
         data["account_id"] = account["_id"]
+    if account:
+        # Display numbering is account-local; canonical route IDs stay globally unique.
+        while True:
+            display_id = await get_next_sequence(f"account:{account['_id']}:project_display_id", "PRJ")
+            # Reserve legacy labels too, without renumbering existing projects.
+            legacy = await db["projects"].find_one({"account_id": account["_id"], "project_id": display_id})
+            if not legacy:
+                data["display_id"] = display_id
+                break
     data["project_id"] = new_project_id
     data["created_by"] = current_user["email"]
     data["created_at"] = datetime.now(timezone.utc).isoformat()
@@ -57,7 +66,7 @@ async def create_project(
         raise
     data["current_user_role"] = "ADMIN"
 
-    # 🔥 Increment project usage (FIXES DASHBOARD & /projects)
+    # ðŸ”¥ Increment project usage (FIXES DASHBOARD & /projects)
     from app.services.account_billing import billing_account
     billing = await billing_account(db, current_user)
     if billing:
@@ -65,14 +74,14 @@ async def create_project(
     else:
         await db["users"].update_one({"email": current_user["email"]}, {"$inc": {"subscription.usage.projects_used": 1}})
 
-    # 🔥 Update onboarding steps
+    # ðŸ”¥ Update onboarding steps
     await db["users"].update_one(
         {"email": current_user["email"]},
         {
             "$set": {
                 "onboarding.steps.project": True,
                 "onboarding.current_step": 2,
-                "onboarding.onboarding_status": "in_progress",
+                "onboarding.onboarding_status": "completed" if current_user.get("onboarding", {}).get("onboarding_status") == "completed" else "in_progress",
                 "onboarding.context.project_id": data["project_id"],
                 
             }
@@ -229,7 +238,7 @@ async def delete_project(
     await db["ai_configurations"].delete_many({"project_id": project_id})
     await db["encrypted_secrets"].delete_many({"project_id": project_id})
 
-    # 🔥 Decrement usage count
+    # ðŸ”¥ Decrement usage count
     from app.services.account_billing import billing_account
     billing = await billing_account(db, current_user)
     if billing:
@@ -238,19 +247,13 @@ async def delete_project(
         await db["users"].update_one({"email": email}, {"$inc": {
             "subscription.usage.projects_used": -1, "subscription.usage.team_members_used": -additional_members}})
 
-    # Check if 0 left
-    user = await db["users"].find_one({"email": email})
-
-    if user and not billing and user["subscription"]["usage"]["projects_used"] <= 0:
-        await db["users"].update_one(
-            {"email": email},
-            {
-                "$set": {
-                    "onboarding.onboarding_status": "pending",
-                    "onboarding.current_step": 1,
-                    "onboarding.context.project_id": None
-                }
-            }
-        )
+    # Deleting the setup project abandons that wizard, not the customer account.
+    await db["users"].update_many(
+        {"onboarding.context.project_id": project_id},
+        {"$set": {"onboarding.context.project_id": None,
+                  "onboarding.context.environment_id": None,
+                  "onboarding.onboarding_status": "completed",
+                  "onboarding.current_step": 99}}
+    )
 
     return {"message": "Project deleted successfully"}

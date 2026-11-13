@@ -15,14 +15,13 @@ export default function DashboardPage() {
   const { enabled } = useFeatures();
   const aiEnabled = enabled("scenario_generation") || enabled("test_generation") || enabled("product_knowledge") || enabled("story_analysis");
   const { user, refreshSubscription } = useAuth();
-  const { projects, loading, failed, reload: loadProjects } = useProjects();
+  const { projects, loading, reload: loadProjects } = useProjects();
 
   const [openProjectModal, setOpenProjectModal] = useState(false);
   const [dismissedOnboarding, setDismissedOnboarding] = useState<string | null>(null);
-  const hasNoProjects = !loading && !failed && projects.length === 0;
-  const onboardingKey = `${user?.email}:${user?.onboarding?.onboarding_status}:${hasNoProjects}`;
+  const onboardingKey = `${user?.email}:${user?.onboarding?.onboarding_status}`;
   const canCreateProject = !enabled("customer_accounts") || user?.account_role === "OWNER" || user?.account_role === "ADMIN";
-  const openOnboarding = canCreateProject && !!user && (hasNoProjects || user.onboarding?.onboarding_status !== "completed")
+  const openOnboarding = canCreateProject && !!user && user.onboarding?.onboarding_status !== "completed"
     && dismissedOnboarding !== onboardingKey;
 
   if (!user) return <p className="p-8">Loading...</p>;
@@ -63,7 +62,7 @@ export default function DashboardPage() {
         {enabled("scenario_generation") && <KPI title="Scenarios" used={usage.scenarios_used} max={limits.scenarios_limit} />}
         {enabled("automation_execution_ui") && <KPI title="Executions" used={usage.executions_used} max={limits.executions_limit} />}
         {aiEnabled && (user.subscription?.ai_allowance_version === 1 ? <><KPI title="Managed AI Requests" used={usage.managed_ai_credits_used} max={limits.managed_ai_credits_limit} /><KPI title="BYOK AI Requests" used={usage.byok_ai_requests_used} max={limits.byok_ai_requests_limit} /></> : <KPI title="AI Credits" used={usage.ai_gen_used} max={limits.ai_gen_limit} />)}
-        <KPI title="Team Members" used={usage.team_members_used} max={limits.team_members_limit} />
+        <KPI title="Team Members" used={(usage.team_members_used ?? 0) + 1} max={limits.team_members_limit == null ? limits.team_members_limit : limits.team_members_limit + 1} />
       </div>
 
       {/* CHARTS SECTION */}
@@ -106,7 +105,7 @@ export default function DashboardPage() {
                 className="p-5 border rounded-lg bg-white shadow hover:shadow-md transition"
               >
                 <h4 className="font-semibold text-lg">{p.name}</h4>
-                <p className="text-xs text-gray-500 mt-1">ID: {p.project_id}</p>
+                <p className="text-xs text-gray-500 mt-1">ID: {p.display_id || p.project_id}</p>
               </Link>
             ))}
           </div>

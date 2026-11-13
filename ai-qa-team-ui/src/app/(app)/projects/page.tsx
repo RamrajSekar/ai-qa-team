@@ -109,7 +109,7 @@ export default function ProjectsPage() {
               className="border rounded-md p-4 hover:bg-gray-50 transition"
             >
               <h3 className="font-semibold">{p.name}</h3>
-              <p className="text-sm text-gray-500">{p.project_id}</p>
+              <p className="text-sm text-gray-500">{p.display_id || p.project_id}</p>
             </Link>
           ))}
         </div>

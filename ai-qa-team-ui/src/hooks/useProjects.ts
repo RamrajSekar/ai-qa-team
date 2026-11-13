@@ -7,6 +7,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 export interface Project {
   id: string;
   project_id: string;
+  display_id?: string | null;
   name: string;
   created_at: string;
   current_user_role?: "ADMIN" | "TESTER";

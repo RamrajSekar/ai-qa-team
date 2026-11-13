@@ -63,7 +63,7 @@ export default function SubscriptionUsage({ subscription }: { subscription: Acco
     </section>
 
     <div className={styles.grid}>
-      <section className={styles.card} aria-labelledby="team-capacity-title"><h3 id="team-capacity-title">Team Capacity</h3>{meter("Additional Team Members", "team_members_used")}<p className={styles.note}>The owner is excluded. Other account members and pending invitations count once, regardless of project assignments.</p></section>
+      <section className={styles.card} aria-labelledby="team-capacity-title"><h3 id="team-capacity-title">Team Capacity</h3><Meter label="Team Members" used={(subscription.usage.team_members_used ?? 0) + 1} limit={subscription.limits.team_members_limit == null ? subscription.limits.team_members_limit : subscription.limits.team_members_limit + 1} /><p className={styles.note}>Includes the owner plus additional members and pending invitations. Each identity counts once, regardless of project or admin roles.</p></section>
       {enabled("automation_execution_ui") && <section className={styles.card} aria-labelledby="execution-usage-title"><h3 id="execution-usage-title">Execution Usage</h3>{meter("Executions", "executions_used")}<p className={styles.note}>The recorded execution counter is separate from AI credits. Synthetic development runs are not commercially billed.</p></section>}
     </div>
   </section>;
