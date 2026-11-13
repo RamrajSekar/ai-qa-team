@@ -38,7 +38,7 @@ export default function Sidebar() {
     { name: "Environments", icon: FolderOpen, href: `/projects/${projectId}/environments` },
     ...(enabled("repository_ui", "repository_discovery", "test_registry") ? [{ name: "Repositories", icon: GitBranch, href: `/projects/${projectId}/repositories` }] : []),
     ...(!enabled("customer_accounts") && project?.current_user_role === "ADMIN" ? [{ name: "Team", icon: Users, href: `/projects/${projectId}/settings/team` }] : []),
-    // Execution history is shown on the overview; there is no separate execution page yet.
+    { name: "Execution history", icon: Zap, href: `/projects/${projectId}/execution-history` },
   ] : [];
   const destination = [...globalMenu, ...platformMenu, ...projectMenu].filter((item) => pathname === item.href || pathname.startsWith(item.href + "/"))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;
@@ -57,7 +57,6 @@ export default function Sidebar() {
         {projectId && <>
           <p className="workspace-nav-label workspace-project-label" title={project?.name}>{project?.name || "Current project"}</p>
           {projectMenu.map(({ name, icon: Icon, href }) => <Link key={href} href={href} title={name} aria-label={name} aria-current={destination === href ? "page" : undefined} className="workspace-nav-link"><Icon size={18} /><span>{name}</span></Link>)}
-          <Link href={`/projects/${projectId}#execution-history`} title="Execution history" aria-label="Execution history" className="workspace-nav-link"><Zap size={18} /><span>Execution history</span></Link>
         </>}
         {projects.length > 0 && <div className="workspace-recent"><p className="workspace-nav-label">Recent projects</p>
           {projects.slice(0, 4).map((item) => <Link key={item.project_id} href={`/projects/${item.project_id}`} title={item.name} className="workspace-recent-link"><span className="workspace-project-dot" /><span>{item.name}</span></Link>)}

@@ -20,7 +20,7 @@ export default function ScenarioTable({ scenarios, onEdit, onDelete, onView }: P
   }
 
   return (
-    <div className="overflow-hidden border rounded-md bg-white shadow-sm">
+    <div className="workspace-table-scroll design-table" role="region" aria-label="Story scenarios" tabIndex={0}>
       <table className="w-full text-sm">
         <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
           <tr>

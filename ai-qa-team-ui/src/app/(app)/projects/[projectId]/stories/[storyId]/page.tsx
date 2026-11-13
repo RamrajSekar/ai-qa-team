@@ -30,6 +30,7 @@ export default function StoryDetailsPage() {
 
   const [story, setStory] = useState<Story | null>(null);
   const [loading, setLoading] = useState(true);
+  const [storyError, setStoryError] = useState("");
 
   // Recorder
   const [recordings, setRecordings] = useState<Recording[]>([]);
@@ -50,11 +51,13 @@ export default function StoryDetailsPage() {
   // LOAD STORY
   // -----------------------------
   const loadStory = useCallback(async () => {
+    setStoryError("");
     try {
       const res = await apiFetch(`/stories/${storyId}?project_id=${projectId}`);
-      if (res.ok) setStory(res.data);
+      if (!res.ok) throw new Error(res.status === 404 ? "Story not found or unavailable." : "Could not load this story.");
+      setStory(res.data);
     } catch (err) {
-      console.error("Failed to load story:", err);
+      setStoryError(err instanceof Error ? err.message : "Could not load this story.");
     }
   }, [storyId, projectId]);
 
@@ -129,46 +132,40 @@ export default function StoryDetailsPage() {
 
   if (loading) return <div className="p-6">Loading story…</div>;
 
+  if (storyError) return <div className="design-state" role="alert"><strong>{storyError}</strong><button className="workspace-button" onClick={() => void loadStory()}>Try again</button></div>;
+
   if (!story)
     return (
       <div className="p-6 text-red-500 font-medium">Story not found.</div>
     );
 
   return (
-    <div className="p-6 space-y-10">
+    <div className="design-page">
 
       {/* BACK BUTTON */}
       <Link
         href={`/projects/${projectId}/stories`}
-        className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+        className="design-back-link inline-flex items-center gap-2"
       >
         <ArrowLeft size={16} />
         Back to Stories
       </Link>
 
       {/* STORY HEADER */}
-      <div className="border rounded-lg p-5 bg-white shadow-sm">
-        <div className="flex items-start justify-between">
+      <div className="design-story-summary">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">{story.title}</h1>
+            <p className="workspace-eyebrow">Story · {story.story_id}</p><h1>{story.title}</h1>
 
             {story.description && (
               <p className="text-gray-700 mt-1">{story.description}</p>
             )}
 
-            <div className="mt-3 space-y-1 text-gray-600">
-              <p>
-                <strong>Acceptance Criteria:</strong>{" "}
-                {story.acceptance_criteria || "—"}
-              </p>
-              <p>
-                <strong>Out of Scope:</strong> {story.out_of_scope || "—"}
-              </p>
-
-              <p className="text-sm text-gray-500">
-                Created At: {new Date(story.created_at).toLocaleString()}
-              </p>
+            <div className="design-story-fields">
+              <div><h2>Acceptance criteria</h2><p>{story.acceptance_criteria || "No acceptance criteria yet. Add explicit expectations before generating tests."}</p></div>
+              <div><h2>Out of scope</h2><p>{story.out_of_scope || "Not specified"}</p></div>
             </div>
+            <p className="workspace-metadata">Created {story.created_at ? new Date(story.created_at).toLocaleString() : "date not recorded"}</p>
           </div>
 
           {/* RECORD BUTTON */}
@@ -187,9 +184,9 @@ export default function StoryDetailsPage() {
       <FeatureGate names={["scenario_generation"]}><div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-xl font-semibold">Scenarios</h2>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 story-coverage-actions">
           <label>Requested scenarios <input aria-label="Requested scenarios" type="number" min={1} max={20} value={scenarioCount} onChange={event => setScenarioCount(Math.max(1, Math.min(20, Number(event.target.value) || 1)))} /></label>
-          <button type="button" className="workspace-button" disabled={generating || !story.acceptance_criteria?.trim()}
+          <button type="button" className="workspace-button workspace-primary" disabled={generating || !story.acceptance_criteria?.trim()}
             onClick={() => void generateScenario()}>
             {generating ? "Generating scenarios…" : "Generate scenarios with AI"}
           </button>
@@ -198,7 +195,7 @@ export default function StoryDetailsPage() {
               setEditingScenario(undefined);
               setScenarioModalOpen(true);
             }}
-            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+            className="workspace-button"
           >
             + Add Scenario
           </button>

@@ -8,6 +8,8 @@ import { apiFetch } from "@/utils/api";
 import { Plus, Eye, Edit, Video } from "lucide-react";
 import type { Story } from "@/types/story";
 import StoryModal from "@/components/story/StoryModal";
+import { WorkspaceDialog } from "@/components/ui/workspace-dialog";
+import { DesignStats, DesignToolbar, DesignState, DesignBadge } from "@/components/projects/DesignWorkspace";
 import RecorderOverlay from "@/components/recorder/RecorderOverlay";
 
 export default function StoriesPage() {
@@ -24,6 +26,9 @@ export default function StoriesPage() {
   const [recordStoryId, setRecordStoryId] = useState<string | null>(null);
   const [deleteStory, setDeleteStory] = useState<Story | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [query, setQuery] = useState("");
+  const visibleStories = stories.filter(story => `${story.story_id} ${story.title} ${story.acceptance_criteria || ""}`.toLowerCase().includes(query.toLowerCase()));
 
   const loadStories = useCallback(async () => {
     setLoading(true);
@@ -50,20 +55,14 @@ export default function StoriesPage() {
 
     setDeleting(true);
 
-    const res = await apiFetch(
-      `/stories/${deleteStory.story_id}?project_id=${projectId}`,
-      { method: "DELETE" }
-    );
-
-    setDeleting(false);
-
-    if (!res.ok) {
-      console.error("Failed to delete story");
-      return;
-    }
-
-    setDeleteStory(null);
-    await loadStories();
+    setDeleteError("");
+    try {
+      const res = await apiFetch(`/stories/${encodeURIComponent(deleteStory.story_id)}?project_id=${encodeURIComponent(projectId)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(typeof res.data?.detail === "string" ? res.data.detail : "Could not delete story. Please try again.");
+      setDeleteStory(null);
+      await loadStories();
+    } catch (failure) { setDeleteError(failure instanceof Error ? failure.message : "Could not delete story."); }
+    finally { setDeleting(false); }
   }
 
   useEffect(() => {
@@ -97,14 +96,17 @@ export default function StoriesPage() {
         </button>
       </div>
 
+      {!loading && !loadError && <DesignStats items={[{ label: "Stories loaded", value: stories.length }, { label: "With acceptance criteria", value: stories.filter(item => item.acceptance_criteria?.trim()).length }, { label: "Need acceptance criteria", value: stories.filter(item => !item.acceptance_criteria?.trim()).length }]} />}
+      <div className="design-guide"><strong>Start with a clear requirement</strong><p>Add acceptance criteria, review story analysis, then generate scenarios and detailed test cases.</p></div>
+      <DesignToolbar query={query} onQuery={setQuery} placeholder="Search stories" />
       {/* Table */}
       {loading ? <p role="status">Loading stories…</p> : loadError ? (
         <div role="alert" className="space-y-2">
           <p>{loadError}</p>
           <button type="button" className="workspace-button" onClick={() => void loadStories()}>Try again</button>
         </div>
-      ) : stories.length === 0 ? <p>No stories yet. Select New Story to create one.</p> : (
-      <div className="workspace-table-scroll border rounded-lg bg-white shadow-sm" role="region" aria-label="Story list; scroll horizontally for all columns" tabIndex={0}>
+      ) : visibleStories.length === 0 ? <DesignState title={stories.length ? "No matching stories" : "No stories yet"}><p>{stories.length ? "Try a different title, ID or acceptance criterion." : "Select New Story to define your first requirement and acceptance criteria."}</p></DesignState> : (
+      <div className="workspace-table-scroll design-table" role="region" aria-label="Story list; scroll horizontally for all columns" tabIndex={0}>
         <table className="w-full border-collapse">
           <thead className="bg-gray-100 text-left text-sm text-gray-600">
             <tr>
@@ -117,7 +119,7 @@ export default function StoriesPage() {
           </thead>
 
           <tbody>
-            {stories.map((story) => (
+            {visibleStories.map((story) => (
               <tr key={story.story_id} className="hover:bg-gray-50">
                 <td className="p-3 border font-medium">{story.story_id}</td>
 
@@ -131,7 +133,7 @@ export default function StoriesPage() {
                 </td>
 
                 <td className="p-3 border text-sm text-gray-700">
-                  {story.acceptance_criteria?.substring(0, 50) || "—"}
+                  {story.acceptance_criteria ? <span className="design-excerpt">{story.acceptance_criteria}</span> : <DesignBadge tone="warning">Needs criteria</DesignBadge>}
                 </td>
 
                 <td className="p-3 border text-sm">
@@ -144,7 +146,7 @@ export default function StoriesPage() {
                     {/* VIEW */}
                     <Link
                       href={`/projects/${projectId}/stories/${story.story_id}`}
-                      className="px-2 py-1 text-xs bg-gray-200 rounded hover:bg-gray-300 flex gap-1 items-center"
+                      className="workspace-button"
                     >
                       <Eye size={14} /> View
                     </Link>
@@ -152,17 +154,17 @@ export default function StoriesPage() {
                     {/* EDIT */}
                     <button
                       onClick={() => handleEdit(story)}
-                      className="px-2 py-1 text-xs bg-gray-100 border rounded hover:bg-gray-200 flex gap-1 items-center"
+                      className="workspace-button"
                     >
                       <Edit size={14} /> Edit
                     </button>
                     
                     {/* DELETE */}
                     <button
-                      onClick={() => setDeleteStory(story)}
-                      className="px-3 py-1 text-xs border border-red-500 text-red-600 rounded hover:bg-red-50"
+                      onClick={() => { setDeleteError(""); setDeleteStory(story); }}
+                      className="workspace-button design-danger"
                     >
-                      🗑 Delete
+                      Delete
                     </button>
 
                     {/* RECORD */}
@@ -202,8 +204,8 @@ export default function StoriesPage() {
       )}
 
       {deleteStory && (
-      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-        <div className="bg-white w-full max-w-md p-6 rounded shadow-lg">
+      <WorkspaceDialog open onClose={() => setDeleteStory(null)} title={`Delete story ${deleteStory.story_id}`} busy={deleting}>
+        <div>
           <h3 className="text-lg font-semibold mb-2">
             Delete Story {deleteStory.story_id}?
           </h3>
@@ -212,16 +214,17 @@ export default function StoriesPage() {
             Are you sure you want to delete this story? This action cannot be undone.
           </p>
 
+          {deleteError && <p role="alert">{deleteError}</p>}
           <div className="flex justify-end mt-6 gap-3">
             <button
-              className="px-4 py-2 border rounded"
+              className="workspace-button" disabled={deleting}
               onClick={() => setDeleteStory(null)}
             >
               Cancel
             </button>
 
             <button
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              className="workspace-button design-danger"
               disabled={deleting}
               onClick={handleDelete}
             >
@@ -229,7 +232,7 @@ export default function StoriesPage() {
             </button>
           </div>
         </div>
-      </div>
+      </WorkspaceDialog>
     )}
     </div>
   );

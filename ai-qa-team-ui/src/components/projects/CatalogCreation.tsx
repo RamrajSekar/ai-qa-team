@@ -61,9 +61,9 @@ export default function CatalogCreation({ kind, projectId, onSaved }: {
     finally { setBusy(false); }
   }
 
-  return <div className="space-y-3">
-    <button className="workspace-button" disabled={busy} onClick={() => void loadSources()}>Add or generate {kind === "scenarios" ? "scenario" : "test case"}</button>
-    {open && <div className="border rounded p-4 space-y-3">
+  return <div className="design-create space-y-3">
+    <button className="workspace-button workspace-primary" aria-expanded={open} disabled={busy} onClick={() => void loadSources()}>Add or generate {kind === "scenarios" ? "scenario" : "test case"}</button>
+    {open && <div className="design-create-body space-y-3">
       <label className="block">{kind === "scenarios" ? "Source story" : "Approved source scenario"}
         <select className="border rounded p-2 ml-3" value={source} disabled={busy} onChange={event => setSource(event.target.value)}>
           <option value="">Select a source</option>
@@ -72,15 +72,15 @@ export default function CatalogCreation({ kind, projectId, onSaved }: {
       </label>
       {!busy && sources.length === 0 && <p>No eligible sources on this page. Add a story or approve a scenario first.</p>}
       <label className="block">Requested count <input type="number" min={1} max={20} value={count} onChange={event => setCount(Math.max(1, Math.min(20, Number(event.target.value) || 1)))} /></label>
-      <div className="flex gap-3">
+      <div className="catalog-actions">
         <button className="workspace-button" disabled={busy || !source} onClick={() => setEditing(true)}>Add manually</button>
-        <button className="workspace-button" disabled={busy || !source || (kind === "scenarios" && !enabled("story_management"))} onClick={() => void generate()}>
+        <button className="workspace-button workspace-primary" disabled={busy || !source || (kind === "scenarios" && !enabled("story_management"))} onClick={() => void generate()}>
           {busy ? "Working…" : kind === "scenarios" ? "Generate with AI" : "Generate test case"}
         </button>
         <button className="workspace-button" disabled={busy} onClick={() => setOpen(false)}>Close</button>
       </div>
       {kind === "testcases" && <p className="text-sm">Scenarios define coverage intent. Knowledge-aware generation produces detailed procedures, data and explicit assertions from an approved scenario. Existing legacy scenarios retain their conversion path.</p>}
-      {kind === "testcases" && <div className="flex gap-3">
+      {kind === "testcases" && <div className="catalog-actions">
         <button disabled={busy || sourcePage === 0} onClick={() => void loadSources(sourcePage - 1)}>Previous sources</button>
         <button disabled={busy || !more} onClick={() => void loadSources(sourcePage + 1)}>Next sources</button>
       </div>}

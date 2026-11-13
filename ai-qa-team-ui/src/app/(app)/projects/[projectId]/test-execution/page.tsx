@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 import ApprovedVisualRunPanel from "@/components/visual-lab/ApprovedVisualRunPanel";
+import Link from "next/link";
+import { DesignState, DesignStats } from "@/components/projects/DesignWorkspace";
 import { apiFetch } from "@/utils/api";
 
 type Project = { current_user_role?: string };
@@ -12,20 +14,34 @@ type Environment = { env_id: string; project_id: string; name?: string; credenti
 
 export default function TestExecutionPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  return <ExecutionWorkspace key={projectId} projectId={projectId} />;
+}
+
+function ExecutionWorkspace({ projectId }: { projectId: string }) {
   const { enabled } = useFeatures();
   const available = enabled("test_execution_ui", "test_generation", "approved_visual_run_admission");
   const [data, setData] = useState<{project: Project; cases: Case[]; environments: Environment[]} | null>(null);
   const [error, setError] = useState("");
+  const [revision, setRevision] = useState(0);
   useEffect(() => {
     if (!available) return;
     const controller = new AbortController();
     const id = encodeURIComponent(projectId);
-    Promise.all([`/projects/${id}`, `/testcases/testcases?project_id=${id}`, `/environments?project_id=${id}`].map(path => apiFetch(path, { signal: controller.signal }))).then(([project, cases, environments]) => {
+    Promise.all([`/projects/${id}`, `/testcases/testcases?project_id=${id}`, `/environments?project_id=${id}`].map(path => apiFetch(path, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) }))).then(([project, cases, environments]) => {
       if (!project.ok || !cases.ok || !environments.ok || !Array.isArray(cases.data) || !Array.isArray(environments.data)) throw new Error("LOAD_FAILED");
       if (!controller.signal.aborted) setData({project: project.data, cases: cases.data.filter((item: Case) => item.project_id === projectId), environments: environments.data.filter((item: Environment) => item.project_id === projectId)});
-    }).catch(() => { if (!controller.signal.aborted) setError("Could not load test execution. Reload to try again."); });
+    }).catch(() => { if (!controller.signal.aborted) setError("Could not load test execution. Check your connection and try again."); });
     return () => controller.abort();
-  }, [available, projectId]);
-  if (!available) return <p role="status">Test execution is currently hidden.</p>;
-  return <div className="design-page"><header><h1>Test Execution</h1><p>Review approved specifications before starting an explicitly enabled development run.</p></header>{error ? <p role="alert">{error}</p> : !data ? <p role="status">Loading test execution…</p> : <ApprovedVisualRunPanel key={projectId} projectId={projectId} cases={data.cases} environments={data.environments} canApprove={data.project.current_user_role === "ADMIN"} />}</div>;
+  }, [available, projectId, revision]);
+  return <div className="design-page execution-workspace">
+    <header className="workspace-page-header"><div><p className="workspace-eyebrow">Controlled execution</p><h1>Test Execution</h1><p className="workspace-description">Select a test case, review the exact specification and inspect evidence.</p></div><Link className="workspace-button" href={`/projects/${encodeURIComponent(projectId)}/execution-history`}>Execution history</Link></header>
+    {!available ? <DesignState title="Test execution is currently hidden."><p>Execution requires explicitly enabled development controls. You can continue designing and reviewing test cases.</p><Link className="workspace-button" href={`/projects/${encodeURIComponent(projectId)}/testcases`}>Review test cases</Link></DesignState> : <>
+      <div className="design-guide"><strong>Development controls · controlled sample only</strong><p>Approval, admission and browser start are separate actions. A saved environment does not authorize customer-site execution. Review explicit expectations before starting; use the selected case’s status and evidence below.</p></div>
+      {error ? <DesignState error title={error}><button className="workspace-button" onClick={() => { setData(null); setError(""); setRevision(value => value + 1); }}>Try again</button></DesignState> : !data ? <DesignState title="Loading test execution…" /> : <>
+        <DesignStats items={[{ label: "Available test cases", value: data.cases.length }, { label: "Saved environments", value: data.environments.length }, { label: "Your review access", value: data.project.current_user_role === "ADMIN" ? "Project admin" : "Project member" }]} />
+        {!data.cases.length ? <DesignState title="Add a test case first"><p>Create and review a specification before preparing a development run.</p><Link className="workspace-button" href={`/projects/${encodeURIComponent(projectId)}/testcases`}>Open test cases</Link></DesignState> : <ApprovedVisualRunPanel key={projectId} projectId={projectId} cases={data.cases} environments={data.environments} canApprove={data.project.current_user_role === "ADMIN"} />}
+        {!data.environments.length && <DesignState title="No saved environments"><p>Configure an environment before previewing an admission.</p><Link className="workspace-button" href={`/projects/${encodeURIComponent(projectId)}/environments`}>Open environments</Link></DesignState>}
+      </>}
+    </>}
+  </div>;
 }
