@@ -3,6 +3,9 @@ from pydantic import BaseModel, Field, SecretStr, EmailStr
 
 
 class FeatureFlags(BaseModel):
+    test_design_admin_review: bool = False
+    manual_test_results: bool = False
+    automation_execution_ui: bool = False
     account_invitation_email: bool = False
     test_execution_ui: bool = False
     separate_ai_allowances: bool = False

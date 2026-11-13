@@ -1,3 +1,5 @@
+"use client";
+import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 import styles from "./SubscriptionUsage.module.css";
 
 export interface AccountSubscription {
@@ -30,6 +32,7 @@ function Meter({ label, used, limit, compact = false }: { label: string; used: n
 }
 
 export default function SubscriptionUsage({ subscription }: { subscription: AccountSubscription }) {
+  const { enabled } = useFeatures();
   const meter = (label: string, key: string, compact = false) => <Meter label={label} used={subscription.usage[key] ?? 0} limit={allowance(subscription, key)} compact={compact} />;
   return <section className={styles.section} aria-labelledby="subscription-usage-title">
     <header className={styles.header}>
@@ -64,7 +67,7 @@ export default function SubscriptionUsage({ subscription }: { subscription: Acco
 
     <div className={styles.grid}>
       <section className={styles.card} aria-labelledby="team-capacity-title"><h3 id="team-capacity-title">Team Capacity</h3>{meter("Additional Team Members", "team_members_used")}<p className={styles.note}>The owner is excluded. Other account members and pending invitations count once, regardless of project assignments.</p></section>
-      <section className={styles.card} aria-labelledby="execution-usage-title"><h3 id="execution-usage-title">Execution Usage</h3>{meter("Executions", "executions_used")}<p className={styles.note}>The recorded execution counter is separate from AI credits. Synthetic development runs are not commercially billed.</p></section>
+      {enabled("automation_execution_ui") && <section className={styles.card} aria-labelledby="execution-usage-title"><h3 id="execution-usage-title">Execution Usage</h3>{meter("Executions", "executions_used")}<p className={styles.note}>The recorded execution counter is separate from AI credits. Synthetic development runs are not commercially billed.</p></section>}
     </div>
   </section>;
 }

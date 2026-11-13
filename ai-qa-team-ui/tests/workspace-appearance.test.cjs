@@ -5,7 +5,7 @@ const base = process.env.FEATURE_UI_URL || 'http://localhost:3002';
 let browser;
 before(async () => { browser = await chromium.launch({ channel: process.env.PLAYWRIGHT_CHANNEL || 'msedge', headless: true }); });
 after(async () => { await browser?.close(); });
-const flags = { story_management: false, scenario_generation: false, test_generation: false, recorder: false, native_execution: false, repository_discovery: true, test_registry: true, test_data_generation: true };
+const flags = { automation_execution_ui: true, story_management: false, scenario_generation: false, test_generation: false, recorder: false, native_execution: false, repository_discovery: true, test_registry: true, test_data_generation: true };
 async function fixture(t) {
   const context = await browser.newContext({ colorScheme: 'light' });
   t.after(() => context.close());

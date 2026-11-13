@@ -11,6 +11,7 @@ from app.services.approved_visual_run import digest
 from app.services.knowledge_test_design import KnowledgeTestDesign
 from app.services.product_knowledge import ProductKnowledge
 from app.utils.feature_flags import require_features
+from app.config import settings
 
 MAX_VERSIONS = 50
 MAX_VERSION_BYTES = 120000  # <=6MB content per case document, below Mongo's 16MB document limit.
@@ -23,7 +24,9 @@ class TestDesignReview:
 
     @staticmethod
     def gate():
-        require_features("test_generation", "product_knowledge", "story_analysis")
+        require_features("test_generation")
+        if not settings.features.manual_test_results:
+            require_features("product_knowledge", "story_analysis")
 
     @staticmethod
     def scope(project, testcase):
@@ -41,6 +44,16 @@ class TestDesignReview:
         if not scenario or scenario.get("approved") is not True or not scenario.get("story_id"):
             raise HTTPException(409, "Review and approve the source scenario before test design approval.")
         story = await self.knowledge.story(project, scenario["story_id"])
+        if not (settings.features.product_knowledge and settings.features.story_analysis):
+            if (settings.features.product_knowledge or settings.features.story_analysis
+                    or any(record.get("knowledge_version_id") or record.get("story_analysis_id") for record in (case, scenario))):
+                raise HTTPException(409, "Knowledge-linked cases require both knowledge and story-analysis review. Manual mode cannot bypass that review.")
+            snapshot = {"design_basis": "reviewer-authored-expectations-v1", "story_id": story["story_id"], "scenario_id": scenario["scenario_id"],
+                "story_snapshot": story, "story_digest": digest(story),
+                "scenario_snapshot": {key: scenario.get(key) for key in ("title", "description", "purpose", "role", "coverage_type", "preconditions", "expected_outcome")},
+                "source_digest": digest([case, scenario, story]), "knowledge_version_id": None, "knowledge_digest": None,
+                "story_analysis_id": None, "analysis_digest": None, "source_context_changed": False}
+            return snapshot, story, {"claims": []}
         reviewed = await self.knowledge.generation_context(project, story["story_id"])
         knowledge, analysis = reviewed["knowledge"], reviewed["analysis"]
         changed = any((record.get("knowledge_version_id") and record["knowledge_version_id"] != knowledge["version_id"])
@@ -130,7 +143,7 @@ class TestDesignReview:
             raise HTTPException(409, "Review history changed. Reload before saving again.")
         return version
 
-    async def approve(self, project, testcase, actor, version_id):
+    async def approve(self, project, testcase, actor, version_id, *, actor_name=None, project_role=None):
         self.gate()
         document = await self.document(project, testcase)
         version = next((item for item in (document or {}).get("versions", []) if item["version_id"] == version_id), None)
@@ -141,7 +154,9 @@ class TestDesignReview:
             raise HTTPException(409, "Story, scenario, case or approved knowledge changed. Review a successor draft.")
         if version.get("parent_version_id") != document.get("active_version_id"):
             raise HTTPException(409, "Another version was approved. Review a successor of the current approval.")
-        approved = {**version, "status": "approved", "approved_by": actor, "approved_at": datetime.now(timezone.utc).isoformat()}
+        approved = {**version, "status": "approved", "approved_by": actor, "approved_at": datetime.now(timezone.utc).isoformat(),
+                    "approved_by_display_name": (actor_name or actor)[:240], "approved_by_project_role": project_role,
+                    "approval_policy": "admin_required" if settings.features.test_design_admin_review else "project_member_allowed"}
         versions = [approved if item["version_id"] == version_id else item for item in document["versions"]]
         updated = await self.db["test_design_documents"].find_one_and_update(
             {**self.scope(project, testcase), "revision": document["revision"]},
@@ -156,13 +171,14 @@ class TestDesignReview:
         if not version or version["status"] != "approved":
             raise HTTPException(409, "Select an approved natural-language design version to export.")
         snapshot = {key: version[key] for key in ("schema_version", "version_id", "case", "context", "content_digest", "approved_by", "approved_at", "stale")}
+        snapshot.update({key: version[key] for key in ("approved_by_display_name", "approved_by_project_role", "approval_policy") if key in version})
         snapshot.update({"project_id": project, "testcase_id": testcase, "purpose": "manual-test-design", "executable": False})
         if format == "json":
             content, media = json.dumps(snapshot, ensure_ascii=False, indent=2), "application/json"
         else:
             case = version["case"]
             lines = [case["title"], "NATURAL-LANGUAGE TEST DESIGN — NOT AN AUTOMATION SCRIPT",
-                f'Version: {version_id}', f'Review required for changed sources: {version["stale"]}',
+                f'Version: {version_id}', f'Approved by: {version.get("approved_by_display_name") or version["approved_by"]} (User {version["approved_by"]})', f'Approved at: {version["approved_at"]}', f'Review required for changed sources: {version["stale"]}',
                 f'Purpose: {case["purpose"]}', f'Role: {case.get("role") or "Not specified"}', "", "Preconditions:",
                 *["- " + item for item in case["preconditions"]], "", "Public data:",
                 *[f"- {name}: {value}" for name, value in case["public_data"].items()], "", "Procedure:"]

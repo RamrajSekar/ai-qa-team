@@ -1,6 +1,10 @@
 # Phase 1 — Test Design MVP release gates
 
 Current delivery priority: finish Test Design before advancing the Execution MVP.
+The separate manual-testing slice is described in
+[MANUAL_TEST_EXECUTION](MANUAL_TEST_EXECUTION.md): selected approved case versions,
+Release/Cycle manifests and human-reported results. It does not qualify automated
+execution or close recording-ingestion and real-provider release gates.
 The existing execution implementations, flags, data and histories remain preserved.
 No product readiness claim follows from a synthetic browser or mocked API check.
 
