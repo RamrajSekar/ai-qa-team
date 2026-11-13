@@ -79,3 +79,72 @@ Current configured allowances remain Free=3, Pro=50, Enterprise=None (unlimited)
 Code evidence: ai-qa-team-api/app/app_config/plan_limits.py, app/services/ai/ai_usage_policy.py, app/services/ai/ai_usage_service.py, app/services/product_knowledge.py, app/services/knowledge_test_design.py and app/services/ai/scenario_generator.py. No live AI calls, quota migration or payment change is authorized by this UI review.
 
 Subscription redesign checks: four focused intercepted browser tests passed (plan/status bold weight, AI scope copy, capacity grouping, hidden IDs/sidebar, narrow-screen overflow and unlimited quota semantics). After visual review, a compact three-card workspace row and full-width testcase group were added; the focused layout/bold/mobile scenario passed again. Desktop screenshot was visually inspected. TypeScript and focused ESLint passed for the new component and AccountSettings integration; whitespace check passed. No live model/provider calls, database updates or plan allowance changes were made by this redesign. Suggested 25/500 allowances remain unapproved hypotheses.
+
+
+## Onboarding and allowance clarity — 2026-11-13
+
+AI Setup is an optional fifth step, after the existing optional import; Ready is
+now step six. It reuses AIConfigurationManager from Workspace → AI Configuration
+and its project-authorized backend routes. Managed is preselected for unconfigured
+projects and is already the gateway default. No customer key is required for
+Managed. Existing saved BYOK remains selected; never silently switch it. Testing or
+activating a provider remains an explicit action and can contact the provider.
+Skip/Continue only save onboarding progress, not provider settings. A previous
+in-progress step-five user now sees the optional AI step before Ready; completed
+users are not reopened or migrated. No account/credential data migration is needed.
+
+Provider settings remain project-scoped despite their workspace entry point. The
+creator receives an ADMIN membership. Account OWNER/ADMIN can manage same-account
+assignments centrally under Account → Team; account ownership does not grant
+project content access. Existing last-active-admin guards reject sequential
+removal/demotion; those checks currently count then write, so cross-request races
+still need a dedicated atomicity follow-up. Do not claim distributed guarantees.
+
+Versioned subscription meters are labelled Managed AI Requests and BYOK AI Requests.
+Persisted field names, entitlements, usage and billing do not change. Zero limits
+show Not included; missing limits show Unavailable; null remains Unlimited. Basic,
+Medium and Advanced remain grouped under Test Cases. The free plan explicitly sets
+medium/advanced limits to zero in app/app_config/plan_limits.py; no paid upgrade or
+allowance change is introduced. The historical migration explanation remains in
+AI_ALLOWANCES_PRICING.md, while the normal UI shows one concise explanation.
+
+Verification results for this slice are recorded after running the focused checks;
+intercepted UI and database doubles are not real provider/login verification.
+
+
+Verification (2026-11-13): eight focused intercepted account/onboarding/usage checks
+passed, followed by two provider-onboarding checks passing after fixing dropdown
+assertions and adding the explicit Provider accessible label. The earlier UI attempt
+started before the cold server was ready and was interrupted; subsequent failed
+provider assertions are not counted as passes. Final Managed-default, explicit
+BYOK test/activation, skipped setup and existing-BYOK preservation are covered by
+synthetic intercepted fixtures, not real provider calls. Ten project membership,
+12 account billing and 13 AI configuration tests passed with doubles. Legacy
+membership tests initially inherited account-enabled local configuration and failed;
+the fixture now explicitly disables account flags for its legacy scenario. A new
+Managed-default test initially used an invalid request fixture; it was corrected to
+the actual LLMRequest contract and all 13 configuration checks passed. No application
+role or billing behavior was changed to make these tests pass. TypeScript and the
+initial focused lint passed; final expanded lint and whitespace results follow.
+
+Commands: from ai-qa-team-ui, use the isolated Next server and external Playwright
+setup documented in PERFORMANCE_ASSESSMENT.md, then run
+`node --test --test-concurrency=1 --test-name-pattern="onboarding|zero complexity|missing complexity|split AI|subscription redesign|account details hides" tests/customer-accounts.test.cjs`.
+From ai-qa-team-api run the existing development Python environment with
+`-m unittest discover -s tests -p test_project_membership.py -v`,
+`-m unittest discover -s tests -p test_account_billing.py -v`, and
+`-m unittest discover -s tests -p test_ai_configuration.py -v`.
+No live login, secret, migration, mail, model request or deployment was performed.
+
+
+Final expanded focused lint passed. The shared manager disables activation until
+saved settings load, preventing an initial Managed selection from overwriting a
+saved BYOK configuration. The preservation regression additionally holds that
+configuration response and verifies activation remains disabled during the wait.
+New setup defaults to Managed; completed customers continue to use Workspace → AI
+Configuration and are not automatically sent through onboarding again.
+
+Final current-source validation: the two provider-onboarding checks passed again
+with the held-response safeguard; expanded lint and TypeScript passed afterward.
+`git diff --check` passed. The isolated UI test server was stopped; normal user
+API/UI processes were preserved. Changes remain uncommitted and undeployed.

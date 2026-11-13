@@ -180,6 +180,13 @@ class AIConfigurationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.db["ai_configurations"].documents[0]["provider_id"], "openai")
         self.assertEqual(len(self.db["encrypted_secrets"].documents), 1)
 
+    async def test_unconfigured_project_resolves_managed_without_persisting_or_testing(self):
+        with patch("app.services.ai.llm_gateway.db", self.db), patch("app.services.ai.llm_gateway.provider_registry.resolve", return_value=Provider()) as resolve:
+            context = await LLMGateway().resolve("PRJ1", LLMRequest(prompt="synthetic", system_prompt="system"))
+        self.assertEqual(context.mode, "MANAGED")
+        self.assertEqual(resolve.call_args.args[:2], ("openai", "managed-test-key"))
+        self.assertEqual(self.db["ai_configurations"].documents, [])
+
     async def test_successful_switch_replaces_secret_and_gateway_resolves_project_provider(self):
         with patch.object(ai_configuration_service.provider_registry, "resolve", return_value=Provider()):
             first = AIConfigurationInput(provider_id="openai", mode="BYOK", model="gpt-4o-mini", api_key="first-key")

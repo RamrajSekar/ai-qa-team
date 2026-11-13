@@ -467,3 +467,11 @@ manual results and selected-case Test Execution with Release/Cycle notes. See
 verification. Automation remains hidden/default-off. Next bounded task is reviewed
 bug drafting/linking and its platform prompt; this task does not implement it.
 Knowledge/story-analysis visibility and ingestion remain subsequent priorities.
+
+
+### Account setup refinement (2026-11-13)
+
+Optional reusable AI Setup in onboarding, Managed default, request labels and
+zero/missing allowance presentation: see ACCOUNT_UI_REFINEMENTS.md. AI allowance
+qualification and mode-switch commercial billing remain tracked, deferred work in
+AI_ALLOWANCES_PRICING.md. Preserve all counters and current paid-entitlement limits.

@@ -62,7 +62,7 @@ export default function DashboardPage() {
         {enabled("story_management") && <KPI title="Stories" used={usage.stories_used} max={limits.stories_limit} />}
         {enabled("scenario_generation") && <KPI title="Scenarios" used={usage.scenarios_used} max={limits.scenarios_limit} />}
         {enabled("automation_execution_ui") && <KPI title="Executions" used={usage.executions_used} max={limits.executions_limit} />}
-        {aiEnabled && (user.subscription?.ai_allowance_version === 1 ? <><KPI title="Included AI Credits" used={usage.managed_ai_credits_used} max={limits.managed_ai_credits_limit} /><KPI title="AI Request Allowance" used={usage.byok_ai_requests_used} max={limits.byok_ai_requests_limit} /></> : <KPI title="AI Credits" used={usage.ai_gen_used} max={limits.ai_gen_limit} />)}
+        {aiEnabled && (user.subscription?.ai_allowance_version === 1 ? <><KPI title="Managed AI Requests" used={usage.managed_ai_credits_used} max={limits.managed_ai_credits_limit} /><KPI title="BYOK AI Requests" used={usage.byok_ai_requests_used} max={limits.byok_ai_requests_limit} /></> : <KPI title="AI Credits" used={usage.ai_gen_used} max={limits.ai_gen_limit} />)}
         <KPI title="Team Members" used={usage.team_members_used} max={limits.team_members_limit} />
       </div>
 

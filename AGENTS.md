@@ -222,3 +222,11 @@ Account Team/shared billing amendment (2026-11-12): see `docs/mvp/ACCOUNT_TEAM_B
 
 
 Account UI refinement: see `docs/mvp/ACCOUNT_UI_REFINEMENTS.md`. Keep `test_execution_ui` and `account_invitation_email` default off. Manual invitation links remain active until SMTP is configured; never blind-retry ambiguous mail submission or expose email-mode invitation tokens. Free account member allowance is two additional identities, not per-project assignments.
+
+
+AI setup refinement (2026-11-13): optional onboarding AI Setup reuses workspace
+project-authorized configuration. Managed is the default only when no saved provider
+exists; preserve existing BYOK and wait for saved settings before enabling activation.
+Skip never saves provider changes or tests a connection. See ACCOUNT_UI_REFINEMENTS.md;
+allowance qualification and commercial mode-switch billing are tracked, deferred work
+in AI_ALLOWANCES_PRICING.md. UI request labels do not rename/reset persisted counters.
