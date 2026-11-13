@@ -1,5 +1,9 @@
 # Incremental implementation plan
 
+Current priority (2026-11-13): qualify navigation performance before further product
+features. See [PERFORMANCE_ASSESSMENT](PERFORMANCE_ASSESSMENT.md) for shared-client
+fixes, first-request API latency, startup diagnostics and remaining signed-in checks.
+
 Planning baseline: 2026-10-31, `dev` at `2479de4017cd8e29516daa1ecf62d5763bc2b6b2`. Target: [MVP_SPEC](MVP_SPEC.md). Evidence/feature treatment: [REPO_GAP_ANALYSIS](REPO_GAP_ANALYSIS.md). Constraints and experiments: [DECISIONS](DECISIONS.md). The original assessment was documentation-only; subsequent explicit tasks authorized integrated M1A and stabilization. [Current M1A evidence](M1A_DEVELOPMENT_SLICE.md#stabilization-and-real-development-verification-2026-10-31) records real integration with cached CfT but failed fresh-install startup. **Current accepted task direction (2026-11-03): record and then implement a bounded Linux-only M1B experiment alongside open Windows and Linux five-way reliability work. Retain the five-slot target/default and one-container-per-check topology. Latest independent Linux evidence is 4/5 workflow completions after 5/5 preparations; the successful parallel two-check UI run is user-reported. See DECISIONS A14 and the current task below.** Full M1 remains incomplete; historical estimates are not a delivery commitment.
 
 ## Next delivery sequence — one approved test and one environment

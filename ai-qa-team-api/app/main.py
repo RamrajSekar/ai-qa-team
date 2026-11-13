@@ -7,6 +7,7 @@ from app.db.connection import db
 from app.utils.redis_client import check_redis_connection
 from app.routes import story_routes,auth_routes, subscription_routes, test_execution_routes,scenario_routes, testcase_routes, project_routes, recorder_routes, environment_routes,health_routes, user_routes, integration_routes, repository_routes, project_team_routes, ai_configuration_routes, platform_admin_routes, bug_routes
 from app.utils.logger import logger
+from app.utils.startup_timing import startup_timing
 from app.middleware.error_handler import jwt_exception_handler
 from app.config import settings
 from app.db.init_indexes import init_indexes
@@ -25,15 +26,18 @@ async def lifespan(app: FastAPI):
     # --- Startup ---
     try:
         print("🚀 App starting – creating MongoDB indexes")
-        await init_indexes()
-        collections = await db.list_collection_names()
+        with startup_timing("mongo_indexes"):
+            await init_indexes()
+        with startup_timing("mongo_probe"):
+            collections = await db.list_collection_names()
         logger.info(f"✅ MongoDB connected. Collections: {collections}")
     except Exception as e:
         logger.info(f"❌ MongoDB connection failed: {e}")
         raise e
 
     try:
-        check_redis_connection()
+        with startup_timing("redis_probe"):
+            check_redis_connection()
     except Exception as e:
         logger.info(f"⚠️ Redis connection skipped or failed: {e}")
 
