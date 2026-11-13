@@ -175,4 +175,3 @@ qualification. Execution MVP is held. No deployment was performed for this local
 ## Short action labels (2026-11-13)
 
 Scenario/testcase catalog actions and project overview actions now display Review, Edit and Delete. Context remains in accessible labels and dialog titles; permissions and behavior are unchanged. Saved-draft review buttons use the same concise label. Ten focused catalog/approval UI tests passed with intercepted fixtures; TypeScript, focused lint and whitespace checks passed. These checks do not establish real-login integration.
-
