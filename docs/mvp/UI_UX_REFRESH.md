@@ -171,3 +171,8 @@ Real development login/provider tests remain manual. Private recording storage,
 upload/transcription and the remaining Test Design release gates are still open.
 Next prompt phase is a bounded synthetic draft preview, followed by real integration
 qualification. Execution MVP is held. No deployment was performed for this local refresh.
+
+## Short action labels (2026-11-13)
+
+Scenario/testcase catalog actions and project overview actions now display Review, Edit and Delete. Context remains in accessible labels and dialog titles; permissions and behavior are unchanged. Saved-draft review buttons use the same concise label. Ten focused catalog/approval UI tests passed with intercepted fixtures; TypeScript, focused lint and whitespace checks passed. These checks do not establish real-login integration.
+

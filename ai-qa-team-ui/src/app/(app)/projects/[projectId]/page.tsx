@@ -197,12 +197,12 @@ export default function ProjectPage() {
           <p className="workspace-metadata">{project.project_id} · Created {new Date(project.created_at).toLocaleDateString()}</p>
         </div>
         {canManage && <div className="workspace-actions">
-          <button onClick={() => setOpenEditModal(true)} className="workspace-button">Edit Project</button>
+          <button onClick={() => setOpenEditModal(true)} className="workspace-button" aria-label="Edit Project">Edit</button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild><button className="workspace-button" aria-label="Project actions"><MoreHorizontal size={18} /></button></DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {agentsEnabled && <DropdownMenuItem onSelect={() => setOpenAgentModal(true)}>Agent Settings</DropdownMenuItem>}
-              <DropdownMenuItem variant="destructive" onSelect={() => setOpenDeleteModal(true)}>Delete project</DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onSelect={() => setOpenDeleteModal(true)} aria-label="Delete project">Delete</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>}

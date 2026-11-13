@@ -160,7 +160,7 @@ function ReviewForm({ testcase, projectId, canApprove }: { testcase: CatalogCase
       <h3 className="font-semibold">Review &amp; approve saved draft</h3>
       {!candidate ? <p>{state?.active_version_id ? "This test case already has an approved version. Save a successor draft only when changes are needed." : "Save a draft first. The approval action becomes available after an authorized reviewer reviews its saved content."}</p> : <>
         <p>{candidate.case.title}{candidate.stale ? " · source changed; save a reviewed successor draft" : " · saved draft"}</p>
-        {dirty ? <button className="workspace-button" disabled={busy} onClick={() => copy(candidate, true)}>Review saved draft</button> : <>
+        {dirty ? <button className="workspace-button" disabled={busy} onClick={() => copy(candidate, true)} aria-label="Review saved draft">Review</button> : <>
           <ol className="list-decimal pl-6">{candidate.case.procedure.map((step, index) => <li key={index}><p>{step.instruction}</p><p>Expected: {step.expected}</p></li>)}</ol>
           <p>Additional outcomes: {candidate.case.assertions.join("; ") || "None"}</p><p>Acceptance-criteria links: {candidate.case.acceptance_criteria_refs.join("; ") || "None selected"}</p>
           <details><summary>All saved fields</summary><pre className="whitespace-pre-wrap text-sm">{JSON.stringify(candidate.case, null, 2)}</pre></details>
@@ -175,7 +175,7 @@ function ReviewForm({ testcase, projectId, canApprove }: { testcase: CatalogCase
       <pre className="whitespace-pre-wrap text-sm">{JSON.stringify(version.case, null, 2)}</pre><p className="workspace-metadata">Version {version.version_id} · Digest {version.content_digest}</p>
       {version.approved_by && <p>Approved by {version.approved_by_display_name || version.approved_by} · User {version.approved_by}{version.approved_by_project_role ? ` · Project role ${version.approved_by_project_role}` : ""}{version.approved_at ? ` · ${new Date(version.approved_at).toLocaleString()}` : ""}{version.approval_policy ? ` · Policy: ${version.approval_policy.replaceAll("_", " ")}` : ""}</p>}
       <button className="workspace-button" disabled={busy} onClick={() => copy(version)}>Copy into successor editor</button>
-      {version.status === "draft" && <button className="workspace-button" disabled={busy} onClick={() => copy(version, true)}>Review this saved draft</button>}
+      {version.status === "draft" && <button className="workspace-button" disabled={busy} onClick={() => copy(version, true)} aria-label="Review this saved draft">Review</button>}
       {version.status === "approved" && <><button className="workspace-button" disabled={busy} onClick={() => void action(() => download(version, "text"))}>Export approved text</button><button className="workspace-button" disabled={busy} onClick={() => void action(() => download(version, "json"))}>Export approved JSON</button></>}
     </details>)}</details>}
   </div>;
