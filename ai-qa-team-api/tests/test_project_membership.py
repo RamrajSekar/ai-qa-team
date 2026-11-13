@@ -101,6 +101,7 @@ class DB(dict):
 
 class MembershipTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
+        from app.config import settings
         self.db = DB()
         self.owner = {"_id": "U1", "email": "owner@example.com", "name": "Owner"}
         self.tester = {"_id": "U2", "email": "tester@example.com", "name": "Tester"}
@@ -111,6 +112,7 @@ class MembershipTests(unittest.IsolatedAsyncioTestCase):
         ])
         self.db["projects"].documents.append({"_id": "P", "project_id": "PRJ1", "name": "Project", "description": None, "created_by": self.owner["email"], "created_at": "2026-01-01", "agent_identities": {}})
         self.patches = [
+            patch.object(settings, "features", settings.features.model_copy(update={"customer_accounts": False, "account_subscriptions": False})),
             patch.object(project_team_service, "db", self.db), patch.object(project_authorization, "db", self.db),
             patch.object(project_routes, "db", self.db), patch.object(repository_routes, "db", self.db),
             patch.object(subscription_services, "db", self.db),

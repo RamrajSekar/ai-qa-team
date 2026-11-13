@@ -92,3 +92,16 @@ regression results remain historical unless explicitly rerun.
 Before commercial release, qualify actual provider failures/usage, dollar budgets,
 paid entitlements and enterprise credential controls. Private recording storage and
 the execution release gates remain unchanged.
+
+
+## Tracked follow-ups — deferred by user on 2026-11-13
+
+- Qualify Managed and BYOK metering end to end: admission/reservation, concurrency,
+  duplicate submission, invalid credentials, exhaustion, provider failure and
+  ambiguous timeouts. Define whether connection checks consume an allowance.
+- Define commercial mode/plan switching: pin in-flight mode, preserve both balances
+  and historical usage, require explicit paid entitlement/price confirmation, and
+  decide effective dates/proration. Do not implement charging or reset allowances
+  as part of the onboarding UI work. Checkout/prorated billing is not delivered.
+- UI names are now Managed AI Requests and BYOK AI Requests; historical credit field
+  names and earlier migration policy remain unchanged.

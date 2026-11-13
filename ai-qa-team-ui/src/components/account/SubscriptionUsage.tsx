@@ -25,7 +25,7 @@ function Meter({ label, used, limit, compact = false }: { label: string; used: n
   const bounded = typeof limit === "number" && limit > 0;
   const note = limit === null ? "Unlimited allowance" : limit === undefined ? "Allowance not configured" : used > limit ? "Over limit" : limit === 0 ? "Not included in this plan" : used === limit ? "At limit" : `${limit - used} remaining`;
   return <div className={compact ? styles.compactMeter : styles.meter}>
-    <dl className={styles.meterLine}><dt>{label}</dt><dd>{used} / {limit === null ? "Unlimited" : limit ?? "—"}</dd></dl>
+    <dl className={styles.meterLine}><dt>{label}</dt><dd>{limit === 0 ? "Not included" : limit === undefined ? "Unavailable" : `${used} / ${limit === null ? "Unlimited" : limit}`}</dd></dl>
     {bounded && <progress className={styles.progress} aria-label={`${label} usage`} value={Math.min(Math.max(used, 0), limit)} max={limit} />}
     <p className={used > (limit ?? Infinity) ? styles.warning : styles.note}>{note}</p>
   </div>;
@@ -43,16 +43,13 @@ export default function SubscriptionUsage({ subscription }: { subscription: Acco
     {subscription.ai_allowance_version === 1 ? <section className={styles.group} aria-labelledby="ai-credit-title">
       <h3 id="ai-credit-title">AI Usage</h3><p className={styles.description}>Separate monthly allowances shared across your account. Switching AI mode does not reset either balance.</p>
       <div className={styles.grid}>
-        <div className={styles.ai}>{meter("Included AI Credits", "managed_ai_credits_used")}<p className={styles.note}>Managed AI uses platform credentials. Model usage is included within this allowance.</p></div>
-        <div className={styles.ai}>{meter("AI Request Allowance", "byok_ai_requests_used")}<p className={styles.note}>BYOK uses your provider credentials. You pay the provider separately; this allowance limits platform requests.</p></div>
+        <div className={styles.ai}>{meter("Managed AI Requests", "managed_ai_credits_used")}</div>
+        <div className={styles.ai}>{meter("BYOK AI Requests", "byok_ai_requests_used")}</div>
       </div>
-      {(subscription.ai_allowance_migration?.unknown_units ?? 0) > 0 && <p className={styles.note}>{subscription.ai_allowance_migration?.unknown_units} earlier AI units could not be attributed to a mode and were conservatively counted against both allowances during migration.</p>}
-      <p className={styles.note}>Credits count requests, not tokens or a fixed provider cost. Token usage is tracked separately.</p>
-      <p className={styles.note}>Knowledge extraction, story analysis, scenario design, AI test case design and optional bug analysis use the resolved mode’s allowance. A request can generate multiple items. Some timed-out attempts still count.</p>
-      <p className={styles.note}>AI used during browser execution is not included in these counters yet.</p>
+      <p className={styles.note}>Each AI request uses one unit from its mode’s allowance and may generate multiple items. Managed uses platform credentials; BYOK uses your key and provider billing. Browser-execution AI is not included yet.</p>
     </section> : <section className={styles.ai} aria-labelledby="ai-credit-title">
-      <div><h3 id="ai-credit-title">AI Credits</h3><p className={styles.description}>Monthly allowance shared by product knowledge extraction, story analysis, scenario design and AI test case design. Optional bug analysis also uses this allowance.</p></div>
-      {meter("AI Credits", "ai_gen_used")}
+      <div><h3 id="ai-credit-title">AI Requests</h3><p className={styles.description}>Monthly allowance shared by product knowledge extraction, story analysis, scenario design and AI test case design. Optional bug analysis also uses this allowance.</p></div>
+      {meter("AI Requests", "ai_gen_used")}
       <p className={styles.note}>Usually one credit per supported AI request. One request can create multiple scenarios or test cases. Some timed-out provider attempts can still consume credits.</p>
       <p className={styles.note}>AI used during browser execution is not included in this counter yet.</p>
     </section>}

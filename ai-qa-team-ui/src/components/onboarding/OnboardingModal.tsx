@@ -7,11 +7,12 @@ import StepEnvironment from "./steps/StepEnvironment";
 import StepTestImport from "./steps/StepTestImport";
 import StepFinish from "./steps/StepFinish";
 import StepTeam from "./steps/StepTeam";
+import StepAI from "./steps/StepAI";
 import { WorkspaceDialog } from "@/components/ui/workspace-dialog";
 import { User } from "@/types/user";
 import { OnboardingStep } from "../onboarding/types";
 
-const STEP_LABELS = ["Project", "Application", "Team", "Optional import", "Ready"];
+const STEP_LABELS = ["Project", "Application", "Team", "Optional import", "AI Setup", "Ready"];
 
 interface OnboardingModalProps {
   user: User;
@@ -28,10 +29,10 @@ export default function OnboardingModal({
 }: OnboardingModalProps) {
   const { enabled } = useFeatures();
   const labels = enabled("customer_accounts") ? ["Account & project", ...STEP_LABELS.slice(1)] : STEP_LABELS;
-  const maxStep = 5;
+  const maxStep = 6;
 
   const [step, setStep] = useState<OnboardingStep>(
-    Math.max(1, Math.min(5, user?.onboarding?.current_step || 1)) as OnboardingStep
+    Math.max(1, Math.min(6, user?.onboarding?.current_step || 1)) as OnboardingStep
   );
 
   const next = () =>
@@ -73,6 +74,10 @@ export default function OnboardingModal({
     ),
 
     5: (
+      <StepAI projectId={projectId} next={next} back={back} />
+    ),
+
+    6: (
       <StepFinish
         user={user}
         onProjectsReload={onProjectsReload}

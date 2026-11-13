@@ -358,7 +358,7 @@ html[data-workspace-theme] [data-slot="dialog-content"].onboarding-dialog { widt
 .onboarding-header .workspace-eyebrow { margin: 0 0 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.1px; color: var(--ws-accent); }
 .onboarding-header h1 { font-size: 25px; margin: 0; }
 .onboarding-header > p:last-child { color: var(--ws-muted); font-size: 13px; margin: 10px 0 0; max-width: 580px; }
-.onboarding-stepper { list-style: none; grid-template-columns: repeat(5,minmax(0,1fr)); margin: 0; padding: 22px 32px 0; gap: 12px; }
+.onboarding-stepper { list-style: none; grid-template-columns: repeat(6,minmax(0,1fr)); margin: 0; padding: 22px 32px 0; gap: 12px; }
 .onboarding-stepper li { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding-bottom: 12px; border-bottom: 2px solid var(--ws-border); color: var(--ws-muted); }
 .onboarding-stepper li.is-active { border-color: var(--ws-accent); color: var(--ws-text); }
 .onboarding-stepper li.is-complete { border-color: var(--ws-accent); color: var(--ws-accent); }
