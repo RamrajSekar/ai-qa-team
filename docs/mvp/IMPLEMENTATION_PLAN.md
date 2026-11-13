@@ -475,3 +475,11 @@ Optional reusable AI Setup in onboarding, Managed default, request labels and
 zero/missing allowance presentation: see ACCOUNT_UI_REFINEMENTS.md. AI allowance
 qualification and mode-switch commercial billing remain tracked, deferred work in
 AI_ALLOWANCES_PRICING.md. Preserve all counters and current paid-entitlement limits.
+
+
+### Failed-attempt bug slice (2026-11-13)
+
+Plan items 2, 4–6 are implemented locally; see ATTEMPT_BUGS.md for contracts, flags,
+checks and real-integration limits. Items 7–10 remain unimplemented in this slice.
+Before release, verify real-login/Mongo/approved AI usage and define metadata retention,
+delete behavior and query indexes. Preserve all execution reliability and ingestion gates.

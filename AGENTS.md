@@ -230,3 +230,11 @@ exists; preserve existing BYOK and wait for saved settings before enabling activ
 Skip never saves provider changes or tests a connection. See ACCOUNT_UI_REFINEMENTS.md;
 allowance qualification and commercial mode-switch billing are tracked, deferred work
 in AI_ALLOWANCES_PRICING.md. UI request labels do not rename/reset persisted counters.
+
+
+Failed-attempt bug refinement (2026-11-13): see docs/mvp/ATTEMPT_BUGS.md. Result
+entry belongs in Test Execution; Test Cases retains design approval. Failed attempts
+can hold reviewed local drafts or HTTPS links without fetching/publishing. Only an
+explicit metered Draft with AI uses platform-governed BUG_REPORT_DRAFT_V1. Preserve
+attempt/version links and original supplied facts; later passes never erase bugs.
+Automation authoring stays gated in Test Execution; navigation never starts a run.
