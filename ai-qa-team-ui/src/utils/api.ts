@@ -7,7 +7,33 @@ interface APIOptions extends RequestInit {
 interface ApiResponse {
   ok: boolean;
   status: number;
+  // Existing callers consume heterogeneous legacy API payloads.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any;
+}
+
+// One refresh per API origin while a page's parallel reads restore a session.
+// This is coordination only: no response or account data is cached.
+const refreshes = new Map<string, Promise<boolean>>();
+function refreshSession(base: string): Promise<boolean> {
+  let pending = refreshes.get(base);
+  if (!pending) {
+    pending = fetch(`${base}/auth/refresh`, {
+      method: "POST", credentials: "include", signal: AbortSignal.timeout(10000),
+    }).then(response => response.ok).catch(() => false).finally(() => refreshes.delete(base));
+    refreshes.set(base, pending);
+  }
+  return pending;
+}
+
+function waitForRefresh(pending: Promise<boolean>, signal?: AbortSignal | null): Promise<boolean> {
+  if (!signal) return pending;
+  signal.throwIfAborted();
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(signal.reason);
+    signal.addEventListener("abort", abort, { once: true });
+    pending.then(resolve, reject).finally(() => signal.removeEventListener("abort", abort));
+  });
 }
 
 /* -----------------------------------------------------
@@ -22,40 +48,34 @@ interface ApiResponse {
 export async function apiFetch(url: string, options: APIOptions = {}): Promise<ApiResponse> {
   const path = url.startsWith("http") ? url : `${API_URL}${url}`;
 
-  const opts: RequestInit = {
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-    ...options,
-  };
+  const { retry, ...requestOptions } = options;
+  const headers = new Headers(options.headers);
+  // A JSON header on bodyless GETs adds cross-origin preflights. Preserve
+  // explicit caller headers and let the browser supply multipart boundaries.
+  if (typeof options.body === "string" && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  const opts: RequestInit = { credentials: "include", ...requestOptions, headers };
 
-  let res = await fetch(path, opts);
+  const res = await fetch(path, opts);
 
   /* ----------------------------
      AUTO REFRESH TOKEN FLOW
   ---------------------------- */
-  if (res.status === 401 && !options.retry) {
-    console.log("🔄 Access token expired → refreshing...");
-
-    const refresh = await fetch(`${API_URL}/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-    });
-
-    if (refresh.ok) {
-      console.log("🔐 Refresh success → retrying original request...");
+  const authAction = /\/auth\/(login|signup|refresh|logout)(?:[?#]|$)/.test(path);
+  if (res.status === 401 && !retry && !authAction) {
+    options.signal?.throwIfAborted();
+    const refreshed = await waitForRefresh(refreshSession(API_URL), options.signal);
+    options.signal?.throwIfAborted();
+    if (refreshed) {
       return apiFetch(path, { ...options, retry: true });
     }
-
-    console.log("❌ Refresh failed, user must login.");
   }
 
   /* ----------------------------
      SAFE JSON PARSING
   ---------------------------- */
-  let raw: any = null;
+  let raw: unknown = null;
   try {
     raw = await res.json();
   } catch {

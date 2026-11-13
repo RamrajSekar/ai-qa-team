@@ -27,6 +27,9 @@ Updated 2026-10-31. Current target: a human-supervised, recording-trained visual
 
 ## Sources of truth and evidence
 
+- `docs/mvp/PERFORMANCE_ASSESSMENT.md`: navigation investigation, current local fixes,
+  measured production first/warm request limits and remaining qualification work.
+
 - `docs/mvp/MVP_SPEC.md`: target scope and acceptance criteria.
 - `docs/mvp/REPO_GAP_ANALYSIS.md`: implementation assessment, evidence and verification limits.
 - `docs/mvp/IMPLEMENTATION_PLAN.md`: milestones, migration and effort estimates.

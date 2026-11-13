@@ -6,7 +6,7 @@ const {mkdirSync}=require('node:fs');
 const base=process.env.FEATURE_UI_URL||'http://127.0.0.1:3123';let browser;
 before(async()=>{browser=await chromium.launch({headless:true,channel:'msedge'});});
 after(async()=>browser?.close());
-async function fixture(t,{execution=false}={}){
+async function fixture(t,{execution=false,manual=false}={}){
  const context=await browser.newContext();t.after(()=>context.close());
  await context.addCookies([{name:'access_token',value:'synthetic-only',url:base}]);
  const story={id:'ST1',story_id:'ST1',project_id:'P1',title:'Save an order',acceptance_criteria:'Order saved appears',created_at:'2026-11-12'};
@@ -18,7 +18,7 @@ async function fixture(t,{execution=false}={}){
   const request=route.request(),url=new URL(request.url());calls.push({path:url.pathname,method:request.method()});
   const headers={'access-control-allow-origin':base,'access-control-allow-credentials':'true','access-control-allow-headers':'content-type','access-control-allow-methods':'GET,POST,PATCH,DELETE,OPTIONS'};
   if(request.method()==='OPTIONS')return route.fulfill({status:204,headers});let json=[];
-  if(url.pathname==='/features')json={automation_execution_ui:true,story_management:true,scenario_generation:true,test_generation:true,test_execution_ui:execution,approved_visual_run_admission:true};
+  if(url.pathname==='/features')json={manual_test_results:manual,automation_execution_ui:true,story_management:true,scenario_generation:true,test_generation:true,test_execution_ui:execution,approved_visual_run_admission:true};
   if(url.pathname==='/auth/me')json={user:{email:'fixture@example.test',name:'Fixture',onboarding:{onboarding_status:'completed'},subscription:{usage:{},limits:{}}}};
   if(url.pathname==='/projects')json=[project];if(url.pathname==='/projects/P1')json=project;
   if(url.pathname==='/stories')json=[story,{...story,story_id:'ST2',title:'Cancel an order',acceptance_criteria:''}];
@@ -72,4 +72,29 @@ test('execution remains gated and enabled view does not start a browser on navig
 
 test('story detail preserves acceptance criteria and coverage actions on mobile',async t=>{
  const{page}=await fixture(t);await page.goto(base+'/projects/P1/stories/ST1');await page.getByRole('heading',{name:'Save an order',exact:true}).waitFor();await page.getByRole('heading',{name:'Acceptance criteria',exact:true}).waitFor();await page.getByRole('button',{name:'Generate scenarios with AI'}).waitFor();await capture(page,'story-detail');await page.setViewportSize({width:390,height:844});await capture(page,'story-detail-mobile');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),JSON.stringify(await page.evaluate(()=>[...document.querySelectorAll('main *')].filter(el=>el.getBoundingClientRect().right>innerWidth+1).slice(0,8).map(el=>({tag:el.tagName,class:el.className})))));
+});
+
+test('workspace navigation preserves shared session, project list and flags',async t=>{
+ const {page,calls}=await fixture(t);
+ await page.goto(base+'/projects/P1/stories');
+ await page.getByRole('link',{name:'Save an order',exact:true}).waitFor();
+ for(const name of ['Scenarios','Test Cases','Environments','Overview','Stories']) {
+  await page.locator('aside').getByRole('link',{name,exact:true}).click();
+  await page.waitForURL(url=>url.pathname==='/projects/P1'+({Scenarios:'/scenarios','Test Cases':'/testcases',Environments:'/environments',Overview:'',Stories:'/stories'}[name]));
+  await page.locator('main h1').first().waitFor();
+ }
+ assert.equal(calls.filter(call=>call.path==='/auth/me').length,1);
+ assert.equal(calls.filter(call=>call.path==='/projects').length,1);
+ assert.equal(calls.filter(call=>call.path==='/features').length,1);
+});
+test('test specifications render while optional result metadata is still pending',async t=>{
+ const {page}=await fixture(t,{manual:true});
+ let release;
+ const held=new Promise(resolve=>{release=resolve;});
+ await page.route('**/projects/P1/test-results?*',async route=>{await held;await route.fulfill({headers:{'access-control-allow-origin':base,'access-control-allow-credentials':'true'},json:{}});});
+ try {
+  await page.goto(base+'/projects/P1/testcases');
+  await page.getByRole('button',{name:'Save order with required data',exact:true}).waitFor({timeout:5000});
+  assert.equal(await page.getByRole('button',{name:'Review test case',exact:true}).count(),1);
+ } finally { release(); }
 });

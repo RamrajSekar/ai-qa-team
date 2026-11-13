@@ -91,7 +91,9 @@ export default function ProjectTestCatalog({ kind }: { kind: "scenarios" | "test
       }
       if (signal?.aborted) return;
       if (kind === "scenarios") setScenarios(response.data);
-      else { setCases(response.data); await loadSummaries(response.data, signal); }
+      // Render specifications as soon as they arrive. Result/approval metadata
+      // has its own unavailable state and must not hold the entire table open.
+      else { setCases(response.data); void loadSummaries(response.data, signal); }
     } catch (failure) {
       if (!signal?.aborted) setError(failure instanceof Error ? failure.message : "Could not load records.");
     } finally {
@@ -122,7 +124,7 @@ export default function ProjectTestCatalog({ kind }: { kind: "scenarios" | "test
   const visibleScenarios = scenarios.filter(item => `${item.scenario_id} ${item.title} ${item.story_id}`.toLowerCase().includes(query.toLowerCase()) && (statusFilter === "all" || (statusFilter === "approved" ? item.approved : !item.approved)));
   const designStatus = (item: CatalogCase) => {
     const summary = summaries?.[item.testcase_id];
-    if (manualEnabled) return summary ? summary.design_status || (summary.approved_version_id ? "approved" : "draft") : "unavailable";
+    if (manualEnabled) return summary ? summary.design_status || (summary.approved_version_id ? "approved" : "draft") : (summaryError ? "unavailable" : "loading");
     return item.status?.toLowerCase() || "draft";
   };
   const visibleCases = cases.filter(item => `${item.testcase_id} ${item.title} ${item.scenario_id}`.toLowerCase().includes(query.toLowerCase()) && (statusFilter === "all" || designStatus(item) === statusFilter));
@@ -162,7 +164,7 @@ export default function ProjectTestCatalog({ kind }: { kind: "scenarios" | "test
             <td><span className="design-record-id">{testcase.testcase_id} · {testcase.complexity || "Unspecified complexity"}</span><button className="design-title-link" onClick={() => setReviewCase(testcase)}>{testcase.title}</button>{testcase.description && <p className="design-excerpt">{testcase.description}</p>}</td>
             <td><Link className="design-back-link" href={`${projectPath}/scenarios`}>Scenario {testcase.scenario_id}</Link></td>
             <td><DesignBadge>{designStatusLabel(designStatus(testcase))}</DesignBadge></td>
-            {manualEnabled && <td>{summaries ? <DesignBadge>{summaries[testcase.testcase_id]?.manual?.verdict.replaceAll("_", " ") || "Not run"}</DesignBadge> : "Unavailable"}{summaries?.[testcase.testcase_id]?.manual?.execution_id && <Link className="design-result-link" title={summaries[testcase.testcase_id].manual!.execution_id!} aria-label={`Open test execution ${summaries[testcase.testcase_id].manual!.execution_id}`} href={`${projectPath}/test-execution?execution=${encodeURIComponent(summaries[testcase.testcase_id].manual!.execution_id!)}`}>Execution {summaries[testcase.testcase_id].manual!.execution_id!.slice(0, 8)}</Link>}</td>}
+            {manualEnabled && <td>{summaries ? <DesignBadge>{summaries[testcase.testcase_id]?.manual?.verdict.replaceAll("_", " ") || "Not run"}</DesignBadge> : (summaryError ? "Unavailable" : "Loading…")}{summaries?.[testcase.testcase_id]?.manual?.execution_id && <Link className="design-result-link" title={summaries[testcase.testcase_id].manual!.execution_id!} aria-label={`Open test execution ${summaries[testcase.testcase_id].manual!.execution_id}`} href={`${projectPath}/test-execution?execution=${encodeURIComponent(summaries[testcase.testcase_id].manual!.execution_id!)}`}>Execution {summaries[testcase.testcase_id].manual!.execution_id!.slice(0, 8)}</Link>}</td>}
             {automationEnabled && <td>{summaries?.[testcase.testcase_id]?.automated?.verdict.replaceAll("_", " ") || "Not recorded in this result system"}</td>}
             <td><div className="design-row-actions"><button className="workspace-button" onClick={() => setReviewCase(testcase)} aria-label="Review test case">Review</button>
               {manualEnabled && <button className="workspace-button" onClick={() => setResultCase(testcase)}>Record manual result</button>}
