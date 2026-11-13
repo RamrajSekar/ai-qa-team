@@ -3,6 +3,9 @@ from pydantic import BaseModel, Field, SecretStr, EmailStr
 
 
 class FeatureFlags(BaseModel):
+    knowledge_uploads: bool = False
+    knowledge_media_processing: bool = False
+    knowledge_image_interpretation: bool = False
     test_design_admin_review: bool = False
     manual_test_results: bool = False
     automation_execution_ui: bool = False
@@ -62,7 +65,28 @@ class PricingSettings(BaseModel):
     pilot_fixed_usd: int = Field(default=1000, ge=0)
 
 
+class KnowledgeIngestionSettings(BaseModel):
+    storage_backend: str = "unconfigured"
+    private_bucket: str = ""
+    local_private_root: str = ""
+    allow_local_development: bool = False
+    infrastructure_verified: bool = False
+    worker_python: str = ""
+    decoder_engine: str = ""
+    decoder_image: str = ""
+    ffmpeg_path: str = ""
+    ffprobe_path: str = ""
+    max_upload_bytes: int = Field(default=104857600, ge=1024, le=104857600)
+    max_duration_seconds: int = Field(default=1800, ge=1, le=1800)
+    max_pages: int = Field(default=30, ge=1, le=50)
+    max_images: int = Field(default=4, ge=0, le=4)
+    processing_timeout_seconds: int = Field(default=120, ge=5, le=300)
+    retention_days: int = Field(default=7, ge=1, le=30)
+    speech_model: str = "whisper-1"
+
+
 class Settings(BaseSettings):
+    knowledge_ingestion: KnowledgeIngestionSettings = Field(default_factory=KnowledgeIngestionSettings)
     features: FeatureFlags = Field(default_factory=FeatureFlags)
     ai_allowances: AIAllowanceSettings = Field(default_factory=AIAllowanceSettings)
     pricing: PricingSettings = Field(default_factory=PricingSettings)

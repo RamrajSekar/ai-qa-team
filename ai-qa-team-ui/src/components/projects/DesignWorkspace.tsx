@@ -28,6 +28,6 @@ export function designStatusLabel(value?: string | null): string {
 
 export function DesignBadge({ children, tone }: { children: ReactNode; tone?: "neutral" | "positive" | "warning" | "negative" }) {
   const key = typeof children === "string" ? children.toLowerCase().replaceAll(" ", "_") : "";
-  const inferred = ["approved", "pass", "passed", "completed"].includes(key) ? "positive" : ["fail", "failed", "rejected"].includes(key) ? "negative" : ["in_review", "pending_approval", "blocked", "needs_review", "in_progress", "running", "queued"].includes(key) ? "warning" : "neutral";
+  const inferred = ["approved", "reviewed", "pass", "passed", "completed"].includes(key) ? "positive" : ["fail", "failed", "rejected"].includes(key) ? "negative" : ["in_review", "findings_need_review", "stale", "pending_approval", "blocked", "needs_review", "in_progress", "running", "queued"].includes(key) ? "warning" : "neutral";
   return <span className={`design-badge design-badge-${tone || inferred}`}>{children}</span>;
 }

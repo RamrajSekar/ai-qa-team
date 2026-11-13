@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from pydantic import ValidationError
 from pymongo import ReturnDocument
 
-from app.models.product_knowledge import KnowledgeExtraction, StoryAnalysisResult
+from app.models.product_knowledge import KnowledgeExtraction, StoryAnalysisResult, KnowledgeSourceInput
 from app.services.ai.ai_usage_policy import AIOperation
 from app.services.ai.ai_usage_service import AIUsageService
 from app.services.ai.base_provider import LLMRequest
@@ -44,11 +44,12 @@ class ProductKnowledge:
                 "versions": [self.public(version) for version in versions],
                 "active_version_id": active["version_id"] if active else None}
 
-    async def add_source(self, project, actor, payload):
+    async def add_source(self, project, actor, payload, *, origin=None):
         require_features("product_knowledge")
         identity = uuid4().hex
         document = {**payload.model_dump(), "_id": identity, "source_id": identity, "project_id": project,
                     "created_by": actor, "created_at": datetime.now(timezone.utc).isoformat()}
+        if origin is not None: document["origin"] = origin
         await self.db["product_knowledge_sources"].insert_one(document)
         return self.public(document)
 
@@ -89,6 +90,8 @@ class ProductKnowledge:
         await self.validate_claims(project, result.claims)
         for claim in result.claims:
             claim.claim_id = "K_" + uuid4().hex
+            if source.get("origin", {}).get("kind") == "story" or source.get("origin", {}).get("upload_id"):
+                claim.epistemic_status = "inferred"
         return result
 
     async def create_version(self, project, actor, payload):
@@ -136,6 +139,7 @@ class ProductKnowledge:
         knowledge = await self.active(project)
         if not knowledge:
             raise HTTPException(409, "Review and approve product knowledge first.")
+        await self.independent_knowledge(project, story_id, knowledge)
         result = await self.ai(AIOperation.STORY_ANALYSIS, project, user, {"story": story, "knowledge": self.public(knowledge)},
             StoryAnalysisResult, "story_analysis_v1")
         allowed_claims = {claim["claim_id"] for claim in knowledge["claims"]}
@@ -194,4 +198,44 @@ class ProductKnowledge:
         knowledge = await self.active(project)
         if not knowledge or analysis["knowledge_version_id"] != knowledge["version_id"]:
             raise HTTPException(409, "Approved knowledge changed while reading context. Reload and review current inputs.")
+        await self.independent_knowledge(project, story_id, knowledge)
         return {"knowledge": self.public(knowledge), "analysis": analysis}
+
+    async def suggest_from_story(self, project, user, actor, story_id):
+        require_features("product_knowledge")
+        story = await self.story(project, story_id)
+        text = "\n".join(f"{key}: {value or ''}" for key, value in story.items())
+        payload = KnowledgeSourceInput(title=f"Story: {story['title']}"[:240], kind="document", text=text)
+        origin = {"kind": "story", "story_id": story_id, "story_digest": digest(story)}
+        source = await self.add_source(project, actor, payload, origin=origin)
+        result = await self.extract(project, user, source["source_id"])
+        for claim in result.claims: claim.epistemic_status = "inferred"
+        return {"source": {**source, "origin": origin}, **result.model_dump(), "requires_review": True}
+
+    async def independent_knowledge(self, project, story_id, knowledge):
+        sources = await self.db["product_knowledge_sources"].find({"project_id": project, "source_id": {"$in": list({claim["source_id"] for claim in knowledge["claims"]})}}).to_list(100)
+        if {source["source_id"] for source in sources} != {claim["source_id"] for claim in knowledge["claims"]}:
+            raise HTTPException(409, "An approved knowledge source is unavailable. Review current source evidence before generation.")
+        if any(source.get("origin", {}).get("story_id") == story_id for source in sources):
+            raise HTTPException(409, "This knowledge includes proposals from this story. Review independently sourced knowledge before analyzing or generating from the same story.")
+
+    async def analysis_summaries(self, project, ids):
+        require_features("product_knowledge", "story_analysis")
+        stories = await self.db["stories"].find({"project_id": project, "story_id": {"$in": ids}}).to_list(100)
+        rows = await self.db["story_analyses"].aggregate([
+            {"$match": {"project_id": project, "story_id": {"$in": ids}}},
+            {"$sort": {"created_at": -1, "_id": -1}},
+            {"$group": {"_id": "$story_id", "latest": {"$first": "$$ROOT"}}},
+        ]).to_list(100)
+        latest = {row["_id"]: row["latest"] for row in rows}
+        knowledge = await self.active(project)
+        result = {}
+        for story in stories:
+            row = latest.get(story["story_id"])
+            snapshot = {key: story.get(key) for key in ("story_id", "title", "description", "acceptance_criteria", "out_of_scope")}
+            stale = row and (not knowledge or row["story_digest"] != digest(snapshot) or row["knowledge_version_id"] != knowledge["version_id"])
+            result[story["story_id"]] = {"state": "not_analyzed" if not row else "stale" if stale else "reviewed" if row["status"] == "reviewed" else "needs_review",
+                "analysis_id": row["analysis_id"] if row else None,
+                "finding_count": len(row["findings"]) if row else 0,
+                "blocker_count": sum(item["severity"] == "blocker" for item in row["findings"]) if row else 0}
+        return result

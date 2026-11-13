@@ -22,9 +22,12 @@ test('knowledge review, story analysis and scenario count controls', async t => 
     if (url.pathname === '/auth/me') json = { user: { email: 'fixture@example.test', name: 'Fixture', onboarding: { onboarding_status: 'completed' }, subscription: { usage: {}, limits: {} } } };
     if (url.pathname === '/projects/P1') json = { project_id: 'P1', name: 'Fixture', current_user_role: 'ADMIN' };
     if (url.pathname === '/projects') json = [{ project_id: 'P1', name: 'Fixture', current_user_role: 'ADMIN' }];
+    if (url.pathname === '/stories') json = [{ story_id:'ST1',project_id:'P1',title:'Save draft',acceptance_criteria:'Show Draft saved.',created_at:'2026-11-13' }];
     if (url.pathname === '/stories/ST1') json = { story_id: 'ST1', project_id: 'P1', title: 'Save draft', acceptance_criteria: 'Show Draft saved.' };
     const root = '/projects/P1/knowledge';
     if (url.pathname === root) json = { sources, versions, active_version_id: active };
+    if (url.pathname === root + '/analysis-summaries') json = {ST1:{state:!analysis?'not_analyzed':analysis.stale?'stale':analysis.status==='reviewed'?'reviewed':'needs_review',finding_count:analysis?.findings.length||0,blocker_count:analysis?.findings.length||0}};
+    if (url.pathname === root + '/stories/ST1/suggest-knowledge') {const source={source_id:'c'.repeat(32),title:'Story: Save draft',kind:'document',text:'Show Draft saved.',segments:[],origin:{kind:'story',story_id:'ST1',story_digest:'d'.repeat(64)}};sources.push(source);json={source,requires_review:true,claims:[{claim_id:'K_story',category:'business_rule',statement:'Proposed save rule',epistemic_status:'inferred',source_id:source.source_id,segment_index:null,quote:'Show Draft saved.'}],clarification_questions:['When does saving occur?']};}
     if (url.pathname === root + '/sources') { json = { ...body, source_id: 'a'.repeat(32) }; sources.push(json); }
     if (url.pathname === root + '/versions') { json = { ...body, version_id: 'b'.repeat(32), status: 'draft', content_digest: 'c'.repeat(64) }; versions.push(json); }
     if (url.pathname.endsWith('/versions/' + 'b'.repeat(32) + '/approve')) { versions[0].status = 'approved'; active = versions[0].version_id; json = versions[0]; }
@@ -57,9 +60,20 @@ test('knowledge review, story analysis and scenario count controls', async t => 
   await approve.waitFor(); assert.equal(await approve.isDisabled(), true);
   await page.getByLabel('Clarification or rationale').fill('After Save is clicked.');
   await approve.click();
-  await page.getByRole('status').filter({ hasText: 'reviewed · Knowledge' }).waitFor();
+  await page.getByRole('status').filter({ hasText: /^Reviewed$/ }).waitFor();
   await page.getByLabel('Requested scenarios').fill('4');
   await page.getByRole('button', { name: 'Generate scenarios with AI' }).click();
   await page.getByRole('status').filter({ hasText: '1 of 4 requested scenarios generated' }).waitFor();
   assert.equal(requested, '4');
+  await page.goto(base+'/projects/P1/stories');await page.getByRole('link',{name:'Reviewed',exact:true}).waitFor();
+  analysis.stale=true;await page.reload();await page.getByRole('link',{name:'Stale',exact:true}).waitFor();
+  await page.goto(base+'/projects/P1/knowledge');
+  for(const name of ['Sources','Review & Clarify','Approved Knowledge'])await page.getByRole('navigation',{name:'Knowledge workflow'}).getByRole('link',{name,exact:true}).waitFor();
+  await page.getByText('Uploads are disabled until private storage and restricted document processing are qualified.',{exact:true}).waitFor();assert.equal(await page.getByLabel('Private knowledge file').count(),0);
+  await page.getByLabel('Source story',{exact:true}).selectOption('ST1');await page.getByRole('button',{name:'Suggest knowledge from story',exact:true}).click();
+  await page.getByRole('status').filter({hasText:'Story proposals are inferred and unapproved'}).waitFor();
+  assert.equal(await page.getByLabel('Information type').inputValue(),'inferred');
+  assert.equal(versions.length,1);assert.equal(versions[0].status,'approved');
+  await page.locator('summary').filter({hasText:'Story: Save draft'}).click();
+  await page.getByRole('link',{name:'story ST1',exact:true}).waitFor();
 });

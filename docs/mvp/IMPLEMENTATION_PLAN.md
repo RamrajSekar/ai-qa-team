@@ -483,3 +483,20 @@ Plan items 2, 4–6 are implemented locally; see ATTEMPT_BUGS.md for contracts, 
 checks and real-integration limits. Items 7–10 remain unimplemented in this slice.
 Before release, verify real-login/Mongo/approved AI usage and define metadata retention,
 delete behavior and query indexes. Preserve all execution reliability and ingestion gates.
+
+
+### Audio/video ingestion backlog — user decision 2026-11-13
+
+Item 10 is deferred. Do not enable audio/video uploads, transcription, selected video
+frames or speech-provider calls as part of the current document-ingestion slice.
+Preserve existing recorder and manually pasted timestamped-transcript features.
+The in-progress speech/video paths added in this uncommitted slice were removed;
+previous mock experiments do not establish a delivered audio/video feature.
+
+Revisit after private document storage/worker qualification: private media storage,
+format/signature checks, 30-minute duration ceiling and account quotas, isolated
+FFmpeg/FFprobe processing, English timestamped transcription, explicitly consented
+and metered provider capability checks, selected-frame policy, source provenance,
+secret/evidence protection, cancellation/interruption/no-replay, retention/deletion
+and real integration qualification. Reassess provider models/costs then. Related
+reserved environment values remain inactive; no existing recorder is removed.

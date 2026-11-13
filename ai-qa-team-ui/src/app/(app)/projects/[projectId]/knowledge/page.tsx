@@ -1,11 +1,18 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
+import KnowledgeUploads from "@/components/knowledge/KnowledgeUploads";
+import { useProjects } from "@/hooks/useProjects";
 import { knowledgeRequest, type Claim, type Source, type KnowledgeVersion } from "@/components/knowledge/knowledgeApi";
 
 interface Overview { sources: Source[]; versions: KnowledgeVersion[]; active_version_id: string | null }
 export default function KnowledgePage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const { projects } = useProjects();
+  const canApprove = projects.find(item => item.project_id === projectId)?.current_user_role === "ADMIN";
+  const [storyId, setStoryId] = useState("");
+  const [stories, setStories] = useState<{story_id:string;title:string}[]>([]);
   const base = `/projects/${encodeURIComponent(projectId)}/knowledge`;
   const [data, setData] = useState<Overview>({ sources: [], versions: [], active_version_id: null });
   const [sourceTitle, setSourceTitle] = useState("");
@@ -24,13 +31,28 @@ export default function KnowledgePage() {
     try { await work(); } catch (failure) { setError(failure instanceof Error ? failure.message : "Request failed."); }
     finally { setBusy(false); }
   }
+  useEffect(() => {
+    let active = true;
+    void knowledgeRequest<{story_id:string;title:string}[]>(`/stories?project_id=${encodeURIComponent(projectId)}&skip=0&limit=100`).then(rows => {if(active && Array.isArray(rows)) setStories(rows);}).catch(() => { /* Story proposals are optional; text sources remain available. */ });
+    return () => {active=false;};
+  }, [projectId]);
   function edit(index: number, fields: Partial<Claim>) { setClaims(items => items.map((item, i) => i === index ? { ...item, ...fields } : item)); }
   return <div className="design-page">
     <header><p className="workspace-eyebrow">Project knowledge</p><h1>Teach &amp; review product knowledge</h1><p className="workspace-description">Build reviewed project memory, then use it to analyze stories and design tests.</p></header>
-    <p>Documents and timestamped transcript excerpts are supported here. Video/audio upload and automatic transcription are not implemented. Use non-sensitive product material; do not paste credentials or personal data.</p>
+    <p>Text and timestamped transcript excerpts are available. Private document intake is disabled pending storage and worker qualification. Audio/video uploads are deferred. Use non-sensitive product material; do not paste credentials or personal data.</p>
     <p>AI proposals need human correction and approval. Observed, inferred and unknown information never automatically becomes an expected requirement.</p>
+    <nav className="workspace-actions" aria-label="Knowledge workflow"><a className="workspace-button" href="#knowledge-sources">Sources</a><a className="workspace-button" href="#knowledge-review">Review &amp; Clarify</a><a className="workspace-button" href="#approved-knowledge">Approved Knowledge</a></nav>
+    <section id="knowledge-sources" className="space-y-4"><h2 className="text-xl font-semibold">Sources</h2>
+    <KnowledgeUploads projectId={projectId} canDelete={canApprove} onReady={load} />
+    <section className="border rounded p-4 space-y-3"><h3>Suggest knowledge from story</h3><p>A story supplies unapproved proposals, not independent evidence validating itself. Suggestions require review and approval.</p>
+      <label>Source story<select aria-label="Source story" disabled={busy} value={storyId} onChange={event => setStoryId(event.target.value)}><option value="">Select a story</option>{stories.map(story => <option key={story.story_id} value={story.story_id}>{story.title}</option>)}</select></label>
+      <button className="workspace-button" disabled={busy || !storyId} onClick={() => void act(async () => {
+        const result = await knowledgeRequest<{claims:Claim[];clarification_questions:string[]}>(base + `/stories/${encodeURIComponent(storyId)}/suggest-knowledge`, {});
+        setClaims(items => [...items, ...result.claims]);setAnswers(items => ({...items,...Object.fromEntries(result.clarification_questions.map(question=>[question,""]))}));await load();setMessage("Story proposals are inferred and unapproved. Review source links before saving a snapshot.");
+      })}>Suggest knowledge from story</button>
+    </section>
     <fieldset disabled={busy} className="border rounded p-4 space-y-3">
-      <legend>Add immutable source</legend>
+      <legend>Add text or transcript source</legend><p>Paste product documentation, terminology, workflows or business rules. Keep expected behavior separate from observations.</p>
       <label className="block">Source title <input className="border rounded p-2" maxLength={200} value={sourceTitle} onChange={event => setSourceTitle(event.target.value)} /></label>
       <label className="block">Source type <select value={kind} onChange={event => setKind(event.target.value as Source["kind"])}><option value="document">Document text</option><option value="recording_transcript">Timestamped transcript excerpt</option></select></label>
       {kind === "recording_transcript" && <div><label>Start seconds <input type="number" min={0} max={1800} value={start} onChange={event => setStart(Number(event.target.value))} /></label><label>End seconds <input type="number" min={start} max={1800} value={end} onChange={event => setEnd(Number(event.target.value))} /></label></div>}
@@ -40,9 +62,11 @@ export default function KnowledgePage() {
         setText(""); setSourceTitle(""); await load();
       })}>Save source</button>
     </fieldset>
-    <section className="space-y-3"><h2 className="text-xl font-semibold">Sources</h2>
+    <section className="space-y-3"><h3 className="text-lg font-semibold">Saved sources</h3>
       {data.sources.map(source => <details id={`source-${source.source_id}`} key={source.source_id} className="border rounded p-3">
         <summary>{source.title} · {source.kind}</summary>
+        {source.origin?.upload_id && <p>Upload source · {source.origin.page_number ? `Page ${source.origin.page_number}` : source.origin.block_number ? `Paragraph block ${source.origin.block_number} (not a rendered page)` : source.origin.timestamp_seconds !== undefined ? `Frame sampled near ${source.origin.timestamp_seconds} seconds` : "Timestamped transcript"} · Unapproved ingestion observation</p>}
+        {source.origin?.kind === "story" && <p>Proposed from <Link className="underline" href={`/projects/${projectId}/stories/${source.origin.story_id}`}>story {source.origin.story_id}</Link> · Snapshot digest {source.origin.story_digest}</p>}
         {source.kind === "document" ? <p className="whitespace-pre-wrap">{source.text}</p> : source.segments.map((segment, i) => <p key={i}>Segment {i} [{segment.start_seconds}–{segment.end_seconds}s]: {segment.text}</p>)}
         <button className="workspace-button" disabled={busy} onClick={() => void act(async () => {
           const result = await knowledgeRequest<{ claims: Claim[]; clarification_questions: string[] }>(base + `/sources/${source.source_id}/extract`, {});
@@ -51,7 +75,7 @@ export default function KnowledgePage() {
         })}>Extract proposals with AI</button>
       </details>)}
     </section>
-    <fieldset disabled={busy} className="border rounded p-4 space-y-3"><legend>Review knowledge snapshot</legend>
+    </section><section id="knowledge-review" className="space-y-4"><h2 className="text-xl font-semibold">Review &amp; Clarify</h2><fieldset disabled={busy} className="border rounded p-4 space-y-3"><legend>Review knowledge snapshot</legend>
       <p>To revise approved knowledge, first select “Create successor” below. Include every claim that should remain current.</p>
       <label>Snapshot title <input className="border rounded p-2" value={title} maxLength={200} onChange={event => setTitle(event.target.value)} /></label>
       <p>Parent: {parent || "current approved version at save time"}</p>
@@ -72,13 +96,17 @@ export default function KnowledgePage() {
       })}>Save new draft snapshot</button>
     </fieldset>
     <section className="space-y-3"><h2 className="text-xl font-semibold">Saved versions</h2>
-      {data.versions.map(version => <details className="border rounded p-3" key={version.version_id}><summary>{version.title} · {version.status}{version.version_id === data.active_version_id ? " · current" : ""} · {version.version_id}</summary>
-        {version.claims.map(claim => <div key={claim.claim_id} className="py-2"><p>{claim.epistemic_status} · {claim.category}: {claim.statement}</p><a className="underline" href={`#source-${claim.source_id}`}>{claim.quote} {claim.segment_index !== null ? ` (segment ${claim.segment_index})` : ""}</a></div>)}
+      {data.versions.map(version => <details id={`knowledge-version-${version.version_id}`} className="border rounded p-3" key={version.version_id}><summary>{version.title} · {version.status}{version.version_id === data.active_version_id ? " · current" : ""} · {version.version_id}</summary>
+        {version.claims.map(claim => <div id={`claim-${version.version_id}-${claim.claim_id}`} key={claim.claim_id} className="py-2"><p>{claim.epistemic_status} · {claim.category}: {claim.statement}</p><a className="underline" href={`#source-${claim.source_id}`}>{claim.quote} {claim.segment_index !== null ? ` (segment ${claim.segment_index})` : ""}</a></div>)}
         {Object.entries(version.clarification_answers).map(([question, answer]) => <p key={question}>{question}: {answer || "Unanswered"}</p>)}
         <p>Digest: {version.content_digest}</p>
         <button className="workspace-button" disabled={busy} onClick={() => { setParent(version.version_id); setTitle(version.title); setClaims(version.claims.map(claim => ({ ...claim }))); setAnswers({ ...version.clarification_answers }); setMessage("Snapshot copied into the editor; the saved version remains unchanged."); }}>Create successor</button>
-        {version.status === "draft" && <button className="workspace-button" disabled={busy} onClick={() => void act(async () => { await knowledgeRequest(base + `/versions/${version.version_id}/approve`, {}); await load(); setMessage("Knowledge approved. Affected story analyses and specifications require review before new generation or execution."); })}>Approve saved knowledge (project admin)</button>}
+        {canApprove && version.status === "draft" && <button className="workspace-button" disabled={busy} onClick={() => void act(async () => { await knowledgeRequest(base + `/versions/${version.version_id}/approve`, {}); await load(); setMessage("Knowledge approved. Affected story analyses and specifications require review before new generation or execution."); })}>Approve saved knowledge (project admin)</button>}
       </details>)}
+    </section>
+    </section><section id="approved-knowledge" className="space-y-3"><h2 className="text-xl font-semibold">Approved Knowledge</h2>
+      {!data.active_version_id && <p>No approved knowledge yet. Review a saved snapshot before approval.</p>}
+      {data.versions.filter(version=>version.status === "approved").map(version=><article className="border rounded p-3" key={version.version_id}><h3>{version.title} · {version.version_id===data.active_version_id?"Current approved":"Historical approved"}</h3><p>{version.claims.length} reviewed claims. Approved content remains immutable.</p><a className="underline" href={`#knowledge-version-${version.version_id}`}>Inspect version, source citations and correction controls</a></article>)}
     </section>
     {busy && <p role="status">Working…</p>}{error && <p role="alert">{error}</p>}{message && <p role="status">{message}</p>}
   </div>;

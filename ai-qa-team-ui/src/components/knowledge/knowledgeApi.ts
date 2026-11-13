@@ -15,6 +15,7 @@ export interface Claim {
   source_id: string; segment_index: number | null; quote: string;
 }
 export interface Source {
+  origin?: {kind:string;story_id?:string;story_digest?:string;upload_id?:string;page_number?:number;block_number?:number;timestamp_seconds?:number};
   source_id: string; title: string; kind: "document" | "recording_transcript"; text: string;
   segments: { start_seconds: number; end_seconds: number; text: string }[];
 }

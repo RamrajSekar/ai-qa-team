@@ -33,6 +33,8 @@ class CollectionDouble:
             if isinstance(value, dict) and '$lte' in value:
                 if current is None or current > value['$lte']:
                     return False
+            elif isinstance(value, dict) and '$in' in value:
+                if current not in value['$in']: return False
             elif current != value:
                 return False
         return True

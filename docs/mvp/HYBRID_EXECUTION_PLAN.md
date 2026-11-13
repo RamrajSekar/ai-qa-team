@@ -244,3 +244,30 @@ deployment are separate explicit delivery actions.
 **Recommended first implementation task: H0 followed by H1**, limited to contracts
 and a direct-WebDriver semantic capability proof against a controlled fixture.
 Do not start by building a generic accessibility-tree agent or a broad locator SDK.
+
+
+## Execution-agent option — recorded 2026-11-13
+
+User requested tracking a separate execution-agent option for the later Execution
+MVP. This is a proposed bounded specialization, not authorization to implement an
+agent framework or resume the currently paused items 7–10.
+
+Prefer one backend-controlled Execution Agent role, with task-specific prompts and
+versioned action/proposal contracts. The agent receives an exact approved test/run
+manifest and scoped observations; it proposes only allowed actions. Trusted runner
+code owns WebDriver, permissions, target/network restrictions, credential resolution,
+redaction, cancellation, budgets, retries, evidence and outcome recording. Business
+expectations remain approved inputs. An agent cannot rewrite them to make a run pass,
+execute arbitrary code, fetch unrelated knowledge, or promote observations to rules.
+Independent assertions remain separate from action/navigation success.
+
+Keep this planning role separate from the isolated execution worker and provider
+adapter. BrowserStack/VM/Sauce would be infrastructure adapters, not autonomous agents.
+A separate role need not be another service, LLM provider, persistent agent instance
+or multi-agent swarm. Reuse Robot/custom Python/direct WebDriver and the existing
+adapter boundary; maintain per-check isolation and explicit human approvals.
+
+Before implementation, decide whether a fixed bounded policy/task is sufficient or
+whether measured action planning requires a stateful loop. Qualify one session first,
+with failure/ambiguity stops and deterministic assertions. No framework migration or
+execution capability is delivered by this note.
