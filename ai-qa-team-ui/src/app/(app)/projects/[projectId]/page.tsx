@@ -14,6 +14,7 @@ import DeleteProjectModal from '@/components/projects/DeleteProjectModal';
 
 // ---------------------- Types ----------------------
 interface Project {
+  display_id?: string | null;
   id: string;
   project_id: string;
   name: string;
@@ -194,7 +195,7 @@ export default function ProjectPage() {
           <p className="workspace-eyebrow">Project overview</p>
           <h1>{project.name}</h1>
           <p className="workspace-description">{project.description || "Manage your environments and review your execution history."}</p>
-          <p className="workspace-metadata">{project.project_id} · Created {new Date(project.created_at).toLocaleDateString()}</p>
+          <p className="workspace-metadata">{project.display_id || project.project_id} · Created {new Date(project.created_at).toLocaleDateString()}</p>
         </div>
         {canManage && <div className="workspace-actions">
           <button onClick={() => setOpenEditModal(true)} className="workspace-button" aria-label="Edit Project">Edit</button>

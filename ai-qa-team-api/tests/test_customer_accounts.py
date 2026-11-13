@@ -111,6 +111,37 @@ class AccountsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.account_id, owner["account_id"])
         self.assertEqual(result.created_by, owner["email"])
 
+    async def test_account_display_numbers_are_separate_from_route_ids(self):
+        owner = await self.owner()
+        await self.service.name(owner, "Customer One")
+        counters = {}
+        async def sequence(key, prefix):
+            counters[key] = counters.get(key, 0) + 1
+            return f"{prefix}{counters[key]:03d}"
+        with patch.object(project_routes, "get_next_sequence", side_effect=sequence), patch.object(project_routes, "create_creator_membership", AsyncMock()):
+            first = await project_routes.create_project(ProjectCreate(name="First", created_by=owner["email"]), dict(owner), None)
+            second = await project_routes.create_project(ProjectCreate(name="Second", created_by=owner["email"]), dict(owner), None)
+            other = await self.owner("second@example.com")
+            await self.service.name(other, "Customer Two")
+            third = await project_routes.create_project(ProjectCreate(name="Third", created_by=other["email"]), dict(other), None)
+        self.assertEqual([first.project_id, second.project_id, third.project_id], ["PRJ001", "PRJ002", "PRJ003"])
+        self.assertEqual([first.display_id, second.display_id, third.display_id], ["PRJ001", "PRJ002", "PRJ001"])
+
+    async def test_deleting_last_project_preserves_onboarding_and_clears_context(self):
+        project = {"project_id": "PRJ020", "created_by": "owner@example.com"}
+        collections = {name: SimpleNamespace(delete_one=AsyncMock(return_value=SimpleNamespace(deleted_count=1)),
+            delete_many=AsyncMock(), count_documents=AsyncMock(return_value=0),
+            update_one=AsyncMock(), update_many=AsyncMock())
+            for name in ("projects", "project_memberships", "ai_configurations", "encrypted_secrets", "users")}
+        with patch.object(project_routes, "db", collections), patch.object(project_routes, "require_project_admin", AsyncMock(return_value=(project, {}))), patch("app.services.account_billing.billing_account", AsyncMock(return_value=None)):
+            await project_routes.delete_project("PRJ020", {"email": "owner@example.com"})
+        query, update = collections["users"].update_many.call_args.args
+        self.assertEqual(query, {"onboarding.context.project_id": "PRJ020"})
+        self.assertIsNone(update["$set"]["onboarding.context.project_id"])
+        self.assertEqual(update["$set"]["onboarding.onboarding_status"], "completed")
+        for call in collections["users"].update_one.call_args_list:
+            self.assertNotIn("onboarding.onboarding_status", call.args[1].get("$set", {}))
+
     async def test_pending_account_cannot_create_project(self):
         owner = await self.owner()
         with self.assertRaises(HTTPException) as error:

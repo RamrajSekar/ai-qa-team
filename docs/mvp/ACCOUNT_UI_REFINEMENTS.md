@@ -148,3 +148,47 @@ Final current-source validation: the two provider-onboarding checks passed again
 with the held-response safeguard; expanded lint and TypeScript passed afterward.
 `git diff --check` passed. The isolated UI test server was stopped; normal user
 API/UI processes were preserved. Changes remain uncommitted and undeployed.
+
+
+## Onboarding and capacity corrections — 2026-11-13
+
+- Application/environment setup is optional with explicit Skip for now. Back is
+  available after Project; returning to Project reuses the created project rather
+  than creating another. Existing account naming updates the account, never creates
+  a second account.
+- Removed Optional import from the wizard only. Repository/import features and
+  existing data remain intact. Retained persisted step numbers: 1 Project, 2
+  Application, 3 Team, 5 AI Setup, 6 Ready; old step 4 resumes at AI Setup.
+- Completed onboarding no longer reopens because the project list is empty.
+  Project deletion clears referencing onboarding context and ends that setup wizard;
+  subsequent project creation also preserves completed status. Use Create Project
+  from the empty dashboard rather than repeating account onboarding.
+- Team Capacity and Dashboard include the owner in the displayed total. Free is
+  1/3 for owner only: owner plus two additional identities. Billing counters and
+  invitation enforcement still use additional seats; admin/project roles do not
+  consume another seat. Undefined/unlimited allowances retain their semantics.
+- New account-owned projects receive an additive account-local display_id from
+  an atomic Mongo counter. New accounts start PRJ001; legacy labels in the same
+  account are reserved. Canonical project_id remains globally unique and remains
+  in URLs, authorization and references. Existing projects are not renumbered.
+  Counters never reset on deletion; failures may leave gaps. Story/scenario/testcase
+  account-local display numbering remains backlog, not delivered here.
+
+Verification commands (from repository root unless noted):
+
+- API directory: `..\.feature-flags.venv\Scripts\python.exe -m unittest discover -s tests -p test_customer_accounts.py -v`
+- UI directory: `node --test --test-concurrency=1 --test-name-pattern="setup Back|team capacity includes|completed onboarding stays|onboarding AI Setup" tests/customer-accounts.test.cjs`
+  requires isolated Next dev server, FEATURE_UI_URL, NEXT_PUBLIC_API_URL=http://feature-api.test
+  and PLAYWRIGHT_MODULE_PATH when Playwright is supplied externally. Browser tests
+  intercept authentication/API calls; they do not verify real signup/Mongo.
+- UI directory: `node_modules\.bin\tsc.cmd --noEmit --incremental false` and
+  focused ESLint for changed components; root `git diff --check`.
+
+No database migration, production access, deployment, commit or push is included.
+
+Current-checkout results: 29 synthetic API/account checks and four intercepted
+browser checks passed. TypeScript, focused lint and whitespace checks passed.
+Initial restricted-environment checks stalled/failed before useful verification;
+reruns outside that restriction passed. A temporary source-encoding error in the
+isolated UI copy was corrected before the successful browser rerun. No real
+login, Mongo contention, existing-account backfill or production qualification ran.

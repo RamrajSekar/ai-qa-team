@@ -271,3 +271,35 @@ test('onboarding preserves saved BYOK instead of silently selecting Managed',asy
  await page.getByRole('button',{name:'Skip for now',exact:true}).click();await page.getByRole('heading',{name:'Project ready',exact:true}).waitFor();
  assert.equal(calls.filter(call=>call.path.includes('/ai/configuration')&&call.method!=='GET').length,0);
 });
+
+
+test('setup Back reuses project and Application can be skipped without import', async t => {
+ const {page,calls}=await fixture(t,{pending:true});await page.goto(base+'/onboarding');
+ await page.getByLabel('Customer / account name').fill('Customer One');
+ await page.getByLabel('Project name',{exact:true}).fill('Module One');
+ await page.getByRole('button',{name:'Create project & continue',exact:true}).click();
+ await page.getByRole('heading',{name:'Application & environment (optional)',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Back',exact:true}).click();
+ await page.getByText('Your project is already created.',{exact:false}).waitFor();
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await page.getByRole('button',{name:'Skip for now',exact:true}).click();
+ await page.getByRole('heading',{name:'Build your project team',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Continue',exact:true}).click();
+ await page.getByRole('heading',{name:'AI Setup',exact:true}).waitFor();
+ assert.equal(await page.getByText('Optional import',{exact:true}).count(),0);
+ assert.equal(calls.filter(c=>c.path==='/projects'&&c.method==='POST').length,1);
+ assert.equal(calls.filter(c=>c.path==='/environments'&&c.method==='POST').length,0);
+});
+
+test('team capacity includes owner without reducing two additional seats', async t => {
+ const {page}=await fixture(t);await page.goto(base+'/settings/account');
+ const team=page.getByRole('progressbar',{name:'Team Members usage',exact:true});await team.waitFor();
+ assert.equal(await team.getAttribute('value'),'2');assert.equal(await team.getAttribute('max'),'3');
+});
+
+test('completed onboarding stays closed when all projects have been deleted', async t => {
+ const {page}=await fixture(t);
+ await page.route('**/projects',route=>route.fulfill({json:[],headers:{'access-control-allow-origin':base,'access-control-allow-credentials':'true'}}));
+ await page.goto(base+'/dashboard');await page.getByText('No projects created yet.',{exact:true}).waitFor();
+ assert.equal(await page.getByRole('dialog',{name:'Set up your QA workspace'}).count(),0);
+});
