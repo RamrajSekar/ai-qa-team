@@ -15,6 +15,8 @@ class LLMRequest:
     response_schema_name: str | None = None
     prompt_key: str | None = None
     prompt_version: str | None = None
+    # Server-only per-request override; None preserves existing provider behavior.
+    max_retries: int | None = None
 
 
 @dataclass(frozen=True)

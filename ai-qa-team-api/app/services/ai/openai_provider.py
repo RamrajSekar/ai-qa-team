@@ -18,7 +18,8 @@ class OpenAIProvider(BaseAIProvider):
             if request.system_prompt:
                 messages.append({"role": "system", "content": request.system_prompt})
             messages.append({"role": "user", "content": request.prompt})
-            response = await self.client.chat.completions.create(
+            client = self.client.with_options(max_retries=request.max_retries) if request.max_retries is not None else self.client
+            response = await client.chat.completions.create(
                 model=model,
                 messages=messages,
                 temperature=request.temperature,

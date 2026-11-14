@@ -170,7 +170,7 @@ class KnowledgeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(preview.knowledge_version_id, approved["version_id"])
         self.assertEqual(preview.story_analysis_id, analysis["analysis_id"])
         self.claim["statement"] = "Save notification changed"
-        next_draft = await self.service.create_version("P1", "reviewer", KnowledgeDraft(title="Changed", claims=[self.claim]))
+        next_draft = await self.service.create_version("P1", "reviewer", KnowledgeDraft(title="Changed", claims=[self.claim], parent_version_id=approved["version_id"]))
         await self.service.approve("P1", "reviewer", next_draft["version_id"])
         state = await service.latest_specification("P1", "TC1")
         self.assertTrue(state["review_required"])
@@ -212,3 +212,240 @@ class KnowledgeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(failure.exception.status_code,409)
         self.assertEqual(self.usage.execute.await_count,1)
         self.assertEqual((await self.client.post('/projects/P2/knowledge/stories/ST1/suggest-knowledge')).status_code,404)
+
+    async def test_incremental_addition_preserves_rules_answers_and_history(self):
+        first = await self.approved()
+        second_claim = {**self.claim, "claim_id": "K2", "statement": "Another reviewed rule"}
+        draft = await self.service.create_version("P1", "reviewer", KnowledgeDraft(
+            title="Incremental", claims=[second_claim], clarification_answers={"When?": "After saving"}))
+        self.assertEqual([claim["claim_id"] for claim in draft["claims"]], ["K1", "K2"])
+        self.assertEqual([item["action"] for item in draft["changes"]], ["add"])
+        second = await self.service.approve("P1", "reviewer", draft["version_id"])
+        # Rejected/omitted proposals do not remove approved content or answers.
+        next_draft = await self.service.create_version("P1", "reviewer", KnowledgeDraft(title="No accepted change"))
+        self.assertEqual(next_draft["claims"], second["claims"])
+        self.assertEqual(next_draft["clarification_answers"], {"When?": "After saving"})
+        self.assertEqual(next_draft["changes"], [])
+        history = await self.service.overview("P1")
+        self.assertEqual(sum(item["status"] == "approved" for item in history["versions"]), 2)
+        self.assertEqual((await self.service.record("product_knowledge_versions", "P1", first["version_id"]))["claims"], first["claims"])
+        self.assertFalse(self.usage.execute.called)
+
+    async def test_targeted_correction_and_explicit_removal_only(self):
+        await self.approved()
+        draft = await self.service.create_version("P1", "reviewer", KnowledgeDraft(title="Add", claims=[{**self.claim,"claim_id":"K2"}]))
+        await self.service.approve("P1", "reviewer", draft["version_id"])
+        correction = {**self.claim, "statement": "Corrected expectation"}
+        draft = await self.service.create_version("P1", "reviewer", KnowledgeDraft(title="Correct", claims=[correction], parent_version_id=(await self.service.active("P1"))["version_id"]))
+        self.assertEqual([claim["claim_id"] for claim in draft["claims"]], ["K1", "K2"])
+        self.assertEqual(draft["changes"][0]["action"], "replace")
+        self.assertEqual(draft["changes"][0]["before"]["statement"], "Show Draft saved.")
+        await self.service.approve("P1", "reviewer", draft["version_id"])
+        removal = await self.service.create_version("P1", "reviewer", KnowledgeDraft(title="Remove", removed_claim_ids=["K2"], parent_version_id=(await self.service.active("P1"))["version_id"]))
+        self.assertEqual(len((await self.service.active("P1"))["claims"]), 2)
+        self.assertEqual(removal["changes"][0]["action"], "remove")
+        self.assertEqual([claim["claim_id"] for claim in removal["claims"]], ["K1"])
+        await self.service.approve("P1", "reviewer", removal["version_id"])
+        self.assertEqual(len((await self.service.active("P1"))["claims"]), 1)
+        for ids, claims in [(["unknown"], []), (["K1", "K1"], []), (["K1"], [correction])]:
+            with self.assertRaises(HTTPException) as failure:
+                await self.service.create_version("P1", "reviewer", KnowledgeDraft(title="Invalid", claims=claims, removed_claim_ids=ids))
+            self.assertEqual(failure.exception.status_code, 422)
+
+    async def test_two_competing_approvals_have_one_atomic_winner(self):
+        import asyncio
+        first = await self.approved()
+        drafts = [await self.service.create_version("P1", "reviewer", KnowledgeDraft(title="Change", claims=[{**self.claim, "claim_id": f"K{i}"}])) for i in (2,3)]
+        original_active = self.service.active
+        ready = asyncio.Event(); readers = 0
+        async def simultaneous_read(project):
+            nonlocal readers
+            result = await original_active(project)
+            readers += 1
+            if readers == 2: ready.set()
+            await ready.wait()
+            return result
+        with patch.object(self.service, "active", side_effect=simultaneous_read):
+            results = await asyncio.gather(*(self.service.approve("P1", "reviewer", draft["version_id"]) for draft in drafts), return_exceptions=True)
+        winners = [result for result in results if isinstance(result, dict)]
+        losers = [result for result in results if isinstance(result, HTTPException)]
+        self.assertEqual(len(winners), 1); self.assertEqual([error.status_code for error in losers], [409])
+        self.assertEqual((await self.service.active("P1"))["version_id"], winners[0]["version_id"])
+        with self.assertRaises(HTTPException):
+            await self.service.create_version("P1", "reviewer", KnowledgeDraft(title="Stale", claims=[self.claim], parent_version_id=first["version_id"]))
+        await self.service.approve("P1", "reviewer", first["version_id"])
+        self.assertEqual((await self.service.active("P1"))["version_id"], winners[0]["version_id"])
+
+    async def test_uncertain_approval_recovers_without_ai_or_second_publish(self):
+        draft = await self.service.create_version("P1", "reviewer", KnowledgeDraft(title="First", claims=[(await self.approved())["claims"][0]]))
+        collection = self.db["product_knowledge_versions"]
+        insert = collection.insert_one
+        async def accepted_then_disconnected(document):
+            await insert(document)
+            raise TimeoutError("synthetic lost acknowledgement")
+        with patch.object(collection, "insert_one", side_effect=accepted_then_disconnected):
+            with self.assertRaises(TimeoutError):
+                await self.service.approve("P1", "reviewer", draft["version_id"])
+        self.assertEqual((await self.service.active("P1"))["version_id"], draft["version_id"])
+        recovered = await self.service.approve("P1", "another reviewer", draft["version_id"])
+        self.assertEqual(recovered["approved_by"], "reviewer")
+        self.assertEqual(recovered["status"], "approved")
+        self.assertFalse(self.usage.execute.called)
+
+    async def test_legacy_approved_snapshot_is_retained_but_unsafe_draft_requires_resave(self):
+        from copy import deepcopy
+        approved = await self.approved()
+        self.db["product_knowledge_versions"].docs.clear()
+        legacy = {**deepcopy(approved), "_id": approved["version_id"]}
+        legacy.pop("knowledge_contract_version"); legacy.pop("changes"); legacy.pop("removed_claim_ids")
+        self.db["product_knowledge_versions"].docs.append(legacy)
+        draft = await self.service.create_version("P1", "reviewer", KnowledgeDraft(title="Increment", claims=[{**self.claim, "claim_id":"K2"}]))
+        await self.service.approve("P1", "reviewer", draft["version_id"])
+        self.assertEqual(len((await self.service.active("P1"))["claims"]), 2)
+        self.assertEqual(self.db["product_knowledge_versions"].docs[0], legacy)
+        unsafe = {**legacy, "_id": "a"*32, "version_id": "a"*32, "status":"draft"}
+        self.db["product_knowledge_versions"].docs.append(unsafe)
+        with self.assertRaises(HTTPException) as failure:
+            await self.service.approve("P1", "reviewer", unsafe["version_id"])
+        self.assertEqual(failure.exception.status_code, 409)
+
+    async def test_combined_bound_and_tampered_draft_fail_without_changing_active(self):
+        first = await self.approved()
+        proposals = [{**self.claim, "claim_id":f"K{i}"} for i in range(2,102)]
+        with self.assertRaises(HTTPException) as failure:
+            await self.service.create_version("P1", "reviewer", KnowledgeDraft(title="Overflow", claims=proposals))
+        self.assertEqual(failure.exception.status_code, 413)
+        draft = await self.service.create_version("P1", "reviewer", KnowledgeDraft(title="Draft", claims=[]))
+        raw = next(row for row in self.db["product_knowledge_versions"].docs if row.get("version_id") == draft["version_id"])
+        raw["claims"] = []
+        with self.assertRaises(HTTPException) as failure:
+            await self.service.approve("P1", "reviewer", draft["version_id"])
+        self.assertEqual(failure.exception.status_code, 409)
+        self.assertEqual((await self.service.active("P1"))["version_id"], first["version_id"])
+
+    async def test_corrections_require_explicit_base_and_removing_every_rule_is_explicit(self):
+        approved = await self.approved()
+        for payload in (KnowledgeDraft(title="Correction", claims=[{**self.claim, "statement":"Changed"}]),
+                        KnowledgeDraft(title="Removal", removed_claim_ids=["K1"])):
+            with self.assertRaises(HTTPException) as failure:
+                await self.service.create_version("P1", "reviewer", payload)
+            self.assertEqual(failure.exception.status_code, 409)
+        draft = await self.service.create_version("P1", "reviewer", KnowledgeDraft(
+            title="Explicit removal", removed_claim_ids=["K1"], parent_version_id=approved["version_id"]))
+        self.assertEqual(len((await self.service.active("P1"))["claims"]), 1)
+        result = await self.service.approve("P1", "reviewer", draft["version_id"])
+        self.assertEqual(result["claims"], [])
+        self.assertEqual((await self.service.record("product_knowledge_versions", "P1", approved["version_id"]))["claims"], approved["claims"])
+
+    async def test_historical_version_api_is_scoped_and_not_limited_to_overview(self):
+        first = await self.approved()
+        self.user["role"] = "MEMBER"
+        response = await self.client.get(self.base + "/versions/" + first["version_id"])
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "approved")
+        self.assertNotIn("_id", response.json())
+        foreign = await self.client.get("/projects/P2/knowledge/versions/" + first["version_id"])
+        self.assertEqual(foreign.status_code, 404)
+        self.assertEqual((await self.client.get(self.base + "/versions/" + "f"*32)).status_code, 404)
+        self.assertFalse(self.usage.execute.called)
+
+    async def test_compat_old_client_payload_cannot_drop_rules_or_forge_approval(self):
+        approved = await self.approved()
+        # Legacy client shape: no contract marker, removal list or approval metadata.
+        old_payload = {"title": "Old client", "claims": [{**self.claim, "claim_id":"K2"}]}
+        saved = await self.client.post(self.base + "/versions", json=old_payload)
+        self.assertEqual(saved.status_code, 201)
+        self.assertEqual({item["claim_id"] for item in saved.json()["claims"]}, {"K1", "K2"})
+        for field, value in [("status", "approved"), ("knowledge_contract_version", 1),
+                             ("approved_by", "FORGED"), ("changes", []), ("content_digest", "f"*64)]:
+            forged = await self.client.post(self.base + "/versions", json={**old_payload, field:value})
+            self.assertEqual(forged.status_code, 422)
+        url = self.base + "/versions/" + saved.json()["version_id"]
+        self.assertEqual((await self.client.patch(url, json={"status":"approved"})).status_code, 405)
+        self.assertEqual((await self.client.put(url, json={"status":"approved"})).status_code, 405)
+        self.assertEqual((await self.service.active("P1"))["version_id"], approved["version_id"])
+
+    async def test_compat_simultaneous_http_first_approvals_have_one_winner(self):
+        import asyncio
+        await self.approved()
+        self.db["product_knowledge_versions"].docs.clear()
+        drafts = [await self.service.create_version("P1", "reviewer", KnowledgeDraft(title="Initial", claims=[{**self.claim,"claim_id":key}])) for key in ("K1","K2")]
+        original = self.service.active; gate = asyncio.Event(); readers = 0
+        async def together(project):
+            nonlocal readers
+            result = await original(project); readers += 1
+            if readers == 2: gate.set()
+            await gate.wait(); return result
+        with patch.object(self.service, "active", side_effect=together):
+            responses = await asyncio.gather(*(self.client.post(self.base+"/versions/"+draft["version_id"]+"/approve") for draft in drafts))
+        self.assertEqual(sorted(item.status_code for item in responses), [200,409])
+        winner = next(item.json() for item in responses if item.status_code == 200)
+        self.assertEqual((await self.service.active("P1"))["version_id"],winner["version_id"])
+
+    async def test_compat_repeated_http_approval_preserves_actor_time_and_receipt(self):
+        import asyncio
+        approved = await self.approved()
+        url = self.base+"/versions/"+approved["version_id"]+"/approve"
+        before = len(self.db["product_knowledge_versions"].docs)
+        responses = await asyncio.gather(self.client.post(url),self.client.post(url),self.client.post(url))
+        self.assertTrue(all(item.status_code == 200 for item in responses))
+        self.assertTrue(all(item.json()["approved_by"] == approved["approved_by"] and
+                            item.json()["approved_at"] == approved["approved_at"] for item in responses))
+        self.assertEqual(len(self.db["product_knowledge_versions"].docs), before)
+
+    async def test_compat_legacy_approved_retry_and_legacy_draft_reject(self):
+        from copy import deepcopy
+        approved = await self.approved()
+        collection = self.db["product_knowledge_versions"]
+        collection.docs.clear()
+        legacy = {**deepcopy(approved),"_id":approved["version_id"]}
+        legacy.pop("knowledge_contract_version");legacy.pop("changes");legacy.pop("removed_claim_ids")
+        collection.docs.append(legacy)
+        response=await self.client.post(self.base+"/versions/"+legacy["version_id"]+"/approve")
+        self.assertEqual(response.status_code,200);self.assertEqual(response.json(),self.service.public(legacy))
+        unsafe={**legacy,"_id":"b"*32,"version_id":"b"*32,"status":"draft"}
+        collection.docs.append(unsafe)
+        self.assertEqual((await self.client.post(self.base+"/versions/"+unsafe["version_id"]+"/approve")).status_code,409)
+        self.assertEqual(collection.docs[0],legacy)
+
+    async def test_compat_characterization_old_backend_direct_write_can_disconnect_receipts(self):
+        # Hazard characterization, NOT a desired-behavior/rollout acceptance test.
+        # An old backend can write directly; the new API cannot control that binary.
+        from copy import deepcopy
+        approved = await self.approved()
+        legacy = {**deepcopy(approved),"_id":"e"*32,"version_id":"e"*32,
+                  "status":"approved","approved_at":"2099-01-01T00:00:00Z","claims":[]}
+        for key in ("knowledge_contract_version","changes","removed_claim_ids"):
+            legacy.pop(key,None)
+        self.db["product_knowledge_versions"].docs.append(legacy)
+        self.assertEqual((await self.service.active("P1"))["version_id"],legacy["version_id"])
+        # Earlier approval remains immutable/readable, but is no longer active.
+        historical=await self.service.record("product_knowledge_versions","P1",approved["version_id"])
+        self.assertEqual(historical["status"],"approved")
+        self.assertEqual(historical["claims"],approved["claims"])
+
+    async def test_compat_simultaneous_same_draft_approval_is_idempotent(self):
+        import asyncio
+        await self.approved()
+        draft=await self.service.create_version("P1","reviewer",KnowledgeDraft(title="Same draft"))
+        original=self.service.active;gate=asyncio.Event();readers=0
+        async def together(project):
+            nonlocal readers
+            result=await original(project);readers+=1
+            if readers==3:gate.set()
+            await gate.wait();return result
+        with patch.object(self.service,"active",side_effect=together):
+            results=await asyncio.gather(*(self.client.post(self.base+"/versions/"+draft["version_id"]+"/approve",json={"approved_by":"FORGED"}) for _ in range(3)))
+        self.assertEqual([item.status_code for item in results],[200,200,200])
+        self.assertEqual(len({item.json()["approved_at"] for item in results}),1)
+        self.assertTrue(all(item.json()["approved_by"]=="reviewer" for item in results))
+        receipts=[row for row in self.db["product_knowledge_versions"].docs if row.get("approved_version_id")==draft["version_id"]]
+        self.assertEqual(len(receipts),1)
+
+    async def test_compat_old_http_parent_cannot_overwrite_current_knowledge(self):
+        first=await self.approved()
+        draft=await self.service.create_version("P1","reviewer",KnowledgeDraft(title="Next",claims=[{**self.claim,"claim_id":"K2"}]))
+        await self.service.approve("P1","reviewer",draft["version_id"])
+        response=await self.client.post(self.base+"/versions",json={"title":"Stale browser","claims":[self.claim],"parent_version_id":first["version_id"]})
+        self.assertEqual(response.status_code,409)
+        self.assertEqual((await self.service.active("P1"))["version_id"],draft["version_id"])

@@ -58,7 +58,8 @@ class KnowledgeExtraction(Contract):
 
 class KnowledgeDraft(Contract):
     title: VisibleText
-    claims: list[KnowledgeClaim] = Field(min_length=1, max_length=100)
+    claims: list[KnowledgeClaim] = Field(default_factory=list, max_length=100)
+    removed_claim_ids: list[Identifier] = Field(default_factory=list, max_length=100)
     parent_version_id: RequestKey | None = None
     clarification_answers: dict[str, str] = Field(default_factory=dict, max_length=30)
 

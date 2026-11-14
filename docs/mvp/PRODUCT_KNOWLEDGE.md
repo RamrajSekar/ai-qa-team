@@ -201,3 +201,21 @@ items 7–10 were paused at the user's request; this note does not validate or e
 Background: Lewis et al., Retrieval-Augmented Generation for Knowledge-Intensive NLP
 Tasks (https://arxiv.org/abs/2005.11401); NIST AI 600-1 Generative AI Profile
 (https://nvlpubs.nist.gov/nistpubs/AI/NIST.AI.600-1.pdf).
+
+
+## Incremental correctness amendment — 2026-11-14
+
+[QA Agent Milestone 1](QA_AGENT_KNOWLEDGE_M1.md) supersedes the earlier whole-snapshot
+replacement/approval description: preserve omitted rules and answers, require
+explicit parent-linked corrections/removals, and publish through single-winner
+approval receipts. Legacy approved versions remain intact. UI persistence and
+story-only analysis belong to later milestones; upload/media gates remain off.
+
+
+## QA Agent training amendment — 2026-11-14
+
+[Milestone 2](QA_AGENT_TRAINING_M2.md) replaces the previous whole-snapshot editor
+with Teach/Review/Save on the same route, persisted pending reviews and explicit
+correction/removal controls. M1 remains the approval authority. No recording or
+document ingestion was enabled; story-only analysis remains M3. See the linked
+verification limits and release cutover prerequisites.

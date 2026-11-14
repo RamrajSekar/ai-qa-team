@@ -28,7 +28,7 @@ export default function Sidebar() {
   ] : [];
   const projectMenu = projectId ? [
     { name: "Overview", icon: Layers, href: `/projects/${projectId}` },
-    ...(enabled("product_knowledge") ? [{ name: "Product Knowledge", icon: BrainCircuit, href: `/projects/${projectId}/knowledge` }] : []),
+    ...(enabled("product_knowledge") ? [{ name: "QA Agent", icon: BrainCircuit, href: `/projects/${projectId}/knowledge` }] : []),
     ...(enabled("automation_execution_ui", "visual_runner_lab") ? [{ name: "Visual Runner Lab", icon: Zap, href: `/projects/${projectId}/visual-lab` }] : []),
     ...(enabled("bug_reproduction_ui") ? [{ name: "Reproduce Bug", icon: Bug, href: `/projects/${projectId}/reproduce` }] : []),
     ...(enabled("story_management") ? [{ name: "Stories", icon: FileText, href: `/projects/${projectId}/stories` }] : []),

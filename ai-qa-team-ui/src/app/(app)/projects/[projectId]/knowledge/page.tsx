@@ -1,113 +1,127 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
-import KnowledgeUploads from "@/components/knowledge/KnowledgeUploads";
+import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 import { useProjects } from "@/hooks/useProjects";
-import { knowledgeRequest, type Claim, type Source, type KnowledgeVersion } from "@/components/knowledge/knowledgeApi";
+import { WorkspaceDialog } from "@/components/ui/workspace-dialog";
+import { DesignStats } from "@/components/projects/DesignWorkspace";
+import TrainingReview from "@/components/knowledge/TrainingReview";
+import { knowledgeRequest, type Source, type KnowledgeVersion, type TrainingSession } from "@/components/knowledge/knowledgeApi";
 
 interface Overview { sources: Source[]; versions: KnowledgeVersion[]; active_version_id: string | null }
 export default function KnowledgePage() {
-  const { projectId } = useParams<{ projectId: string }>();
+  const { projectId } = useParams<{projectId:string}>();
+  return <QAAgentWorkspace key={projectId} projectId={projectId} />;
+}
+
+function QAAgentWorkspace({projectId}:{projectId:string}) {
   const { projects } = useProjects();
+  const { enabled } = useFeatures();
+  const storiesEnabled = enabled("story_management");
+  const [stories,setStories] = useState<{story_id:string;title:string}[]>([]);
+  const [storyId,setStoryId] = useState("");
   const canApprove = projects.find(item => item.project_id === projectId)?.current_user_role === "ADMIN";
-  const [storyId, setStoryId] = useState("");
-  const [stories, setStories] = useState<{story_id:string;title:string}[]>([]);
   const base = `/projects/${encodeURIComponent(projectId)}/knowledge`;
-  const [data, setData] = useState<Overview>({ sources: [], versions: [], active_version_id: null });
-  const [sourceTitle, setSourceTitle] = useState("");
-  const [kind, setKind] = useState<Source["kind"]>("document");
-  const [text, setText] = useState("");
-  const [start, setStart] = useState(0); const [end, setEnd] = useState(60);
-  const [claims, setClaims] = useState<Claim[]>([]);
-  const [title, setTitle] = useState("Product knowledge");
-  const [parent, setParent] = useState<string | null>(null);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [busy, setBusy] = useState(false); const [error, setError] = useState(""); const [message, setMessage] = useState("");
-  const load = useCallback(async () => { setData(await knowledgeRequest<Overview>(base)); }, [base]);
-  useEffect(() => { load().catch(() => setError("Could not load project knowledge.")); }, [load]);
-  async function act(work: () => Promise<void>) {
-    setBusy(true); setError(""); setMessage("");
-    try { await work(); } catch (failure) { setError(failure instanceof Error ? failure.message : "Request failed."); }
-    finally { setBusy(false); }
+  const [data, setData] = useState<Overview>({sources:[],versions:[],active_version_id:null});
+  const [ready,setReady] = useState(false);
+  const [sessions,setSessions] = useState<TrainingSession[]>([]);
+  const [selected,setSelected] = useState<TrainingSession | null>(null);
+  const [epoch,setEpoch] = useState(0);
+  const [title,setTitle] = useState(""); const [text,setText] = useState("");
+  const [kind,setKind] = useState<Source["kind"]>("document");
+  const [start,setStart] = useState(0); const [end,setEnd] = useState(60);
+  const [reviewPending,setReviewPending] = useState(false);
+  const [busy,setBusy] = useState(false); const [error,setError] = useState("");
+  const [evidence,setEvidence] = useState<Source | null>(null);
+  const requestKey = useRef<string | null>(null);
+  const load = useCallback(async () => {
+    const [overview, reviews] = await Promise.all([knowledgeRequest<Overview>(base),knowledgeRequest<TrainingSession[]>(base+"/training")]);
+    if (overview.active_version_id && !overview.versions.some(item=>item.version_id===overview.active_version_id)) {
+      overview.versions.unshift(await knowledgeRequest<KnowledgeVersion>(base+"/versions/"+overview.active_version_id));
+    }
+    setData(overview);setSessions(reviews);setReady(true);return reviews;
+  },[base]);
+  useEffect(()=>{
+    if(!storiesEnabled)return;
+    let active=true;void knowledgeRequest<{story_id:string;title:string}[]>(`/stories?project_id=${encodeURIComponent(projectId)}&skip=0&limit=100`).then(rows=>{if(active&&Array.isArray(rows))setStories(rows);}).catch(()=>{});
+    return()=>{active=false;};
+  },[projectId,storiesEnabled]);
+  const onSession = useCallback((review:TrainingSession) => {
+    setSelected(review);setSessions(items=>[review,...items.filter(item=>item.review_id!==review.review_id)]);
+  },[]);
+  function choose(review:TrainingSession) {
+    setReviewPending(false);onSession(review);setEpoch(value=>value+1);
+    const url=new URL(window.location.href);url.searchParams.set("review",review.review_id);window.history.replaceState(window.history.state,"",url);
   }
-  useEffect(() => {
-    let active = true;
-    void knowledgeRequest<{story_id:string;title:string}[]>(`/stories?project_id=${encodeURIComponent(projectId)}&skip=0&limit=100`).then(rows => {if(active && Array.isArray(rows)) setStories(rows);}).catch(() => { /* Story proposals are optional; text sources remain available. */ });
-    return () => {active=false;};
-  }, [projectId]);
-  function edit(index: number, fields: Partial<Claim>) { setClaims(items => items.map((item, i) => i === index ? { ...item, ...fields } : item)); }
+  useEffect(()=>{
+    let active=true;
+    void load().then(async reviews=>{
+      const identity=new URL(window.location.href).searchParams.get("review");
+      const review=identity ? await knowledgeRequest<TrainingSession>(base+"/training/"+encodeURIComponent(identity)) : reviews.find(item=>item.saved_version?.status!=="approved");
+      if(active && review)setSelected(review);
+    }).catch(()=>{if(active)setError("Could not load QA Agent reviews. Reload to try again.");});
+    return()=>{active=false;};
+  },[base,load]);
+  async function act(work:()=>Promise<void>) {
+    setBusy(true);setError("");try{await work();}catch(failure){setError(failure instanceof Error?failure.message:"Request failed. Refresh status before retrying.");}finally{setBusy(false);}
+  }
+  const current=data.versions.find(version=>version.version_id===data.active_version_id);
+  async function inspect(id:string) {
+    await act(async()=>setEvidence(data.sources.find(item=>item.source_id===id) || await knowledgeRequest<Source>(base+"/sources/"+id)));
+  }
+  async function revise(claimId:string,mode:"correction"|"removal") {
+    if(mode==="removal"&&!window.confirm("Remove this approved rule? A removal draft will be created. The rule stays approved until a project administrator reviews and approves that removal."))return;
+    await act(async()=>{
+      const review=await knowledgeRequest<TrainingSession>(base+"/training",{request_id:crypto.randomUUID().replaceAll("-",""),title:mode==="correction"?"Correct an approved rule":"Remove an approved rule",mode,claim_id:claimId});
+      choose(review);await load();
+    });
+  }
+  if(!ready)return <div className="design-state" role={error?"alert":"status"}>{error||"Loading your QA Agent…"}</div>;
   return <div className="design-page">
-    <header><p className="workspace-eyebrow">Project knowledge</p><h1>Teach &amp; review product knowledge</h1><p className="workspace-description">Build reviewed project memory, then use it to analyze stories and design tests.</p></header>
-    <p>Text and timestamped transcript excerpts are available. Private document intake is disabled pending storage and worker qualification. Audio/video uploads are deferred. Use non-sensitive product material; do not paste credentials or personal data.</p>
-    <p>AI proposals need human correction and approval. Observed, inferred and unknown information never automatically becomes an expected requirement.</p>
-    <nav className="workspace-actions" aria-label="Knowledge workflow"><a className="workspace-button" href="#knowledge-sources">Sources</a><a className="workspace-button" href="#knowledge-review">Review &amp; Clarify</a><a className="workspace-button" href="#approved-knowledge">Approved Knowledge</a></nav>
-    <section id="knowledge-sources" className="space-y-4"><h2 className="text-xl font-semibold">Sources</h2>
-    <KnowledgeUploads projectId={projectId} canDelete={canApprove} onReady={load} />
-    <section className="border rounded p-4 space-y-3"><h3>Suggest knowledge from story</h3><p>A story supplies unapproved proposals, not independent evidence validating itself. Suggestions require review and approval.</p>
-      <label>Source story<select aria-label="Source story" disabled={busy} value={storyId} onChange={event => setStoryId(event.target.value)}><option value="">Select a story</option>{stories.map(story => <option key={story.story_id} value={story.story_id}>{story.title}</option>)}</select></label>
-      <button className="workspace-button" disabled={busy || !storyId} onClick={() => void act(async () => {
-        const result = await knowledgeRequest<{claims:Claim[];clarification_questions:string[]}>(base + `/stories/${encodeURIComponent(storyId)}/suggest-knowledge`, {});
-        setClaims(items => [...items, ...result.claims]);setAnswers(items => ({...items,...Object.fromEntries(result.clarification_questions.map(question=>[question,""]))}));await load();setMessage("Story proposals are inferred and unapproved. Review source links before saving a snapshot.");
-      })}>Suggest knowledge from story</button>
+    <header><p className="workspace-eyebrow">QA Agent</p><h1>Teach Your QA Agent</h1><p className="workspace-description">Teach product knowledge, review what the agent learned, and save approved project memory. This does not train the underlying model.</p></header>
+    <nav className="workspace-actions" aria-label="QA Agent workflow"><a className="workspace-button" href="#teach-agent">Teach</a><a className="workspace-button" href="#review-training">Review</a><a className="workspace-button" href="#approved-knowledge">Approved knowledge</a></nav>
+    <DesignStats items={[{label:"Approved rules",value:current?.claims.length||0},{label:"Training reviews",value:sessions.length}]} />
+    <section id="teach-agent" className="workspace-card p-5 space-y-4"><h2>Teach Agent</h2><p>Additional training retains existing knowledge automatically. Use non-sensitive product notes; do not enter credentials or personal data. Document, image and media uploads remain disabled.</p>
+      <fieldset disabled={busy||reviewPending} className="space-y-3 border-0 p-0 m-0">
+        <label className="block">Training title<input className="border rounded w-full" value={title} maxLength={200} onChange={event=>{setTitle(event.target.value);requestKey.current=null;}} /></label>
+        <label className="block">Training source<select value={kind} onChange={event=>{setKind(event.target.value as Source["kind"]);requestKey.current=null;}}><option value="document">Product notes</option><option value="recording_transcript">Pasted timestamped transcript</option></select></label>
+        {kind==="recording_transcript"&&<div className="workspace-actions"><label>Start seconds<input type="number" min={0} max={1800} value={start} onChange={event=>{setStart(Number(event.target.value));requestKey.current=null;}} /></label><label>End seconds<input type="number" min={start} max={1800} value={end} onChange={event=>{setEnd(Number(event.target.value));requestKey.current=null;}} /></label></div>}
+        <label className="block">What should your QA Agent know?<textarea className="border rounded w-full" rows={6} maxLength={kind==="document"?60000:12000} value={text} onChange={event=>{setText(event.target.value);requestKey.current=null;}} /></label>
+        <button className="workspace-button workspace-primary" disabled={!title.trim()||!text.trim()} onClick={()=>void act(async()=>{
+          requestKey.current ||=crypto.randomUUID().replaceAll("-","");
+          const review=await knowledgeRequest<TrainingSession>(base+"/training",{request_id:requestKey.current,title,mode:"training",source:{title,kind,text:kind==="document"?text:"",segments:kind==="document"?[]:[{start_seconds:start,end_seconds:end,text}]}});
+          choose(review);
+          // Only this intentional submission starts extraction. Mount/refresh never does.
+          try{choose(await knowledgeRequest<TrainingSession>(base+"/training/"+review.review_id+"/extract",{}));setText("");setTitle("");requestKey.current=null;}
+          finally{await load();}
+        })}>{busy?"Working…":"Teach agent"}</button>
+      </fieldset><p>Submission uses your configured AI provider and allowance. Pending reviews and completed extraction results are saved for resuming later.</p>
     </section>
-    <fieldset disabled={busy} className="border rounded p-4 space-y-3">
-      <legend>Add text or transcript source</legend><p>Paste product documentation, terminology, workflows or business rules. Keep expected behavior separate from observations.</p>
-      <label className="block">Source title <input className="border rounded p-2" maxLength={200} value={sourceTitle} onChange={event => setSourceTitle(event.target.value)} /></label>
-      <label className="block">Source type <select value={kind} onChange={event => setKind(event.target.value as Source["kind"])}><option value="document">Document text</option><option value="recording_transcript">Timestamped transcript excerpt</option></select></label>
-      {kind === "recording_transcript" && <div><label>Start seconds <input type="number" min={0} max={1800} value={start} onChange={event => setStart(Number(event.target.value))} /></label><label>End seconds <input type="number" min={start} max={1800} value={end} onChange={event => setEnd(Number(event.target.value))} /></label></div>}
-      <label className="block">Source content<textarea className="border rounded w-full" rows={5} maxLength={kind === "document" ? 60000 : 12000} value={text} onChange={event => setText(event.target.value)} /></label>
-      <button className="workspace-button workspace-primary" disabled={!sourceTitle.trim() || !text.trim()} onClick={() => void act(async () => {
-        await knowledgeRequest(base + "/sources", { title: sourceTitle, kind, text: kind === "document" ? text : "", segments: kind === "document" ? [] : [{ start_seconds: start, end_seconds: end, text }] });
-        setText(""); setSourceTitle(""); await load();
-      })}>Save source</button>
-    </fieldset>
-    <section className="space-y-3"><h3 className="text-lg font-semibold">Saved sources</h3>
-      {data.sources.map(source => <details id={`source-${source.source_id}`} key={source.source_id} className="border rounded p-3">
-        <summary>{source.title} · {source.kind}</summary>
-        {source.origin?.upload_id && <p>Upload source · {source.origin.page_number ? `Page ${source.origin.page_number}` : source.origin.block_number ? `Paragraph block ${source.origin.block_number} (not a rendered page)` : source.origin.timestamp_seconds !== undefined ? `Frame sampled near ${source.origin.timestamp_seconds} seconds` : "Timestamped transcript"} · Unapproved ingestion observation</p>}
-        {source.origin?.kind === "story" && <p>Proposed from <Link className="underline" href={`/projects/${projectId}/stories/${source.origin.story_id}`}>story {source.origin.story_id}</Link> · Snapshot digest {source.origin.story_digest}</p>}
-        {source.kind === "document" ? <p className="whitespace-pre-wrap">{source.text}</p> : source.segments.map((segment, i) => <p key={i}>Segment {i} [{segment.start_seconds}–{segment.end_seconds}s]: {segment.text}</p>)}
-        <button className="workspace-button" disabled={busy} onClick={() => void act(async () => {
-          const result = await knowledgeRequest<{ claims: Claim[]; clarification_questions: string[] }>(base + `/sources/${source.source_id}/extract`, {});
-          setClaims(items => [...items, ...result.claims]); setAnswers(items => ({ ...items, ...Object.fromEntries(result.clarification_questions.map(question => [question, ""])) }));
-          setMessage("Proposals added to the editor. Review citations and statements before saving.");
-        })}>Extract proposals with AI</button>
-      </details>)}
+    {storiesEnabled&&<details className="workspace-card p-5"><summary>Suggest knowledge from a story</summary><p>Story suggestions are inferred proposals. They cannot independently validate their own originating story.</p><label>Source story<select value={storyId} onChange={event=>setStoryId(event.target.value)}><option value="">Select a story</option>{stories.map(story=><option key={story.story_id} value={story.story_id}>{story.title}</option>)}</select></label><button className="workspace-button" disabled={busy||reviewPending||!storyId} onClick={()=>void act(async()=>{
+      const review=await knowledgeRequest<TrainingSession>(base+"/training",{request_id:crypto.randomUUID().replaceAll("-",""),title:"Knowledge from story",mode:"training",story_id:storyId});choose(review);
+      try{choose(await knowledgeRequest(base+"/training/"+review.review_id+"/extract",{}));}finally{await load();}
+    })}>Suggest knowledge from story</button></details>}
+    <section className="workspace-card p-5 space-y-3" aria-label="Saved training reviews"><h2>Continue a training review</h2>
+      {!sessions.length&&<p>No training reviews yet.</p>}
+      {sessions.map(review=><div className="flex flex-wrap justify-between gap-3 border-b py-3" key={review.review_id}><div><strong>{review.title}</strong><p>{review.saved_version?.status==="approved"?"Approved training":review.state==="saved"?"Awaiting approval":review.extraction_state==="completed"?"Review in progress":review.extraction_state==="uncertain"?"Extraction needs attention":review.extraction_state==="running"?"Extracting knowledge":"Training saved"}</p></div><button className="workspace-button" disabled={busy||reviewPending} onClick={()=>void act(async()=>choose(await knowledgeRequest(base+"/training/"+review.review_id)))}>Resume review</button></div>)}
     </section>
-    </section><section id="knowledge-review" className="space-y-4"><h2 className="text-xl font-semibold">Review &amp; Clarify</h2><fieldset disabled={busy} className="border rounded p-4 space-y-3"><legend>Review knowledge snapshot</legend>
-      <p>To revise approved knowledge, first select “Create successor” below. Include every claim that should remain current.</p>
-      <label>Snapshot title <input className="border rounded p-2" value={title} maxLength={200} onChange={event => setTitle(event.target.value)} /></label>
-      <p>Parent: {parent || "current approved version at save time"}</p>
-      {claims.map((claim, i) => <div key={claim.claim_id} className="border rounded p-3 space-y-2">
-        <p>{claim.claim_id}</p>
-        <label className="block">Category <select value={claim.category} onChange={event => edit(i, { category: event.target.value as Claim["category"] })}>{["terminology", "role", "business_rule", "workflow", "exception", "unknown"].map(value => <option key={value}>{value}</option>)}</select></label>
-        <label className="block">Information type <select value={claim.epistemic_status} onChange={event => edit(i, { epistemic_status: event.target.value as Claim["epistemic_status"] })}>{["expected", "observed", "inferred", "unknown"].map(value => <option key={value}>{value}</option>)}</select></label>
-        <label className="block">Statement<textarea className="border rounded w-full" maxLength={1500} value={claim.statement} onChange={event => edit(i, { statement: event.target.value })} /></label>
-        <label className="block">Source <select value={claim.source_id} onChange={event => edit(i, { source_id: event.target.value, segment_index: data.sources.find(source => source.source_id === event.target.value)?.kind === "recording_transcript" ? 0 : null })}><option value="">Select source</option>{data.sources.map(source => <option key={source.source_id} value={source.source_id}>{source.title}</option>)}</select></label>
-        {data.sources.find(source => source.source_id === claim.source_id)?.kind === "recording_transcript" && <label className="block">Segment index <input type="number" min={0} value={claim.segment_index ?? 0} onChange={event => edit(i, { segment_index: Number(event.target.value) })} /></label>}
-        <label className="block">Exact source quote<textarea className="border rounded w-full" maxLength={1200} value={claim.quote} onChange={event => edit(i, { quote: event.target.value })} /></label>
-        <a href={`#source-${claim.source_id}`} className="underline">Review source</a>{" "}<button onClick={() => setClaims(items => items.filter((_, index) => index !== i))}>Remove claim from successor</button>
-      </div>)}
-      <button className="workspace-button" disabled={!data.sources.length || claims.length >= 100} onClick={() => setClaims(items => [...items, { claim_id: "K_" + crypto.randomUUID().replaceAll("-", ""), category: "business_rule", epistemic_status: "unknown", statement: "", source_id: data.sources[0].source_id, segment_index: data.sources[0].kind === "recording_transcript" ? 0 : null, quote: "" }])}>Add reviewed claim manually</button>
-      {Object.entries(answers).map(([question, answer]) => <label className="block" key={question}>{question}<textarea className="border rounded w-full" maxLength={2000} value={answer} onChange={event => setAnswers(items => ({ ...items, [question]: event.target.value }))} /></label>)}
-      <button className="workspace-button" disabled={!claims.length || claims.some(claim => !claim.statement.trim() || !claim.quote.trim())} onClick={() => void act(async () => {
-        await knowledgeRequest(base + "/versions", { title, claims, parent_version_id: parent, clarification_answers: answers }); await load(); setMessage("Immutable draft saved. Review the saved snapshot before approval.");
-      })}>Save new draft snapshot</button>
-    </fieldset>
-    <section className="space-y-3"><h2 className="text-xl font-semibold">Saved versions</h2>
-      {data.versions.map(version => <details id={`knowledge-version-${version.version_id}`} className="border rounded p-3" key={version.version_id}><summary>{version.title} · {version.status}{version.version_id === data.active_version_id ? " · current" : ""} · {version.version_id}</summary>
-        {version.claims.map(claim => <div id={`claim-${version.version_id}-${claim.claim_id}`} key={claim.claim_id} className="py-2"><p>{claim.epistemic_status} · {claim.category}: {claim.statement}</p><a className="underline" href={`#source-${claim.source_id}`}>{claim.quote} {claim.segment_index !== null ? ` (segment ${claim.segment_index})` : ""}</a></div>)}
-        {Object.entries(version.clarification_answers).map(([question, answer]) => <p key={question}>{question}: {answer || "Unanswered"}</p>)}
-        <p>Digest: {version.content_digest}</p>
-        <button className="workspace-button" disabled={busy} onClick={() => { setParent(version.version_id); setTitle(version.title); setClaims(version.claims.map(claim => ({ ...claim }))); setAnswers({ ...version.clarification_answers }); setMessage("Snapshot copied into the editor; the saved version remains unchanged."); }}>Create successor</button>
-        {canApprove && version.status === "draft" && <button className="workspace-button" disabled={busy} onClick={() => void act(async () => { await knowledgeRequest(base + `/versions/${version.version_id}/approve`, {}); await load(); setMessage("Knowledge approved. Affected story analyses and specifications require review before new generation or execution."); })}>Approve saved knowledge (project admin)</button>}
-      </details>)}
+    <section id="review-training" className="workspace-card p-5 space-y-3">
+      {selected&&<><button className="workspace-button" disabled={busy} onClick={()=>{if(reviewPending&&!window.confirm("Reload saved review? Changes not yet saved may be lost."))return;void act(async()=>{choose(await knowledgeRequest(base+"/training/"+selected.review_id));await load();});}}>Refresh status</button><TrainingReview key={`${selected.review_id}:${epoch}`} initial={selected} base={base} canApprove={canApprove} onSession={onSession} onRefresh={async()=>{await load();}} onInspect={id=>void inspect(id)} onPendingChange={setReviewPending} currentVersionId={data.active_version_id} sources={data.sources} /></>}
+      {!selected&&<p>Teach your agent or select a saved review to continue.</p>}
     </section>
-    </section><section id="approved-knowledge" className="space-y-3"><h2 className="text-xl font-semibold">Approved Knowledge</h2>
-      {!data.active_version_id && <p>No approved knowledge yet. Review a saved snapshot before approval.</p>}
-      {data.versions.filter(version=>version.status === "approved").map(version=><article className="border rounded p-3" key={version.version_id}><h3>{version.title} · {version.version_id===data.active_version_id?"Current approved":"Historical approved"}</h3><p>{version.claims.length} reviewed claims. Approved content remains immutable.</p><a className="underline" href={`#knowledge-version-${version.version_id}`}>Inspect version, source citations and correction controls</a></article>)}
+    <section id="approved-knowledge" className="workspace-card p-5 space-y-4" aria-label="Approved knowledge"><h2>Approved knowledge</h2>
+      <p>Approved versions stay immutable. Corrections and removals require a new reviewed version. Expected, observed, inferred and unknown information remain distinct.</p>
+      {!current&&<p>No approved knowledge yet. Teach and review your first rules.</p>}
+      {current?.claims.map(claim=><article key={claim.claim_id} id={`claim-${current.version_id}-${claim.claim_id}`} className="border rounded p-4 space-y-2" aria-label="Approved rule"><strong>{claim.statement}</strong><p>{claim.category.replaceAll("_"," ")} · {claim.epistemic_status}</p><blockquote>{claim.quote}</blockquote><div className="workspace-actions"><button className="workspace-button" onClick={()=>void inspect(claim.source_id)}>Inspect source</button><button className="workspace-button" disabled={busy||reviewPending} onClick={()=>void revise(claim.claim_id,"correction")}>Correct rule</button><button className="workspace-button" disabled={busy||reviewPending} onClick={()=>void revise(claim.claim_id,"removal")}>Remove rule</button></div></article>)}
+      <details><summary>Sources and knowledge history</summary>
+        <div className="space-y-3 py-3">{data.sources.map(source=><details id={`source-${source.source_id}`} key={source.source_id}><summary>{source.title}</summary><p className="whitespace-pre-wrap">{source.kind==="document"?source.text:source.segments.map(segment=>`[${segment.start_seconds}–${segment.end_seconds}s] ${segment.text}`).join("\n")}</p>{source.origin?.kind==="story"&&<p>Story-derived proposal source. It cannot independently validate its originating story.</p>}<button className="workspace-button" disabled={busy||reviewPending} onClick={()=>void act(async()=>{
+          // Explicit source reuse resumes its single persisted review; no repeat on navigation.
+          const review=await knowledgeRequest<TrainingSession>(base+"/training",{request_id:source.source_id,title:source.title,mode:"training",source_id:source.source_id});choose(review);
+        })}>Review this source</button></details>)}
+        {data.versions.map(version=><details id={`knowledge-version-${version.version_id}`} key={version.version_id}><summary>{version.title} · {version.status} {version.version_id===data.active_version_id?"· Current":""}</summary><p>{version.claims.length} rules. {version.approved_by?`Approved by ${version.approved_by}`:"Unapproved draft"}</p>{version.claims.map(claim=><p id={version.version_id===data.active_version_id?undefined:`claim-${version.version_id}-${claim.claim_id}`} key={claim.claim_id}>{claim.statement} — {claim.quote}</p>)}</details>)}</div>
+      </details>
     </section>
-    {busy && <p role="status">Working…</p>}{error && <p role="alert">{error}</p>}{message && <p role="status">{message}</p>}
+    {error&&<p role="alert">{error} Completed extraction is retained. Refresh or resume the saved review; do not repeat an uncertain AI request blindly.</p>}
+    <WorkspaceDialog open={!!evidence} onClose={()=>setEvidence(null)} title="Source evidence"><h2>{evidence?.title}</h2><p className="whitespace-pre-wrap">{evidence?.kind==="document"?evidence.text:evidence?.segments.map(segment=>`[${segment.start_seconds}–${segment.end_seconds}s] ${segment.text}`).join("\n")}</p><button className="workspace-button" onClick={()=>setEvidence(null)}>Close evidence</button></WorkspaceDialog>
   </div>;
 }
