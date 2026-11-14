@@ -238,3 +238,17 @@ can hold reviewed local drafts or HTTPS links without fetching/publishing. Only 
 explicit metered Draft with AI uses platform-governed BUG_REPORT_DRAFT_V1. Preserve
 attempt/version links and original supplied facts; later passes never erase bugs.
 Automation authoring stays gated in Test Execution; navigation never starts a run.
+
+
+Knowledge correctness M1 (2026-11-14): see `docs/mvp/QA_AGENT_KNOWLEDGE_M1.md`.
+Successors merge approved rules; corrections/removals pin an explicit parent.
+V2 approvals use immutable single-winner receipts in the existing version collection;
+read status/current versions through ProductKnowledge, never direct status queries.
+Deploy all knowledge writers together; preserve receipt/version history. M2 UI and
+M3 story-only behavior await review and are not authorized by M1 completion.
+
+
+QA Agent M2 (2026-11-14): see `docs/mvp/QA_AGENT_TRAINING_M2.md`. Pending reviews
+are separate from approved knowledge. Never start extraction on mount/refresh or
+automatically retry uncertain metered work; retain source results and CAS review
+revisions. M1 receipts/cutover remain mandatory. Stop for review before M3.

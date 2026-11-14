@@ -20,11 +20,12 @@ class TestDesignReviewTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.story = {"story_id": "ST1", "title": "Save draft", "description": "Synthetic", "acceptance_criteria": "Show Draft saved.", "out_of_scope": ""}
         knowledge = {"_id": "a" * 32, "version_id": "a" * 32, "project_id": "P1", "status": "approved", "approved_at": "2026-11-11T00:00:00Z",
-            "content_digest": "b" * 64, "claims": [{"claim_id": "K1", "statement": "Show Draft saved.", "epistemic_status": "expected"}]}
+            "content_digest": "b" * 64, "claims": [{"claim_id": "K1", "statement": "Show Draft saved.", "epistemic_status": "expected", "source_id": "d" * 32}]}
         analysis = {"_id": "c" * 32, "analysis_id": "c" * 32, "project_id": "P1", "story_id": "ST1", "created_at": "2026-11-11T00:00:00Z",
             "status": "reviewed", "story_digest": digest(self.story), "knowledge_version_id": "a" * 32, "findings": [], "resolutions": []}
         self.db = {"test_design_documents": Collection(), "testcases": Collection({"_id": "case", "project_id": "P1", "testcase_id": "TC1", "scenario_id": "SC1", "title": "Save", "knowledge_version_id": "a" * 32}),
             "scenarios": Collection({"project_id": "P1", "scenario_id": "SC1", "story_id": "ST1", "approved": True, "title": "Save draft", "knowledge_version_id": "a" * 32}),
+            "product_knowledge_sources": Collection({"_id": "d"*32, "source_id": "d"*32, "project_id": "P1", "kind": "document", "text": "Show Draft saved."}),
             "stories": Collection({**self.story, "project_id": "P1"}), "product_knowledge_versions": Collection(knowledge), "story_analyses": Collection(analysis)}
         self.user = {"_id": "reviewer", "role": "ADMIN"}
         async def member(project, user):
@@ -68,7 +69,7 @@ class TestDesignReviewTests(unittest.IsolatedAsyncioTestCase):
         state = (await self.client.get(self.base)).json()
         self.assertFalse(state["review_required"])
         self.assertEqual(state["active_version_id"], approved["version_id"])
-        self.assertEqual(set(self.db), {"test_design_documents", "testcases", "scenarios", "stories", "product_knowledge_versions", "story_analyses"})
+        self.assertEqual(set(self.db), {"test_design_documents", "testcases", "scenarios", "stories", "product_knowledge_versions", "product_knowledge_sources", "story_analyses"})
 
     async def test_project_admin_and_feature_guards(self):
         version = await self.draft()

@@ -6,6 +6,8 @@ from fastapi.responses import FileResponse
 
 from app.db.connection import db
 from app.models.product_knowledge import KnowledgeSourceInput, KnowledgeDraft, ReviewStoryAnalysis
+from app.models.knowledge_training import TrainingStart, TrainingReview, TrainingExtract, TrainingSave, TrainingRebase
+from app.services.knowledge_training import KnowledgeTraining
 from app.routes.approved_visual_runs import actor_id
 from app.services.ai.ai_configuration_service import public_error
 from app.services.ai.ai_usage_policy import AIUsageError
@@ -30,6 +32,52 @@ router = APIRouter(prefix="/projects/{project_id}/knowledge", tags=["Product kno
 
 def service():
     return ProductKnowledge(db)
+
+
+def training_service():
+    return KnowledgeTraining(db, service())
+
+
+@router.get("/training")
+async def training_reviews(project_id: str, user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await training_service().listing(project_id)
+
+
+@router.post("/training", status_code=201)
+async def start_training(project_id: str, payload: TrainingStart, user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await training_service().start(project_id, actor_id(user), payload)
+
+
+@router.get("/training/{review_id}")
+async def training_review(project_id: str, review_id: VersionId, user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await training_service().get(project_id, review_id)
+
+
+@router.post("/training/{review_id}/extract")
+async def extract_training(project_id: str, review_id: VersionId, payload: TrainingExtract, user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await ai_result(training_service().extract(project_id, user, review_id, payload))
+
+
+@router.post("/training/{review_id}/review")
+async def update_training_review(project_id: str, review_id: VersionId, payload: TrainingReview, user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await training_service().review(project_id, review_id, payload)
+
+
+@router.post("/training/{review_id}/save")
+async def save_training_review(project_id: str, review_id: VersionId, payload: TrainingSave, user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await training_service().save(project_id, actor_id(user), review_id, payload)
+
+
+@router.post("/training/{review_id}/rebase")
+async def rebase_training_review(project_id: str, review_id: VersionId, payload: TrainingRebase, user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await training_service().rebase(project_id, actor_id(user), review_id, payload)
 
 
 async def ai_result(awaitable):
@@ -130,10 +178,24 @@ async def extract(project_id: str, source_id: VersionId, user=Depends(get_curren
     return await ai_result(service().extract(project_id, user, source_id))
 
 
+@router.get("/sources/{source_id}")
+async def source_evidence(project_id: str, source_id: VersionId, user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    knowledge = service()
+    return knowledge.public(await knowledge.record("product_knowledge_sources", project_id, source_id))
+
+
 @router.post("/versions", status_code=201)
 async def create_version(project_id: str, payload: KnowledgeDraft, user=Depends(get_current_user)):
     await require_project_member(project_id, user)
     return await service().create_version(project_id, actor_id(user), payload)
+
+
+@router.get("/versions/{version_id}")
+async def knowledge_version(project_id: str, version_id: VersionId, user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    knowledge = service()
+    return knowledge.public(await knowledge.record("product_knowledge_versions", project_id, version_id))
 
 
 @router.post("/versions/{version_id}/approve")

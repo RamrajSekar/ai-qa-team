@@ -500,3 +500,20 @@ and metered provider capability checks, selected-frame policy, source provenance
 secret/evidence protection, cancellation/interruption/no-replay, retention/deletion
 and real integration qualification. Reassess provider models/costs then. Related
 reserved environment values remain inactive; no existing recorder is removed.
+
+
+## Teach Your QA Agent — approved sequence (2026-11-14)
+
+M1 backend correctness is implemented locally; see [scope, tests, storage and
+rollout limits](QA_AGENT_KNOWLEDGE_M1.md). Stop for user review before M2.
+M2: rename destination only (retain knowledge route), Teach/Review/Save, durable
+proposals/corrections/clarifications and extraction recovery without automatic
+paid retries. M3: story-only/knowledge-aware analysis, missing-criteria handling,
+conflict/staleness UX and safe provisional-scenario feasibility assessment.
+No new agent entity, store/framework, execution work or ingestion enablement.
+
+
+M2 local implementation: see [QA_AGENT_TRAINING_M2.md](QA_AGENT_TRAINING_M2.md) for
+persisted training/review states, safe extraction recovery and browser verification.
+The M1 shared-database cutover is still a release prerequisite. Stop before M3
+story integration until the user reviews this milestone.

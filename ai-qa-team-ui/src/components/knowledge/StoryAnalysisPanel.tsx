@@ -44,7 +44,7 @@ export default function StoryAnalysisPanel({ projectId, storyId }: { projectId: 
   return <section id="story-analysis" className="workspace-card p-5 space-y-3" aria-label="Story analysis">
     <h2 className="text-xl font-semibold">Review story against product knowledge</h2>
     <p>Review gaps, ambiguity, missing details and conflicts before generation. Story or knowledge changes require a new review.</p>
-    <Link className="underline" href={`/projects/${projectId}/knowledge`}>Teach &amp; review product knowledge</Link>
+    <Link className="underline" href={`/projects/${projectId}/knowledge`}>Teach your QA Agent</Link>
     <div><button className="workspace-button" disabled={busy} onClick={() => void perform(false)}>Analyze with AI</button></div>
     <p role="status"><DesignBadge>{!loaded ? "Loading" : error && !analysis ? "Unavailable" : !analysis ? "Not analyzed" : analysis.stale ? "Stale" : analysis.status === "reviewed" ? "Reviewed" : "Findings need review"}</DesignBadge></p>
     {analysis && <>

@@ -3,7 +3,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE_PATH || 'playwright');
 
-test('knowledge review, story analysis and scenario count controls', async t => {
+test('existing story analysis, stale findings and scenario count controls', async t => {
   const base = process.env.FEATURE_UI_URL || 'http://127.0.0.1:3123';
   const browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || 'msedge' });
   t.after(() => browser.close());
@@ -39,21 +39,8 @@ test('knowledge review, story analysis and scenario count controls', async t => 
     return route.fulfill({ headers, json });
   });
   const page = await context.newPage(); page.setDefaultTimeout(45000); page.setDefaultNavigationTimeout(90000);
-  await page.goto(base + '/projects/P1/knowledge');
-  await page.getByRole('heading', { name: 'Teach & review product knowledge' }).waitFor().catch(async error => { console.log('Fixture-only body:', await page.locator('body').innerText()); console.log('Fixture URL:', page.url()); throw error; });
-  await page.getByLabel('Source title').fill('Synthetic guide');
-  await page.getByLabel('Source content').fill('Show Draft saved.');
-  await page.getByRole('button', { name: 'Save source', exact: true }).click();
-  await page.getByRole('button', { name: 'Add reviewed claim manually' }).click();
-  await page.getByLabel('Statement', { exact: true }).fill('Show Draft saved.');
-  await page.getByLabel('Information type').selectOption('expected');
-  await page.getByLabel('Exact source quote').fill('Draft saved');
-  await page.getByRole('button', { name: 'Save new draft snapshot' }).click();
-  // Open the saved immutable snapshot before approval.
-  await page.locator('summary').filter({ hasText: 'Product knowledge · draft' }).click();
-  await page.getByRole('button', { name: 'Approve saved knowledge (project admin)' }).click();
-  await page.getByRole('status').filter({ hasText: 'Knowledge approved.' }).waitFor();
-  assert.equal(versions[0].claims[0].quote, 'Draft saved');
+  versions.push({version_id:'b'.repeat(32),title:'Existing approved rules',status:'approved',claims:[{claim_id:'K1',statement:'Show Draft saved.',quote:'Draft saved',epistemic_status:'expected'}]});
+  active=versions[0].version_id;
   await page.goto(base + '/projects/P1/stories/ST1');
   await page.getByRole('button', { name: 'Analyze with AI' }).click().catch(async error => { console.log('Fixture-only page text:', await page.locator('body').innerText()); throw error; });
   const approve = page.getByRole('button', { name: 'Approve analysis review (project admin)' });
@@ -67,13 +54,5 @@ test('knowledge review, story analysis and scenario count controls', async t => 
   assert.equal(requested, '4');
   await page.goto(base+'/projects/P1/stories');await page.getByRole('link',{name:'Reviewed',exact:true}).waitFor();
   analysis.stale=true;await page.reload();await page.getByRole('link',{name:'Stale',exact:true}).waitFor();
-  await page.goto(base+'/projects/P1/knowledge');
-  for(const name of ['Sources','Review & Clarify','Approved Knowledge'])await page.getByRole('navigation',{name:'Knowledge workflow'}).getByRole('link',{name,exact:true}).waitFor();
-  await page.getByText('Uploads are disabled until private storage and restricted document processing are qualified.',{exact:true}).waitFor();assert.equal(await page.getByLabel('Private knowledge file').count(),0);
-  await page.getByLabel('Source story',{exact:true}).selectOption('ST1');await page.getByRole('button',{name:'Suggest knowledge from story',exact:true}).click();
-  await page.getByRole('status').filter({hasText:'Story proposals are inferred and unapproved'}).waitFor();
-  assert.equal(await page.getByLabel('Information type').inputValue(),'inferred');
-  assert.equal(versions.length,1);assert.equal(versions[0].status,'approved');
-  await page.locator('summary').filter({hasText:'Story: Save draft'}).click();
-  await page.getByRole('link',{name:'story ST1',exact:true}).waitFor();
+  // QA Agent training browser coverage lives in qa-agent-training.test.cjs.
 });
