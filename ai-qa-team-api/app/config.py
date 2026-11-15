@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field, SecretStr, EmailStr
 
 
 class FeatureFlags(BaseModel):
+    knowledge_ask: bool = False
     knowledge_uploads: bool = False
     knowledge_media_processing: bool = False
     knowledge_image_interpretation: bool = False
@@ -86,6 +87,8 @@ class KnowledgeIngestionSettings(BaseModel):
 
 
 class Settings(BaseSettings):
+    # Reserved fail-closed gate: enable only after the encrypted storage cutover.
+    knowledge_encryption_required: bool = False
     knowledge_ingestion: KnowledgeIngestionSettings = Field(default_factory=KnowledgeIngestionSettings)
     features: FeatureFlags = Field(default_factory=FeatureFlags)
     ai_allowances: AIAllowanceSettings = Field(default_factory=AIAllowanceSettings)

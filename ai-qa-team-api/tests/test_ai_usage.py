@@ -132,6 +132,16 @@ class AIUsageTests(unittest.IsolatedAsyncioTestCase):
         byok = self.db["ai_usage_records"].documents[-1]
         self.assertEqual((byok["ai_mode"], byok["credits_consumed"], byok["managed_cost_eligible"], byok["estimated_managed_cost"]), ("BYOK", 1, False, None))
 
+    async def test_knowledge_ask_uses_managed_and_byok_request_controls(self):
+        for mode in ("MANAGED","BYOK"):
+            await self.service(Gateway(mode=mode)).execute(AIOperation.KNOWLEDGE_ASK,"PRJ1",self.owner,
+                LLMRequest(prompt="approved context and question",prompt_key="knowledge_ask_v1",prompt_version="CODE_DEFAULT_V1",max_retries=0))
+            row=self.db["ai_usage_records"].documents[-1]
+            self.assertEqual(row["operation_type"],"KNOWLEDGE_ASK")
+            self.assertEqual(row["ai_mode"],mode)
+            self.assertEqual(row["credits_consumed"],1)
+            self.assertNotIn("approved context",str(row))
+
     async def test_atomic_reservation_cannot_overspend_last_credit(self):
         nested_set(self.db["users"].documents[0], "subscription.limits.ai_gen_limit", 1)
         with patch.object(settings.ai_usage, "max_concurrent_requests", 2):

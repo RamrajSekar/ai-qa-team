@@ -16,14 +16,24 @@ test('anonymous pricing distinguishes Managed and BYOK with provisional prices a
  await page.getByRole('heading',{name:'Managed AI',exact:true}).waitFor();
  await page.getByRole('heading',{name:'Bring Your Own Key',exact:true}).waitFor();
  await page.getByText('~$499',{exact:false}).waitFor();await page.getByText('~$349',{exact:false}).waitFor();
- await page.getByText(/Prices and allowances are experimental hypotheses/).waitFor();
- await page.getByText(/Credits count supported requests, not model tokens/).waitFor();
+ await page.getByText(/Indicative prices/).waitFor();
+ await page.getByText(/Requests are not tokens/).waitFor();
  await page.getByRole('definition').filter({hasText:/Managed AI requires no customer key/}).waitFor();
  assert.equal(calls.filter(method=>method!=='GET'&&method!=='OPTIONS').length,0);
  if(process.env.PRICING_SCREENSHOT)await page.screenshot({path:process.env.PRICING_SCREENSHOT,fullPage:true});
  await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
 });
 test('pricing catalog failure offers a bounded user-initiated retry',async t=>{
- const{page}=await fixture(t,true);await page.goto(base+'/pricing');await page.getByRole('alert').waitFor();
+ const{page}=await fixture(t,true);await page.goto(base+'/pricing');await page.getByRole('alert').filter({hasText:'Pricing details are temporarily unavailable.'}).waitFor();
  await page.getByRole('button',{name:'Try again'}).click();await page.getByRole('heading',{name:'Managed AI',exact:true}).waitFor();
+});
+
+test('landing page explains Test Design in three steps without future execution claims',async t=>{
+ const{page}=await fixture(t);await page.goto(base+'/');
+ await page.getByRole('heading',{name:'Clearer stories. Better test cases.'}).waitFor();
+ assert.equal(await page.getByRole('article').count(),3);
+ await page.getByRole('link',{name:'View pricing',exact:true}).waitFor();
+ await page.getByText('Test Design beta. Recording uploads and general automated browser execution are not included.',{exact:true}).waitFor();
+ if(process.env.MARKETING_SCREENSHOT)await page.screenshot({path:process.env.MARKETING_SCREENSHOT,fullPage:true});
+ await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
 });

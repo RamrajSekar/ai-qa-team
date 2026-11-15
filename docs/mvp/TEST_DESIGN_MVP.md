@@ -15,6 +15,8 @@ No product readiness claim follows from a synthetic browser or mocked API check.
 | Narrated recording intake | NOT IMPLEMENTED. Private storage is not available; upload/transcription/media handling and deletion/security tests remain required for the original scope. |
 | Knowledge governance | Human approval, expected/observed/inferred/unknown separation and successors exist. Multi-host approval-head coordination remains unqualified. |
 | Story analysis | M3 adds explicitly labelled story-only review without mandatory acceptance criteria; approved knowledge adds conflict checks. Shared stale-context and generation gates remain. See QA_AGENT_STORY_M3.md; real supported-model checks remain. |
+| Ask | M4 adds default-off current-approved-context answers with validated citations and metering. See KNOWLEDGE_SECURITY_ASK_M4.md; live provider/data-quality verification remains. |
+| Knowledge encryption | Disabled KMS/envelope preparation only. Encrypted Mongo storage, all-copy migration, managed identity/key provisioning and live qualification are NOT delivered; confidential-customer activation remains gated. |
 | Scenarios | Knowledge-aware coverage intents describe WHAT; legacy records remain readable. Requested/allowed/actual counts exposed. |
 | Detailed testcase design | NLP instructions, explicit expectations/assertions, data and rule/criterion links exist. Human review is required. |
 | Review/export | Immutable NLP drafts and per-case CAS approval, manual-use text/JSON exports; source changes require review. No automation begins. |
