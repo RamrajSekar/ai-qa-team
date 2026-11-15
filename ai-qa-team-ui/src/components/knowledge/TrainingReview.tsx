@@ -78,8 +78,7 @@ export default function TrainingReview({ initial, base, canApprove, onSession, o
   const accepted = proposals.some(item => item.decision === "confirmed") || session.removed_claim_ids.length > 0;
   const noChanges = !session.removed_claim_ids.length && proposals.every(item => item.decision === "rejected");
   return <section aria-label="Training review" className="workspace-card p-5 space-y-4">
-    <div><p className="workspace-eyebrow">Review</p><h2>Review What the Agent Learned</h2><p>{session.title}</p></div>
-    <p>Existing approved knowledge is retained automatically. Confirmed proposals are saved only after explicit approval.</p>
+    <div><h2>{session.mode === "removal" ? "Review removal" : session.mode === "correction" ? "Review correction" : "Review knowledge"}</h2>{session.mode === "training" && <p>{session.title}</p>}</div>
     {session.state === "reviewing" && session.extraction_state !== "running" && <button className="workspace-button" disabled={dirty || saving || autoSaving} onClick={()=>{
       if(!window.confirm("Discard this pending request? Current approved knowledge will not change."))return;
       void perform(()=>knowledgeRequest(path+"/discard",{expected_revision:session.revision}));
@@ -98,13 +97,13 @@ export default function TrainingReview({ initial, base, canApprove, onSession, o
         void perform(() => knowledgeRequest(path + "/extract", { retry_uncertain: uncertain, expected_attempt: session.attempt }));
       }}>{session.extraction_state === "uncertain" ? "Retry extraction explicitly" : "Start extraction"}</button>}
     </>}
-    {session.mode === "removal" && <div><p>Removal: other rules and execution history remain unchanged.</p>
+    {session.mode === "removal" && <div>
       <label>Reason for removal<textarea aria-label="Reason for removal" disabled={!editable || saving} className="border rounded w-full" maxLength={2000} value={reason} onChange={event=>{edits.current++;setReason(event.target.value);setDirty(true);setError("");}} /></label>
       <h3>Affected scenarios and test cases</h3><p>Linked or version-dependent designs require review after knowledge changes. Existing execution records remain unchanged.</p>
       {Object.entries(session.removal_impact || {}).map(([kind,rows])=><div key={kind}><strong>{kind === "scenarios" ? "Scenarios" : "Test cases"}</strong>{rows.length ? rows.map(row=><p key={row.id}>{row.title}</p>) : <p>No linked items found.</p>}</div>)}
     </div>}
     {editable && proposals.length > 0 && <div className="workspace-actions">{(["confirmed","rejected"] as const).map(decision=><button key={decision} className="workspace-button" disabled={saving} onClick={()=>{edits.current++;setProposals(items=>items.map(item=>item.decision === "pending" ? {...item,decision} : item));setDirty(true);setError("");}}>{decision === "confirmed" ? "Confirm all undecided" : "Reject all undecided"}</button>)}</div>}
-    <h3>{session.mode === "correction" ? "Corrections" : session.mode === "removal" ? "Removals" : "Additions"}</h3>
+    {proposals.length > 0 && <h3>{session.mode === "correction" ? "Corrections" : "Additions"}</h3>}
     <fieldset disabled={saving} className="space-y-4 border-0 p-0 m-0">
       {proposals.map((item, index) => <article className="border rounded p-4 space-y-3" key={item.claim.claim_id} aria-label={`Proposal ${index + 1}`}>
         <div className="workspace-actions"><strong>{item.claim.category.replaceAll("_", " ")}</strong><DesignBadge tone={item.decision === "confirmed" ? "positive" : item.decision === "rejected" ? "negative" : "warning"}>{item.decision}</DesignBadge><span>{item.claim.epistemic_status}</span></div>
@@ -136,7 +135,7 @@ export default function TrainingReview({ initial, base, canApprove, onSession, o
       </article>)}
       {!noChanges && session.clarification_questions.map(question => <label className="block" key={question}>{question}<textarea aria-label={question} disabled={!editable} className="border rounded w-full" maxLength={2000} value={answers[question] || ""} onChange={event => { edits.current++;setAnswers(current => ({ ...current, [question]: event.target.value })); setDirty(true); setError(""); setSaveNote("Unsaved changes"); }} /></label>)}
     </fieldset>
-    {editable && <><p role="status">{saveNote}</p><p>{noChanges ? "No changes were accepted. Complete this review without answering unused clarification questions. Approved knowledge stays unchanged." : "Unresolved clarifications block saving for approval. Rejecting a proposal never deletes an existing rule."}</p>
+    {editable && <><p role="status">{saveNote}</p>{noChanges && <p>No changes selected.</p>}
       <button className="workspace-button workspace-primary" disabled={saving || autoSaving || dirty || (!noChanges && (unresolved || !accepted)) || (session.mode === "removal" && !reason.trim()) || !!error} onClick={() => {if(noChanges&&!window.confirm("Discard this review? Approved knowledge will not change."))return;void perform(() => knowledgeRequest(path + "/save", { expected_revision: session.revision }));}}>{noChanges ? "Discard review" : "Review changes"}</button></>}
     {session.state === "rejected" && <p role="status">Review completed — no changes accepted. Approved knowledge is unchanged.</p>}
     {session.saved_version && <section aria-label="Saved knowledge changes" className="space-y-3">
