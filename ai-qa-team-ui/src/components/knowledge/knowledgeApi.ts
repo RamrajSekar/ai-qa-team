@@ -32,8 +32,10 @@ export interface TrainingProposal { claim: Claim; decision: "pending" | "confirm
 export interface TrainingSession {
   review_id: string; title: string; mode: "training" | "correction" | "removal";
   source_id: string | null; base_version_id: string | null; draft_version_id: string;
-  state: "reviewing" | "saving" | "saved"; extraction_state: "not_started" | "running" | "completed" | "uncertain";
+  state: "reviewing" | "saving" | "saved" | "rejected"; extraction_state: "not_started" | "running" | "completed" | "uncertain";
   revision: number; attempt: number; proposals: TrainingProposal[];
+  removal_reason?: string;
+  removal_impact?: Record<string, {id:string;title:string}[]>;
   clarification_questions: string[]; clarification_answers: Record<string,string>; removed_claim_ids: string[];
   saved_version?: KnowledgeVersion;
 }
