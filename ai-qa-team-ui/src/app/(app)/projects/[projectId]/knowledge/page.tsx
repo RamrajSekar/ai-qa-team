@@ -69,6 +69,7 @@ function QAAgentWorkspace({projectId}:{projectId:string}) {
   async function act(work:()=>Promise<void>) {
     setBusy(true);setError("");try{await work();}catch(failure){setError(failure instanceof Error?failure.message:"Request failed. Refresh status before retrying.");}finally{setBusy(false);}
   }
+  const pendingSelection=selected && selected.state!=="rejected" && selected.saved_version?.status!=="approved";
   const current=data.versions.find(version=>version.version_id===data.active_version_id);
   async function inspect(id:string) {
     await act(async()=>setEvidence(data.sources.find(item=>item.source_id===id) || await knowledgeRequest<Source>(base+"/sources/"+id)));
@@ -105,13 +106,13 @@ function QAAgentWorkspace({projectId}:{projectId:string}) {
       const review=await knowledgeRequest<TrainingSession>(base+"/training",{request_id:crypto.randomUUID().replaceAll("-",""),title:"Knowledge from story",mode:"training",story_id:storyId});choose(review);
       try{choose(await knowledgeRequest(base+"/training/"+review.review_id+"/extract",{}));}finally{await load();}
     })}>Suggest knowledge from story</button></details>}
-    </div><div id="panel-review" role="tabpanel" aria-labelledby="tab-review" hidden={tab!=="review"}><section className="workspace-card p-5 space-y-3" aria-label="Saved training reviews"><h2>Continue a training review</h2>
+    </div><div id="panel-review" role="tabpanel" aria-labelledby="tab-review" hidden={tab!=="review"}><section className="workspace-card p-5 space-y-3" aria-label="Saved training reviews">{sessions.some(review=>review.state!=="rejected"&&review.saved_version?.status!=="approved")&&<h2>Pending reviews</h2>}
       {!sessions.some(review=>review.state!=="rejected"&&review.saved_version?.status!=="approved")&&<p>No pending training reviews.</p>}
       {sessions.filter(review=>review.state!=="rejected"&&review.saved_version?.status!=="approved").map(review=><div className="flex flex-wrap justify-between gap-3 border-b py-3" key={review.review_id}><div><strong>{review.title}</strong><p>{review.state==="saved"?"Awaiting approval":review.extraction_state==="completed"?"Review in progress":review.extraction_state==="uncertain"?"Extraction needs attention":review.extraction_state==="running"?"Extracting knowledge":"Training saved"}</p></div><button className="workspace-button" disabled={busy||reviewPending} onClick={()=>void act(async()=>choose(await knowledgeRequest(base+"/training/"+review.review_id)))}>Resume review</button></div>)}
     </section>
     <section id="review-training" className="workspace-card p-5 space-y-3">
-      {selected&&<><button className="workspace-button" disabled={busy} onClick={()=>{if(reviewPending&&!window.confirm("Reload saved review? Changes not yet saved may be lost."))return;void act(async()=>{choose(await knowledgeRequest(base+"/training/"+selected.review_id));await load();});}}>Refresh status</button><TrainingReview key={`${selected.review_id}:${epoch}`} initial={selected} base={base} canApprove={canApprove} onSession={onSession} onRefresh={async()=>{await load();}} onInspect={id=>void inspect(id)} onPendingChange={setReviewPending} currentVersionId={data.active_version_id} sources={data.sources} /></>}
-      {!selected&&<p>Teach your agent or select a saved review to continue.</p>}
+      {selected&&pendingSelection&&<><button className="workspace-button" disabled={busy} onClick={()=>{if(reviewPending&&!window.confirm("Reload saved review? Changes not yet saved may be lost."))return;void act(async()=>{choose(await knowledgeRequest(base+"/training/"+selected.review_id));await load();});}}>Refresh status</button><TrainingReview key={`${selected.review_id}:${epoch}`} initial={selected} base={base} canApprove={canApprove} onSession={onSession} onRefresh={async()=>{await load();}} onInspect={id=>void inspect(id)} onPendingChange={setReviewPending} currentVersionId={data.active_version_id} sources={data.sources} /></>}
+      {!pendingSelection&&sessions.some(review=>review.state!=="rejected"&&review.saved_version?.status!=="approved")&&<p>Select a review to continue.</p>}
     </section>
     </div><div id="panel-approved" role="tabpanel" aria-labelledby="tab-approved" hidden={tab!=="approved"}><section id="approved-knowledge" className="workspace-card p-5 space-y-4" aria-label="Approved knowledge"><h2>Approved knowledge</h2>
       {!current?.claims.length&&<p>No approved knowledge yet.</p>}
