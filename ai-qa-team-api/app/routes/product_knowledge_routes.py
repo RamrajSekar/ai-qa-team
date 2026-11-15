@@ -7,6 +7,8 @@ from fastapi.responses import FileResponse
 from app.db.connection import db
 from app.models.product_knowledge import KnowledgeSourceInput, KnowledgeDraft, ReviewStoryAnalysis
 from app.models.knowledge_training import TrainingStart, TrainingReview, TrainingExtract, TrainingSave, TrainingRebase
+from app.models.knowledge_ask import KnowledgeQuestion
+from app.services.knowledge_ask import KnowledgeAsk
 from app.services.knowledge_training import KnowledgeTraining
 from app.routes.approved_visual_runs import actor_id
 from app.services.ai.ai_configuration_service import public_error
@@ -36,6 +38,12 @@ def service():
 
 def training_service():
     return KnowledgeTraining(db, service())
+
+
+@router.post("/ask", dependencies=[Depends(feature_required("knowledge_ask"))])
+async def ask_knowledge(project_id: str, payload: KnowledgeQuestion, user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await ai_result(KnowledgeAsk(db, service()).ask(project_id, user, payload))
 
 
 @router.get("/training")

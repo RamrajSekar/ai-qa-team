@@ -1,5 +1,10 @@
 # Account AI allowances and experimental pricing
 
+2026-11-15: `KNOWLEDGE_ASK` is a metered request in the resolved Managed/BYOK
+pool. See [M4](KNOWLEDGE_SECURITY_ASK_M4.md). Public pages are simplified; prices
+remain indicative and backend-controlled. [Cost review](PRICING_COST_REVIEW.md)
+separates KMS, platform, AI and support costs; no paid entitlements were changed.
+
 Accepted 2026-11-12. This amendment supersedes the earlier unapproved 25/500
 recommendation in ACCOUNT_UI_REFINEMENTS.md. It does not qualify execution,
 recording ingestion, enterprise security or payment processing.

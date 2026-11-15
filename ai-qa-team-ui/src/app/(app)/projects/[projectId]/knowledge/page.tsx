@@ -5,6 +5,7 @@ import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 import { useProjects } from "@/hooks/useProjects";
 import { WorkspaceDialog } from "@/components/ui/workspace-dialog";
 import { DesignStats } from "@/components/projects/DesignWorkspace";
+import AskKnowledge from "@/components/knowledge/AskKnowledge";
 import TrainingReview from "@/components/knowledge/TrainingReview";
 import { knowledgeRequest, type Source, type KnowledgeVersion, type TrainingSession } from "@/components/knowledge/knowledgeApi";
 
@@ -26,7 +27,7 @@ function QAAgentWorkspace({projectId}:{projectId:string}) {
   const [ready,setReady] = useState(false);
   const [sessions,setSessions] = useState<TrainingSession[]>([]);
   const [selected,setSelected] = useState<TrainingSession | null>(null);
-  const [tab,setTab] = useState<"teach"|"review"|"approved">("teach");
+  const [tab,setTab] = useState<"ask"|"teach"|"review"|"approved">("teach");
   const [epoch,setEpoch] = useState(0);
   const [title,setTitle] = useState(""); const [text,setText] = useState("");
   const [kind,setKind] = useState<Source["kind"]>("document");
@@ -84,8 +85,9 @@ function QAAgentWorkspace({projectId}:{projectId:string}) {
   if(!ready)return <div className="design-state" role={error?"alert":"status"}>{error||"Loading your QA Agent…"}</div>;
   return <div className="design-page">
     <header><p className="workspace-eyebrow">QA Agent</p><h1>Your QA Agent</h1><p className="workspace-description">Teach product knowledge, review what the agent learned, and save approved project memory. This does not train the underlying model.</p></header>
-    <div className="workspace-actions" role="tablist" aria-label="QA Agent workflow">{(["teach","review","approved"] as const).map(value=><button key={value} id={`tab-${value}`} role="tab" aria-selected={tab===value} aria-controls={`panel-${value}`} className={`workspace-button ${tab===value ? "workspace-primary" : ""}`} disabled={reviewPending || busy} onClick={()=>setTab(value)}>{value === "teach" ? "Teach" : value === "review" ? `Review (${sessions.filter(item=>item.state!=="rejected"&&item.saved_version?.status!=="approved").length})` : "Approved"}</button>)}</div>
+    <div className="workspace-actions" role="tablist" aria-label="QA Agent workflow">{((enabled("knowledge_ask") ? ["ask","teach","review","approved"] : ["teach","review","approved"]) as ("ask"|"teach"|"review"|"approved")[]).map(value=><button key={value} id={`tab-${value}`} role="tab" aria-selected={tab===value} aria-controls={`panel-${value}`} className={`workspace-button ${tab===value ? "workspace-primary" : ""}`} disabled={reviewPending || busy} onClick={()=>setTab(value)}>{value === "ask" ? "Ask" : value === "teach" ? "Teach" : value === "review" ? `Review (${sessions.filter(item=>item.state!=="rejected"&&item.saved_version?.status!=="approved").length})` : "Approved"}</button>)}</div>
     <DesignStats items={[{label:"Approved rules",value:current?.claims.length||0},{label:"Pending reviews",value:sessions.filter(item=>item.state!=="rejected"&&item.saved_version?.status!=="approved").length}]} />
+    {enabled("knowledge_ask")&&<div id="panel-ask" role="tabpanel" aria-labelledby="tab-ask" hidden={tab!=="ask"}><AskKnowledge base={base} onInspect={id=>void inspect(id)} onCorrect={id=>void revise(id,"correction")} /></div>}
     <div id="panel-teach" role="tabpanel" aria-labelledby="tab-teach" hidden={tab!=="teach"}><section id="teach-agent" className="workspace-card p-5 space-y-4"><h2>Teach Agent</h2><p>Additional training retains existing knowledge automatically. Use non-sensitive product notes; do not enter credentials or personal data. Document, image and media uploads remain disabled.</p>
       <fieldset disabled={busy||reviewPending} className="space-y-3 border-0 p-0 m-0">
         <label className="block">Training title<input className="border rounded w-full" value={title} maxLength={200} onChange={event=>{setTitle(event.target.value);requestKey.current=null;}} /></label>

@@ -15,10 +15,13 @@ from app.services.ai.base_provider import LLMRequest
 from app.services.approved_visual_run import digest
 from app.services.prompt_registry_service import get_active
 from app.utils.feature_flags import require_features
+from app.config import settings
 
 
 class ProductKnowledge:
     def __init__(self, database, usage=None):
+        if settings.knowledge_encryption_required:
+            raise HTTPException(503, "Encrypted knowledge storage cutover is not configured. No plaintext fallback is permitted.")
         self.db = database
         self.usage = usage or AIUsageService(database=database)
 

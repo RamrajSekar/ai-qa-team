@@ -1,7 +1,7 @@
 // Synthetic API/auth doubles for browser UX checks. Never a live account/session.
 const assert = require('node:assert/strict');
 const base = process.env.FEATURE_UI_URL || 'http://127.0.0.1:3125';
-async function fixture(browser, t, {role='ADMIN',empty=false,withoutCriteria=false}={}) {
+async function fixture(browser, t, {role='ADMIN',empty=false,withoutCriteria=false,ask=false}={}) {
  const context=await browser.newContext();t.after(()=>context.close());
  await context.addCookies([{name:'access_token',value:'synthetic-ui-fixture',url:base}]);
  const root='/projects/P1/knowledge', sources=[],versions=[],reviews=[],calls=[];let active=null,counter=0,projects=empty?[]:[{project_id:'P1',name:'Synthetic project',current_user_role:role}];
@@ -13,7 +13,7 @@ async function fixture(browser, t, {role='ADMIN',empty=false,withoutCriteria=fal
   const headers={'access-control-allow-origin':base,'access-control-allow-credentials':'true','access-control-allow-headers':'content-type','access-control-allow-methods':'GET,POST,PATCH,OPTIONS'};
   if(method==='OPTIONS')return route.fulfill({status:204,headers});
   const body=request.postData()?request.postDataJSON():null;calls.push({path,method,body});let json=[],status=200;
-  if(path==='/features')json={product_knowledge:true,story_analysis:true,story_management:true,scenario_generation:true,test_generation:true};
+  if(path==='/features')json={knowledge_ask:ask,product_knowledge:true,story_analysis:true,story_management:true,scenario_generation:true,test_generation:true};
   if(path==='/auth/me')json={user};
   if(path==='/projects'){if(method==='POST')projects=[{project_id:'P1',name:body.name,current_user_role:role}];json=method==='POST'?projects[0]:projects;}
   if(path==='/projects/P1')json=projects[0];
@@ -55,6 +55,7 @@ async function fixture(browser, t, {role='ADMIN',empty=false,withoutCriteria=fal
   if(path===root+'/stories/ST1/analysis')json=analysis;
   if(path===root+'/stories/ST1/analyze')json=analysis={analysis_id:'a'.repeat(32),status:'needs_review',summary:'Clarify timing',analysis_mode:active?'knowledge_aware':'story_only',knowledge_version_id:active,findings:[{finding_id:'F1',category:'missing_detail',severity:'blocker',description:'Missing timing',question:'When should confirmation appear?'}]};
   if(path.endsWith('/analysis/'+'a'.repeat(32)+'/review'))json=analysis={...analysis,status:'reviewed',resolutions:body.resolutions};
+  if(path===root+'/ask')json=active?{status:'supported',answer:'Rule one applies.',knowledge_version_id:active,citations:[{claim_id:versions.find(v=>v.version_id===active).claims[0].claim_id,quote:'Rule one.',source_id:sources[0].source_id,source_quote:'Rule one.',information_type:'expected',segment_index:null}]}:{status:'not_covered',answer:'No current approved knowledge covers this question.',knowledge_version_id:null,citations:[]};
   if(path===root+'/analysis-summaries')json={ST1:{state:analysis?.stale?'stale':analysis?.status==='reviewed'?'reviewed':'not_analyzed',finding_count:analysis?.findings.length||0,blocker_count:1}};
   if(path==='/scenarios/generate-from-story')json={scenarios:[{scenario_id:'SC1'}],summary:{message:'1 of 4 requested scenarios generated (allowed 4).'}};
   await route.fulfill({status,headers,json});

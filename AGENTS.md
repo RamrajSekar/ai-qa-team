@@ -265,3 +265,11 @@ Keep autosave fields editable and preserve edits made during an in-flight save.
 Discarded unapproved reviews must not publish knowledge or repeat extraction.
 New removals require digest-covered reasons; existing approvals/history remain
 immutable. Ask remains a separate milestone; no ingestion/execution activation.
+
+Ask M4 (2026-11-15): see `docs/mvp/KNOWLEDGE_SECURITY_ASK_M4.md` and
+`PRICING_COST_REVIEW.md`. `knowledge_ask` defaults off. Use only authorized current
+approved context; validate citations, recheck access/version, meter through the
+existing gateway, and never auto-retry uncertain questions. Questions/answers are
+not persisted. Envelope/KMS code is disabled preparation, not encrypted Mongo
+storage. `knowledge_encryption_required` fails closed pending cutover; keep false
+until storage integration/migration is reviewed. No confidential-customer readiness.

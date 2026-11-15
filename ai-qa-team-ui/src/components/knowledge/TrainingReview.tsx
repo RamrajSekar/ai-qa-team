@@ -24,6 +24,7 @@ export default function TrainingReview({ initial, base, canApprove, onSession, o
   const path = `${base}/training/${session.review_id}`;
   const editable = session.state === "reviewing" && session.extraction_state === "completed";
   useEffect(() => { onPendingChange(dirty || saving || autoSaving); }, [dirty, saving, autoSaving, onPendingChange]);
+  useEffect(() => () => onPendingChange(false), [onPendingChange]);
 
   useEffect(() => {
     if (!dirty) return;

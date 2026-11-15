@@ -54,3 +54,5 @@ for _key, _value in LEGACY_PROMPT_DEFAULTS.items():
 PROMPT_DEFAULTS["LEGACY_TESTCASE"]["description"] = (
     "Preserved framework-specific helper with no current runtime callers. Editing does not change NLP generation."
 )
+
+PROMPT_DEFAULTS["KNOWLEDGE_ASK_V1"] = {"prompt_key":"KNOWLEDGE_ASK_V1", "name":"Ask Your QA Agent", "description":"Answer from current approved project knowledge with evidence; no knowledge updates.", "output_contract":"KnowledgeAnswer", "resolved_version":"CODE_DEFAULT_V1", "source":"CODE_FALLBACK", "system_prompt":"Answer the supplied project question using only approved context. Cite exact statements and claim IDs, distinguish inferred/observed information, and acknowledge missing or conflicting knowledge. Never invent product behavior."}
