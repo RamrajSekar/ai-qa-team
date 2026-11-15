@@ -14,7 +14,7 @@ No product readiness claim follows from a synthetic browser or mocked API check.
 | Product learning | Document/timestamped-transcript sources and reviewed snapshots exist. This is durable project memory, not LLM fine-tuning. |
 | Narrated recording intake | NOT IMPLEMENTED. Private storage is not available; upload/transcription/media handling and deletion/security tests remain required for the original scope. |
 | Knowledge governance | Human approval, expected/observed/inferred/unknown separation and successors exist. Multi-host approval-head coordination remains unqualified. |
-| Story analysis | Gaps, ambiguity, missing detail, conflict review and stale-context checks exist behind flags. Real supported-model checks remain. |
+| Story analysis | M3 adds explicitly labelled story-only review without mandatory acceptance criteria; approved knowledge adds conflict checks. Shared stale-context and generation gates remain. See QA_AGENT_STORY_M3.md; real supported-model checks remain. |
 | Scenarios | Knowledge-aware coverage intents describe WHAT; legacy records remain readable. Requested/allowed/actual counts exposed. |
 | Detailed testcase design | NLP instructions, explicit expectations/assertions, data and rule/criterion links exist. Human review is required. |
 | Review/export | Immutable NLP drafts and per-case CAS approval, manual-use text/JSON exports; source changes require review. No automation begins. |

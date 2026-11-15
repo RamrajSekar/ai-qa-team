@@ -517,3 +517,11 @@ M2 local implementation: see [QA_AGENT_TRAINING_M2.md](QA_AGENT_TRAINING_M2.md) 
 persisted training/review states, safe extraction recovery and browser verification.
 The M1 shared-database cutover is still a release prerequisite. Stop before M3
 story integration until the user reviews this milestone.
+# QA Agent M3 delivery amendment — 2026-11-14
+
+Story-only analysis and no-criteria story review are implemented locally; see
+[QA_AGENT_STORY_M3](QA_AGENT_STORY_M3.md) for verification and limits. Preserve M1/M2
+cutover gates before shared activation. Next optional design task: explicitly
+versioned provisional story-only scenario intents and promotion/re-review rules;
+do not bypass knowledge-aware generation to deliver it. No execution/media work
+is included in M3.

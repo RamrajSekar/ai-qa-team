@@ -252,3 +252,10 @@ QA Agent M2 (2026-11-14): see `docs/mvp/QA_AGENT_TRAINING_M2.md`. Pending review
 are separate from approved knowledge. Never start extraction on mount/refresh or
 automatically retry uncertain metered work; retain source results and CAS review
 revisions. M1 receipts/cutover remain mandatory. Stop for review before M3.
+
+Story integration M3 (2026-11-14): see `docs/mvp/QA_AGENT_STORY_M3.md`.
+Story-only analysis may review descriptions without acceptance criteria, but never
+satisfies knowledge-aware generation. Keep explicit analysis basis, exact knowledge
+identity, independent-source checks and stale-context gates. Legacy analyses are
+knowledge-aware. Provisional story-only scenarios remain a scoped follow-up, not
+an automatic fallback. M1 backend cutover remains a release prerequisite.

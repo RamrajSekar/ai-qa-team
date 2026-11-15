@@ -6,7 +6,8 @@ import { useProjects } from "@/hooks/useProjects";
 import { DesignBadge } from "@/components/projects/DesignWorkspace";
 
 interface Analysis {
-  analysis_id: string; status: string; stale?: boolean; summary: string; knowledge_version_id: string;
+  analysis_id: string; status: string; stale?: boolean; summary: string; knowledge_version_id: string | null;
+  analysis_mode?: "story_only" | "knowledge_aware";
   findings: { finding_id: string; category: string; severity: string; description: string; question: string;
     criterion_quote?: string; knowledge_claim_id?: string }[];
   resolutions?: { finding_id: string; decision: "clarified" | "dismissed"; rationale: string }[];
@@ -24,6 +25,7 @@ export default function StoryAnalysisPanel({ projectId, storyId }: { projectId: 
   const [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
     try {
+      setError("");
       const data = await knowledgeRequest<Analysis | null>(base + "/analysis");
       setAnalysis(data);
       setResolutions(Object.fromEntries((data?.resolutions || []).map(item => [item.finding_id, item])));
@@ -42,20 +44,21 @@ export default function StoryAnalysisPanel({ projectId, storyId }: { projectId: 
     finally { setBusy(false); }
   }
   return <section id="story-analysis" className="workspace-card p-5 space-y-3" aria-label="Story analysis">
-    <h2 className="text-xl font-semibold">Review story against product knowledge</h2>
-    <p>Review gaps, ambiguity, missing details and conflicts before generation. Story or knowledge changes require a new review.</p>
+    <h2 className="text-xl font-semibold">Review story clarity</h2>
+    <p>Find gaps, ambiguity and missing details, even without acceptance criteria. Approved product knowledge adds conflict checks. Changes to either input require a new review.</p>
     <Link className="underline" href={`/projects/${projectId}/knowledge`}>Teach your QA Agent</Link>
     <div><button className="workspace-button" disabled={busy} onClick={() => void perform(false)}>Analyze with AI</button></div>
     <p role="status"><DesignBadge>{!loaded ? "Loading" : error && !analysis ? "Unavailable" : !analysis ? "Not analyzed" : analysis.stale ? "Stale" : analysis.status === "reviewed" ? "Reviewed" : "Findings need review"}</DesignBadge></p>
     {analysis && <>
-      <p>{analysis.stale ? "Analyze current inputs again before generation." : "Review findings and clarify missing expectations."} <Link className="underline" href={`/projects/${projectId}/knowledge#knowledge-version-${analysis.knowledge_version_id}`}>Inspect approved knowledge version</Link></p>
+      <p>{analysis.analysis_mode === "story_only" ? "Story-only analysis — not validated against approved product knowledge. Review does not authorize knowledge-aware generation." : "Knowledge-aware analysis"}</p>
+      <p>{analysis.stale ? "Inputs changed. Analyze again and review the new findings." : "Review findings and clarify missing expectations."} {analysis.knowledge_version_id && <Link className="underline" href={`/projects/${projectId}/knowledge#knowledge-version-${analysis.knowledge_version_id}`}>Inspect approved knowledge version</Link>}</p>
       <p>{analysis.summary}</p>
       <label>Finding category<select aria-label="Finding category" value={category} onChange={event => setCategory(event.target.value)}><option value="all">All findings</option>{Object.entries(categories).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       {!analysis.findings.length && <p>No findings proposed. Explicit review is still required.</p>}
       {analysis.findings.filter(finding => category === "all" || finding.category === category).map(finding => <div className="border rounded p-3 space-y-2" key={finding.finding_id}>
         <p><strong>{finding.severity === "blocker" ? "Blocker" : "Warning"} · {categories[finding.category] || finding.category}</strong>: {finding.description}</p><p>{finding.question}</p>
         {finding.criterion_quote && <blockquote>Acceptance criterion: {finding.criterion_quote}</blockquote>}
-        {finding.knowledge_claim_id && <Link className="underline" href={`/projects/${projectId}/knowledge#claim-${analysis.knowledge_version_id}-${finding.knowledge_claim_id}`}>Inspect linked knowledge rule</Link>}
+        {finding.knowledge_claim_id && analysis.knowledge_version_id && <Link className="underline" href={`/projects/${projectId}/knowledge#claim-${analysis.knowledge_version_id}-${finding.knowledge_claim_id}`}>Inspect linked knowledge rule</Link>}
         {canReview && analysis.status !== "reviewed" && !analysis.stale && <>
           <label className="block">Decision <select value={resolutions[finding.finding_id]?.decision || "clarified"}
             onChange={event => setResolutions(items => ({ ...items, [finding.finding_id]: {

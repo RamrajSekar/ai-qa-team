@@ -219,3 +219,10 @@ with Teach/Review/Save on the same route, persisted pending reviews and explicit
 correction/removal controls. M1 remains the approval authority. No recording or
 document ingestion was enabled; story-only analysis remains M3. See the linked
 verification limits and release cutover prerequisites.
+# Story integration M3 amendment — 2026-11-14
+
+See [QA_AGENT_STORY_M3](QA_AGENT_STORY_M3.md) for story-only analysis without
+mandatory acceptance criteria, explicit grounding labels and shared stale-context
+rules. Knowledge-aware generation still requires approved independent knowledge,
+acceptance criteria and reviewed current analysis. Provisional story-only scenario
+generation is assessed there as a separate bounded follow-up; it is not delivered.

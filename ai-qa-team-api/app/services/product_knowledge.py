@@ -219,29 +219,45 @@ class ProductKnowledge:
         if not document:
             raise HTTPException(404, "Story not found in this project.")
         fields = {key: document.get(key) for key in ("story_id", "title", "description", "acceptance_criteria", "out_of_scope")}
-        if not str(fields["acceptance_criteria"] or "").strip():
-            raise HTTPException(409, "Add acceptance criteria before analysis or generation.")
+        if not any(str(fields[key] or "").strip() for key in ("description", "acceptance_criteria")):
+            raise HTTPException(409, "Add a story description or acceptance criteria before analysis.")
         return fields
+
+    @staticmethod
+    def analysis_stale(document, story, knowledge):
+        # Legacy analyses are knowledge-aware. A newly approved knowledge snapshot
+        # invalidates story-only review rather than silently upgrading its basis.
+        return (document["story_digest"] != digest(story)
+                or document.get("knowledge_version_id") != (knowledge["version_id"] if knowledge else None)
+                or (document.get("analysis_mode", "knowledge_aware") == "knowledge_aware" and not knowledge))
 
     async def analyze(self, project, user, story_id):
         require_features("product_knowledge", "story_analysis")
         story = await self.story(project, story_id)
         knowledge = await self.active(project)
-        if not knowledge:
-            raise HTTPException(409, "Review and approve product knowledge first.")
-        await self.independent_knowledge(project, story_id, knowledge)
-        result = await self.ai(AIOperation.STORY_ANALYSIS, project, user, {"story": story, "knowledge": self.public(knowledge)},
-            StoryAnalysisResult, "story_analysis_v1")
-        allowed_claims = {claim["claim_id"] for claim in knowledge["claims"]}
+        if knowledge:
+            await self.independent_knowledge(project, story_id, knowledge)
+        mode = "knowledge_aware" if knowledge else "story_only"
+        result = await self.ai(AIOperation.STORY_ANALYSIS, project, user,
+            {"story": story, "knowledge": self.public(knowledge) if knowledge else None,
+             "analysis_mode": mode,
+             "analysis_constraints": "Analyze supplied story requirements even without acceptance criteria. "
+                 "Missing acceptance criteria are a finding, not invented expectations. "
+                 "Without knowledge, do not claim knowledge validation or report knowledge conflicts. "
+                 "criterion_quote must quote acceptance criteria only; omit it when absent."},
+            StoryAnalysisResult, "story_analysis_v1", max_retries=0)
+        allowed_claims = {claim["claim_id"] for claim in knowledge["claims"]} if knowledge else set()
         if len({finding.finding_id for finding in result.findings}) != len(result.findings):
             raise HTTPException(502, "AI findings had duplicate identifiers.")
         for finding in result.findings:
-            if ((finding.criterion_quote and finding.criterion_quote not in story["acceptance_criteria"])
-                    or (finding.knowledge_claim_id and finding.knowledge_claim_id not in allowed_claims)):
+            if ((finding.criterion_quote and finding.criterion_quote not in (story["acceptance_criteria"] or ""))
+                    or (finding.knowledge_claim_id and finding.knowledge_claim_id not in allowed_claims)
+                    or (not knowledge and finding.category == "knowledge_conflict")):
                 raise HTTPException(502, "AI findings cited unavailable criteria or knowledge.")
         identity = uuid4().hex
         document = {**result.model_dump(), "_id": identity, "analysis_id": identity, "project_id": project,
-                    "story_id": story_id, "story_digest": digest(story), "knowledge_version_id": knowledge["version_id"],
+                    "story_id": story_id, "story_digest": digest(story), "analysis_mode": mode,
+                    "knowledge_version_id": knowledge["version_id"] if knowledge else None,
                     "status": "needs_review", "created_at": datetime.now(timezone.utc).isoformat()}
         await self.db["story_analyses"].insert_one(document)
         return self.public(document)
@@ -253,7 +269,7 @@ class ProductKnowledge:
         if not document:
             return None
         knowledge = await self.active(project)
-        stale = not knowledge or document["story_digest"] != digest(story) or document["knowledge_version_id"] != knowledge["version_id"]
+        stale = self.analysis_stale(document, story, knowledge)
         return {**self.public(document), "stale": stale}
 
     async def review_analysis(self, project, actor, story_id, analysis_id, payload):
@@ -282,8 +298,12 @@ class ProductKnowledge:
 
     async def generation_context(self, project, story_id):
         require_features("product_knowledge", "story_analysis")
+        story = await self.story(project, story_id)
+        if not str(story["acceptance_criteria"] or "").strip():
+            raise HTTPException(409, "Add acceptance criteria before knowledge-aware generation.")
         analysis = await self.latest_analysis(project, story_id)
-        if not analysis or analysis["stale"] or analysis["status"] != "reviewed":
+        if (not analysis or analysis["stale"] or analysis["status"] != "reviewed"
+                or analysis.get("analysis_mode", "knowledge_aware") != "knowledge_aware"):
             raise HTTPException(409, "Analyze and review the current story against approved knowledge before generation.")
         knowledge = await self.active(project)
         if not knowledge or analysis["knowledge_version_id"] != knowledge["version_id"]:
@@ -323,7 +343,7 @@ class ProductKnowledge:
         for story in stories:
             row = latest.get(story["story_id"])
             snapshot = {key: story.get(key) for key in ("story_id", "title", "description", "acceptance_criteria", "out_of_scope")}
-            stale = row and (not knowledge or row["story_digest"] != digest(snapshot) or row["knowledge_version_id"] != knowledge["version_id"])
+            stale = row and self.analysis_stale(row, snapshot, knowledge)
             result[story["story_id"]] = {"state": "not_analyzed" if not row else "stale" if stale else "reviewed" if row["status"] == "reviewed" else "needs_review",
                 "analysis_id": row["analysis_id"] if row else None,
                 "finding_count": len(row["findings"]) if row else 0,
