@@ -26,6 +26,7 @@ function QAAgentWorkspace({projectId}:{projectId:string}) {
   const [ready,setReady] = useState(false);
   const [sessions,setSessions] = useState<TrainingSession[]>([]);
   const [selected,setSelected] = useState<TrainingSession | null>(null);
+  const [tab,setTab] = useState<"teach"|"review"|"approved">("teach");
   const [epoch,setEpoch] = useState(0);
   const [title,setTitle] = useState(""); const [text,setText] = useState("");
   const [kind,setKind] = useState<Source["kind"]>("document");
@@ -48,17 +49,20 @@ function QAAgentWorkspace({projectId}:{projectId:string}) {
   },[projectId,storiesEnabled]);
   const onSession = useCallback((review:TrainingSession) => {
     setSelected(review);setSessions(items=>[review,...items.filter(item=>item.review_id!==review.review_id)]);
+    if(review.state === "rejected")setTab("teach");
+    if(review.saved_version?.status === "approved")setTab("approved");
   },[]);
   function choose(review:TrainingSession) {
-    setReviewPending(false);onSession(review);setEpoch(value=>value+1);
+    setTab("review");setReviewPending(false);onSession(review);setEpoch(value=>value+1);
     const url=new URL(window.location.href);url.searchParams.set("review",review.review_id);window.history.replaceState(window.history.state,"",url);
   }
   useEffect(()=>{
     let active=true;
-    void load().then(async reviews=>{
+    void load().then(async()=>{
       const identity=new URL(window.location.href).searchParams.get("review");
-      const review=identity ? await knowledgeRequest<TrainingSession>(base+"/training/"+encodeURIComponent(identity)) : reviews.find(item=>item.saved_version?.status!=="approved");
-      if(active && review)setSelected(review);
+      const review=identity ? await knowledgeRequest<TrainingSession>(base+"/training/"+encodeURIComponent(identity)) : undefined;
+      if(active && review && review.state!=="rejected"){setSelected(review);setTab(review.saved_version?.status === "approved" ? "approved" : "review");}
+      if(active && window.location.hash)setTab("approved");
     }).catch(()=>{if(active)setError("Could not load QA Agent reviews. Reload to try again.");});
     return()=>{active=false;};
   },[base,load]);
@@ -78,10 +82,10 @@ function QAAgentWorkspace({projectId}:{projectId:string}) {
   }
   if(!ready)return <div className="design-state" role={error?"alert":"status"}>{error||"Loading your QA Agent…"}</div>;
   return <div className="design-page">
-    <header><p className="workspace-eyebrow">QA Agent</p><h1>Teach Your QA Agent</h1><p className="workspace-description">Teach product knowledge, review what the agent learned, and save approved project memory. This does not train the underlying model.</p></header>
-    <nav className="workspace-actions" aria-label="QA Agent workflow"><a className="workspace-button" href="#teach-agent">Teach</a><a className="workspace-button" href="#review-training">Review</a><a className="workspace-button" href="#approved-knowledge">Approved knowledge</a></nav>
-    <DesignStats items={[{label:"Approved rules",value:current?.claims.length||0},{label:"Training reviews",value:sessions.length}]} />
-    <section id="teach-agent" className="workspace-card p-5 space-y-4"><h2>Teach Agent</h2><p>Additional training retains existing knowledge automatically. Use non-sensitive product notes; do not enter credentials or personal data. Document, image and media uploads remain disabled.</p>
+    <header><p className="workspace-eyebrow">QA Agent</p><h1>Your QA Agent</h1><p className="workspace-description">Teach product knowledge, review what the agent learned, and save approved project memory. This does not train the underlying model.</p></header>
+    <div className="workspace-actions" role="tablist" aria-label="QA Agent workflow">{(["teach","review","approved"] as const).map(value=><button key={value} id={`tab-${value}`} role="tab" aria-selected={tab===value} aria-controls={`panel-${value}`} className={`workspace-button ${tab===value ? "workspace-primary" : ""}`} disabled={reviewPending || busy} onClick={()=>setTab(value)}>{value === "teach" ? "Teach" : value === "review" ? `Review (${sessions.filter(item=>item.state!=="rejected"&&item.saved_version?.status!=="approved").length})` : "Approved"}</button>)}</div>
+    <DesignStats items={[{label:"Approved rules",value:current?.claims.length||0},{label:"Pending reviews",value:sessions.filter(item=>item.state!=="rejected"&&item.saved_version?.status!=="approved").length}]} />
+    <div id="panel-teach" role="tabpanel" aria-labelledby="tab-teach" hidden={tab!=="teach"}><section id="teach-agent" className="workspace-card p-5 space-y-4"><h2>Teach Agent</h2><p>Additional training retains existing knowledge automatically. Use non-sensitive product notes; do not enter credentials or personal data. Document, image and media uploads remain disabled.</p>
       <fieldset disabled={busy||reviewPending} className="space-y-3 border-0 p-0 m-0">
         <label className="block">Training title<input className="border rounded w-full" value={title} maxLength={200} onChange={event=>{setTitle(event.target.value);requestKey.current=null;}} /></label>
         <label className="block">Training source<select value={kind} onChange={event=>{setKind(event.target.value as Source["kind"]);requestKey.current=null;}}><option value="document">Product notes</option><option value="recording_transcript">Pasted timestamped transcript</option></select></label>
@@ -101,19 +105,19 @@ function QAAgentWorkspace({projectId}:{projectId:string}) {
       const review=await knowledgeRequest<TrainingSession>(base+"/training",{request_id:crypto.randomUUID().replaceAll("-",""),title:"Knowledge from story",mode:"training",story_id:storyId});choose(review);
       try{choose(await knowledgeRequest(base+"/training/"+review.review_id+"/extract",{}));}finally{await load();}
     })}>Suggest knowledge from story</button></details>}
-    <section className="workspace-card p-5 space-y-3" aria-label="Saved training reviews"><h2>Continue a training review</h2>
-      {!sessions.length&&<p>No training reviews yet.</p>}
-      {sessions.map(review=><div className="flex flex-wrap justify-between gap-3 border-b py-3" key={review.review_id}><div><strong>{review.title}</strong><p>{review.saved_version?.status==="approved"?"Approved training":review.state==="saved"?"Awaiting approval":review.extraction_state==="completed"?"Review in progress":review.extraction_state==="uncertain"?"Extraction needs attention":review.extraction_state==="running"?"Extracting knowledge":"Training saved"}</p></div><button className="workspace-button" disabled={busy||reviewPending} onClick={()=>void act(async()=>choose(await knowledgeRequest(base+"/training/"+review.review_id)))}>Resume review</button></div>)}
+    </div><div id="panel-review" role="tabpanel" aria-labelledby="tab-review" hidden={tab!=="review"}><section className="workspace-card p-5 space-y-3" aria-label="Saved training reviews"><h2>Continue a training review</h2>
+      {!sessions.some(review=>review.state!=="rejected"&&review.saved_version?.status!=="approved")&&<p>No pending training reviews.</p>}
+      {sessions.filter(review=>review.state!=="rejected"&&review.saved_version?.status!=="approved").map(review=><div className="flex flex-wrap justify-between gap-3 border-b py-3" key={review.review_id}><div><strong>{review.title}</strong><p>{review.state==="saved"?"Awaiting approval":review.extraction_state==="completed"?"Review in progress":review.extraction_state==="uncertain"?"Extraction needs attention":review.extraction_state==="running"?"Extracting knowledge":"Training saved"}</p></div><button className="workspace-button" disabled={busy||reviewPending} onClick={()=>void act(async()=>choose(await knowledgeRequest(base+"/training/"+review.review_id)))}>Resume review</button></div>)}
     </section>
     <section id="review-training" className="workspace-card p-5 space-y-3">
       {selected&&<><button className="workspace-button" disabled={busy} onClick={()=>{if(reviewPending&&!window.confirm("Reload saved review? Changes not yet saved may be lost."))return;void act(async()=>{choose(await knowledgeRequest(base+"/training/"+selected.review_id));await load();});}}>Refresh status</button><TrainingReview key={`${selected.review_id}:${epoch}`} initial={selected} base={base} canApprove={canApprove} onSession={onSession} onRefresh={async()=>{await load();}} onInspect={id=>void inspect(id)} onPendingChange={setReviewPending} currentVersionId={data.active_version_id} sources={data.sources} /></>}
       {!selected&&<p>Teach your agent or select a saved review to continue.</p>}
     </section>
-    <section id="approved-knowledge" className="workspace-card p-5 space-y-4" aria-label="Approved knowledge"><h2>Approved knowledge</h2>
+    </div><div id="panel-approved" role="tabpanel" aria-labelledby="tab-approved" hidden={tab!=="approved"}><section id="approved-knowledge" className="workspace-card p-5 space-y-4" aria-label="Approved knowledge"><h2>Approved knowledge</h2>
       <p>Approved versions stay immutable. Corrections and removals require a new reviewed version. Expected, observed, inferred and unknown information remain distinct.</p>
       {!current&&<p>No approved knowledge yet. Teach and review your first rules.</p>}
-      {current?.claims.map(claim=><article key={claim.claim_id} id={`claim-${current.version_id}-${claim.claim_id}`} className="border rounded p-4 space-y-2" aria-label="Approved rule"><strong>{claim.statement}</strong><p>{claim.category.replaceAll("_"," ")} · {claim.epistemic_status}</p><blockquote>{claim.quote}</blockquote><div className="workspace-actions"><button className="workspace-button" onClick={()=>void inspect(claim.source_id)}>Inspect source</button><button className="workspace-button" disabled={busy||reviewPending} onClick={()=>void revise(claim.claim_id,"correction")}>Correct rule</button><button className="workspace-button" disabled={busy||reviewPending} onClick={()=>void revise(claim.claim_id,"removal")}>Remove rule</button></div></article>)}
-      <details><summary>Sources and knowledge history</summary>
+      {!!current?.claims.length && <div className="overflow-x-auto"><table className="w-full text-left" aria-label="Current approved knowledge"><thead><tr><th className="p-3">Knowledge</th><th className="p-3">Category</th><th className="p-3">Information type</th><th className="p-3">Actions</th></tr></thead><tbody>{current.claims.map(claim=><tr key={claim.claim_id} id={`claim-${current.version_id}-${claim.claim_id}`} className="border-t" aria-label="Approved rule"><td className="p-3 min-w-48">{claim.statement}</td><td className="p-3">{claim.category.replaceAll("_"," ")}</td><td className="p-3">{claim.epistemic_status}</td><td className="p-3"><div className="workspace-actions"><button className="workspace-button" onClick={()=>void inspect(claim.source_id)}>View source</button><button className="workspace-button" disabled={busy||reviewPending} onClick={()=>void revise(claim.claim_id,"correction")}>Correct</button><button className="workspace-button" disabled={busy||reviewPending} onClick={()=>void revise(claim.claim_id,"removal")}>Remove</button></div></td></tr>)}</tbody></table></div>}
+      <details><summary>History and sources</summary>
         <div className="space-y-3 py-3">{data.sources.map(source=><details id={`source-${source.source_id}`} key={source.source_id}><summary>{source.title}</summary><p className="whitespace-pre-wrap">{source.kind==="document"?source.text:source.segments.map(segment=>`[${segment.start_seconds}–${segment.end_seconds}s] ${segment.text}`).join("\n")}</p>{source.origin?.kind==="story"&&<p>Story-derived proposal source. It cannot independently validate its originating story.</p>}<button className="workspace-button" disabled={busy||reviewPending} onClick={()=>void act(async()=>{
           // Explicit source reuse resumes its single persisted review; no repeat on navigation.
           const review=await knowledgeRequest<TrainingSession>(base+"/training",{request_id:source.source_id,title:source.title,mode:"training",source_id:source.source_id});choose(review);
@@ -121,7 +125,7 @@ function QAAgentWorkspace({projectId}:{projectId:string}) {
         {data.versions.map(version=><details id={`knowledge-version-${version.version_id}`} key={version.version_id}><summary>{version.title} · {version.status} {version.version_id===data.active_version_id?"· Current":""}</summary><p>{version.claims.length} rules. {version.approved_by?`Approved by ${version.approved_by}`:"Unapproved draft"}</p>{version.claims.map(claim=><p id={version.version_id===data.active_version_id?undefined:`claim-${version.version_id}-${claim.claim_id}`} key={claim.claim_id}>{claim.statement} — {claim.quote}</p>)}</details>)}</div>
       </details>
     </section>
-    {error&&<p role="alert">{error} Completed extraction is retained. Refresh or resume the saved review; do not repeat an uncertain AI request blindly.</p>}
+    </div>{error&&<p role="alert">{error} Completed extraction is retained. Refresh or resume the saved review; do not repeat an uncertain AI request blindly.</p>}
     <WorkspaceDialog open={!!evidence} onClose={()=>setEvidence(null)} title="Source evidence"><h2>{evidence?.title}</h2><p className="whitespace-pre-wrap">{evidence?.kind==="document"?evidence.text:evidence?.segments.map(segment=>`[${segment.start_seconds}–${segment.end_seconds}s] ${segment.text}`).join("\n")}</p><button className="workspace-button" onClick={()=>setEvidence(null)}>Close evidence</button></WorkspaceDialog>
   </div>;
 }

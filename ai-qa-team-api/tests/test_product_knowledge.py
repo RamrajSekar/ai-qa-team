@@ -241,7 +241,7 @@ class KnowledgeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(draft["changes"][0]["action"], "replace")
         self.assertEqual(draft["changes"][0]["before"]["statement"], "Show Draft saved.")
         await self.service.approve("P1", "reviewer", draft["version_id"])
-        removal = await self.service.create_version("P1", "reviewer", KnowledgeDraft(title="Remove", removed_claim_ids=["K2"], parent_version_id=(await self.service.active("P1"))["version_id"]))
+        removal = await self.service.create_version("P1", "reviewer", KnowledgeDraft(title="Remove", removed_claim_ids=["K2"], removal_reasons={"K2":"Feature retired"}, parent_version_id=(await self.service.active("P1"))["version_id"]))
         self.assertEqual(len((await self.service.active("P1"))["claims"]), 2)
         self.assertEqual(removal["changes"][0]["action"], "remove")
         self.assertEqual([claim["claim_id"] for claim in removal["claims"]], ["K1"])
@@ -325,13 +325,17 @@ class KnowledgeTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_corrections_require_explicit_base_and_removing_every_rule_is_explicit(self):
         approved = await self.approved()
+        with self.assertRaises(HTTPException) as missing_reason:
+            await self.service.create_version("P1", "reviewer", KnowledgeDraft(
+                title="Unexplained removal", removed_claim_ids=["K1"], parent_version_id=approved["version_id"]))
+        self.assertEqual(missing_reason.exception.status_code, 422)
         for payload in (KnowledgeDraft(title="Correction", claims=[{**self.claim, "statement":"Changed"}]),
-                        KnowledgeDraft(title="Removal", removed_claim_ids=["K1"])):
+                        KnowledgeDraft(title="Removal", removed_claim_ids=["K1"], removal_reasons={"K1":"Feature retired"})):
             with self.assertRaises(HTTPException) as failure:
                 await self.service.create_version("P1", "reviewer", payload)
             self.assertEqual(failure.exception.status_code, 409)
         draft = await self.service.create_version("P1", "reviewer", KnowledgeDraft(
-            title="Explicit removal", removed_claim_ids=["K1"], parent_version_id=approved["version_id"]))
+            title="Explicit removal", removed_claim_ids=["K1"], removal_reasons={"K1":"Feature retired"}, parent_version_id=approved["version_id"]))
         self.assertEqual(len((await self.service.active("P1"))["claims"]), 1)
         result = await self.service.approve("P1", "reviewer", draft["version_id"])
         self.assertEqual(result["claims"], [])

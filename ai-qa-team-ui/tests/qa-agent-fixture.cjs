@@ -39,10 +39,10 @@ async function fixture(browser, t, {role='ADMIN',empty=false,withoutCriteria=fal
     }
    }
    if(operation==='review'){
-    assert.equal(body.expected_revision,r.revision);r.proposals=body.proposals;r.clarification_answers=body.clarification_answers;r.revision++;
+    assert.equal(body.expected_revision,r.revision);r.proposals=body.proposals;r.clarification_answers=body.clarification_answers;r.removal_reason=body.removal_reason;r.revision++;
    }
    if(operation==='save'&&!r.saved_version){
-    assert.equal(body.expected_revision,r.revision);assert.ok(r.proposals.every(p=>['confirmed','rejected'].includes(p.decision)));assert.ok(Object.values(r.clarification_answers).every(Boolean));
+    assert.equal(body.expected_revision,r.revision);assert.ok(r.proposals.every(p=>['confirmed','rejected'].includes(p.decision)));if(!r.removed_claim_ids.length&&r.proposals.every(p=>p.decision==='rejected')){r.state='rejected';return route.fulfill({status,headers,json:r});}assert.ok(Object.values(r.clarification_answers).every(Boolean));
     const previous=versions.find(v=>v.version_id===active)?.claims||[];const merged=new Map(previous.filter(c=>!r.removed_claim_ids.includes(c.claim_id)).map(c=>[c.claim_id,structuredClone(c)]));const changes=[];
     for(const p of r.proposals.filter(p=>p.decision==='confirmed')){const before=merged.get(p.claim.claim_id)||null;changes.push({action:before?'replace':'add',claim_id:p.claim.claim_id,before,after:p.claim});merged.set(p.claim.claim_id,p.claim);}
     for(const key of r.removed_claim_ids)changes.push({action:'remove',claim_id:key,before:previous.find(c=>c.claim_id===key),after:null});
@@ -62,7 +62,7 @@ async function fixture(browser, t, {role='ADMIN',empty=false,withoutCriteria=fal
  const errors=[];page.on('pageerror',e=>errors.push(e.message));t.after(()=>assert.deepEqual(errors,[]));
  return {page,calls,versions,reviews,sources,context,setRole:value=>{role=value;projects.forEach(p=>p.current_user_role=value);}};
 }
-async function teach(page,title,text){await page.getByLabel('Training title',{exact:true}).fill(title);await page.getByLabel('What should your QA Agent know?',{exact:true}).fill(text);await page.getByRole('button',{name:'Teach agent',exact:true}).click();await page.getByRole('region',{name:'Training review',exact:true}).waitFor();await page.getByRole('article',{name:'Proposal 1',exact:true}).waitFor();}
+async function teach(page,title,text){await page.getByRole('tab',{name:'Teach',exact:true}).click();await page.getByLabel('Training title',{exact:true}).fill(title);await page.getByLabel('What should your QA Agent know?',{exact:true}).fill(text);await page.getByRole('button',{name:'Teach agent',exact:true}).click();await page.getByRole('region',{name:'Training review',exact:true}).waitFor();await page.getByRole('article',{name:'Proposal 1',exact:true}).waitFor();}
 async function confirmAll(page){const cards=page.getByRole('article',{name:/^Proposal /});for(let i=0;i<await cards.count();i++){const saved=page.waitForResponse(response=>response.url().endsWith('/review')&&response.request().method()==='POST');await cards.nth(i).getByRole('button',{name:'Confirm',exact:true}).click();await saved;await page.getByRole('status').filter({hasText:/^Review progress saved$/}).waitFor();}}
-async function saveApprove(page){await page.getByRole('button',{name:'Save for approval',exact:true}).click();await page.getByRole('button',{name:'Approve knowledge',exact:true}).click();await page.getByRole('status').filter({hasText:'Knowledge approved and saved.'}).waitFor();await page.waitForFunction(()=>!document.querySelector('#teach-agent fieldset').disabled);}
+async function saveApprove(page){await page.getByRole('button',{name:'Review changes',exact:true}).click();await page.getByRole('button',{name:'Approve changes',exact:true}).click();await page.getByRole('tab',{name:'Approved',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('#teach-agent fieldset').disabled);}
 module.exports={fixture,teach,confirmAll,saveApprove,base};

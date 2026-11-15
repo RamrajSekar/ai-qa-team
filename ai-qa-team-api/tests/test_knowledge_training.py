@@ -13,6 +13,8 @@ class TrainingTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         await fixtures.KnowledgeTests.asyncSetUp(self)
         self.db["knowledge_training_reviews"] = fixtures.Collection()
+        self.db["scenarios"] = fixtures.Collection()
+        self.db["testcases"] = fixtures.Collection()
         self.counter = 0
         self.questions = []
         async def extraction(operation, project, user, request):
@@ -55,6 +57,43 @@ class TrainingTests(unittest.IsolatedAsyncioTestCase):
 
     async def initial(self):
         return await self.approve(await self.save(await self.accept(await self.extract(await self.start()))))
+
+    async def test_all_rejected_review_closes_without_answers_or_knowledge_write(self):
+        original = await self.initial()
+        self.questions = ["Unused clarification?"]
+        review = await self.extract(await self.start("Rejected new rule."))
+        response = await self.client.post(self.base+"/training/"+review["review_id"]+"/review", json={
+            "expected_revision": review["revision"],
+            "proposals": [{**item, "decision": "rejected"} for item in review["proposals"]],
+            "clarification_answers": review["clarification_answers"]})
+        review = response.json()
+        before = deepcopy(self.db["product_knowledge_versions"].docs)
+        calls = self.usage.execute.await_count
+        self.user["role"] = "MEMBER"
+        closed = await self.save(review)
+        self.assertEqual(closed["state"], "rejected")
+        self.assertEqual(closed["clarification_answers"], {})
+        self.assertEqual(closed["proposals"], [])
+        self.assertNotIn("saved_version", closed)
+        self.assertEqual(self.db["product_knowledge_versions"].docs, before)
+        self.assertEqual((await self.service.active("P1"))["version_id"], original["version_id"])
+        self.assertEqual((await self.save(review))["completed_at"], closed["completed_at"])
+        self.assertEqual(self.usage.execute.await_count, calls)
+        response = await self.client.post(self.base+"/training/"+review["review_id"]+"/review", json={
+            "expected_revision": closed["revision"], "proposals": review["proposals"],
+            "clarification_answers": review["clarification_answers"]})
+        self.assertEqual(response.status_code, 409)
+
+    async def test_no_change_completion_rejects_stale_revision_and_pending_proposals(self):
+        review = await self.extract(await self.start("Not reviewed yet."))
+        response = await self.client.post(self.base+"/training/"+review["review_id"]+"/save", json={"expected_revision": review["revision"]})
+        self.assertEqual(response.status_code, 409)
+        response = await self.client.post(self.base+"/training/"+review["review_id"]+"/review", json={
+            "expected_revision": review["revision"], "proposals": [{**item,"decision":"rejected"} for item in review["proposals"]], "clarification_answers": {}})
+        updated = response.json()
+        response = await self.client.post(self.base+"/training/"+review["review_id"]+"/save", json={"expected_revision": review["revision"]})
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual((await self.save(updated))["state"], "rejected")
 
     async def test_full_incremental_correction_and_resumable_clarification_journey(self):
         first=await self.initial();self.assertEqual(len(first["claims"]),3)
@@ -171,11 +210,20 @@ class TrainingTests(unittest.IsolatedAsyncioTestCase):
         review["proposals"][0]["decision"]="rejected"
         result=await self.client.post(self.base+"/training/"+review["review_id"]+"/review",json={"expected_revision":0,"proposals":review["proposals"],"clarification_answers":{}})
         rejected=result.json()
-        self.assertEqual((await self.client.post(self.base+"/training/"+review["review_id"]+"/save",json={"expected_revision":rejected["revision"]})).status_code,409)
+        self.assertEqual((await self.client.post(self.base+"/training/"+review["review_id"]+"/save",json={"expected_revision":rejected["revision"]})).status_code,200)
         self.assertEqual((await self.service.active("P1"))["claims"],first["claims"])
         removal=(await self.client.post(self.base+"/training",json={"request_id":"e"*32,"title":"Removal","mode":"removal","claim_id":claim["claim_id"]})).json()
+        self.db["scenarios"] = fixtures.Collection({"project_id":"P1","scenario_id":"SC1","title":"Affected scenario","rule_references":[claim["claim_id"]]})
+        self.db["testcases"] = fixtures.Collection({"project_id":"P1","testcase_id":"TC1","title":"Affected test","knowledge_version_id":first["version_id"]})
+        impact=(await self.client.get(self.base+"/training/"+removal["review_id"])).json()["removal_impact"]
+        self.assertEqual(impact["scenarios"][0]["id"],"SC1")
+        self.assertEqual(impact["testcases"][0]["id"],"TC1")
+        missing=await self.client.post(self.base+"/training/"+removal["review_id"]+"/save",json={"expected_revision":removal["revision"]})
+        self.assertEqual(missing.status_code,409)
+        removal=(await self.client.post(self.base+"/training/"+removal["review_id"]+"/review",json={"expected_revision":removal["revision"],"proposals":[],"clarification_answers":{},"removal_reason":"Feature retired"})).json()
         saved=await self.save(removal);self.assertEqual(len((await self.service.active("P1"))["claims"]),3)
         after=await self.approve(saved);self.assertEqual(len(after["claims"]),2)
+        self.assertEqual(after["removal_reasons"],{claim["claim_id"]:"Feature retired"})
 
     async def test_lost_save_ack_recovers_same_immutable_draft(self):
         review=await self.accept(await self.extract(await self.start()))

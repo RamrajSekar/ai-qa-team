@@ -50,7 +50,23 @@ class KnowledgeTraining:
             if version:
                 row = {**row, "state": "saved", "saved_version": self.knowledge.public(
                     await self.knowledge.approved_view(project, version))}
-        return self.public(row)
+        result = self.public(row)
+        if row["removed_claim_ids"] and result.get("saved_version", {}).get("status") != "approved":
+            result["removal_impact"] = await self.removal_impact(project, row["removed_claim_ids"], row["base_version_id"])
+        return result
+
+    async def removal_impact(self, project, claim_ids, version_id):
+        result = {}
+        # Include records pinned to this knowledge version conservatively, even
+        # when legacy records lack granular rule references. Never touch executions.
+        for collection, identity in (("scenarios", "scenario_id"), ("testcases", "testcase_id")):
+            rows = await self.db[collection].find({"project_id": project}).to_list(10000)
+            if len(rows) == 10000:
+                raise HTTPException(409, "Removal impact exceeds the supported review size. Review project dependencies before removal.")
+            result[collection] = [{"id": row.get(identity), "title": row.get("title", "Untitled")}
+                for row in rows if set(row.get("rule_references") or []) & set(claim_ids)
+                or (version_id and row.get("knowledge_version_id") == version_id)]
+        return result
 
     async def listing(self, project):
         require_features("product_knowledge")
@@ -169,10 +185,11 @@ class KnowledgeTraining:
             "state": "reviewing", "extraction_state": "completed"}, {"$set": {
                 "proposals": [item.model_dump() for item in payload.proposals],
                 "clarification_answers": payload.clarification_answers, "revision": payload.expected_revision + 1,
+                "removal_reason": payload.removal_reason,
                 "updated_at": now()}}, return_document=ReturnDocument.AFTER)
         if not updated:
             raise HTTPException(409, "Another reviewer saved changes. Reload before editing further.")
-        return self.public(updated)
+        return await self.get(project, identity)
 
     async def rebase(self, project, actor, identity, payload):
         row = await self.row(project, identity)
@@ -203,12 +220,28 @@ class KnowledgeTraining:
     async def save(self, project, actor, identity, payload):
         row = await self.row(project, identity)
         recovered = await self.get(project, identity)
-        if recovered["state"] == "saved":
+        if recovered["state"] in ("saved", "rejected"):
             return recovered
         if row["state"] == "saving" and row.get("save_lease_expires_at", "") > now():
             raise HTTPException(409, "Saving is in progress. Refresh status before retrying.")
         if row["extraction_state"] != "completed" or row["revision"] != payload.expected_revision:
             raise HTTPException(409, "Reload the completed review before saving.")
+        if row["removed_claim_ids"] and not row.get("removal_reason", "").strip():
+            raise HTTPException(409, "Explain why this knowledge is being removed before review.")
+        if (row["state"] == "reviewing" and not row["removed_claim_ids"]
+                and all(item["decision"] == "rejected" for item in row["proposals"])):
+            # Discarding is not knowledge approval. Clear rejected review content;
+            # retain request identity to prevent replaying a metered extraction.
+            closed = await self.rows.find_one_and_update({"_id": row["_id"],
+                "revision": payload.expected_revision, "state": "reviewing"}, {"$set": {
+                    "state": "rejected", "revision": payload.expected_revision + 1,
+                    "proposals": [], "clarification_questions": [], "clarification_answers": {},
+                    "source_input": None,
+                    "completed_by": actor, "completed_at": now(), "updated_at": now()}},
+                return_document=ReturnDocument.AFTER)
+            if not closed:
+                raise HTTPException(409, "Review changed. Refresh status.")
+            return await self.get(project, identity)
         if any(item["decision"] not in ("confirmed", "rejected") for item in row["proposals"]) or any(
                 not answer.strip() for answer in row["clarification_answers"].values()):
             raise HTTPException(409, "Confirm or reject proposals and answer every clarification before saving.")
@@ -230,7 +263,8 @@ class KnowledgeTraining:
                 parent_version_id=row["base_version_id"], claims=[item["claim"] for item in row["proposals"] if item["decision"] == "confirmed"],
                 removed_claim_ids=row["removed_claim_ids"], clarification_answers={**row["clarification_answers"], **{
                     item["clarification_question"]: item["clarification_answer"] for item in row["proposals"]
-                    if item["decision"] == "confirmed" and item.get("clarification_question", "").strip()}}),
+                    if item["decision"] == "confirmed" and item.get("clarification_question", "").strip()}},
+                removal_reasons={key: row["removal_reason"] for key in row["removed_claim_ids"]}),
                 version_id=row["draft_version_id"])
             if version["parent_version_id"] != row["base_version_id"]:
                 raise HTTPException(409, "Knowledge changed during save. Review current knowledge; no approval was performed.")

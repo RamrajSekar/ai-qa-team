@@ -259,3 +259,9 @@ satisfies knowledge-aware generation. Keep explicit analysis basis, exact knowle
 identity, independent-source checks and stale-context gates. Legacy analyses are
 knowledge-aware. Provisional story-only scenarios remain a scoped follow-up, not
 an automatic fallback. M1 backend cutover remains a release prerequisite.
+
+QA Agent review UX (2026-11-15): see `docs/mvp/QA_AGENT_REVIEW_UX.md`.
+Keep autosave fields editable and preserve edits made during an in-flight save.
+Discarded unapproved reviews must not publish knowledge or repeat extraction.
+New removals require digest-covered reasons; existing approvals/history remain
+immutable. Ask remains a separate milestone; no ingestion/execution activation.

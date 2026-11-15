@@ -35,6 +35,7 @@ class TrainingReview(Contract):
     expected_revision: int = Field(ge=0)
     proposals: list[ReviewProposal] = Field(max_length=100)
     clarification_answers: dict[str, str] = Field(default_factory=dict, max_length=30)
+    removal_reason: str = Field(default="", max_length=2000)
 
 
 class TrainingExtract(Contract):
