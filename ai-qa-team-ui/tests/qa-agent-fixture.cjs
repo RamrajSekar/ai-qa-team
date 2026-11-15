@@ -38,6 +38,7 @@ async function fixture(browser, t, {role='ADMIN',empty=false,withoutCriteria=fal
      r.clarification_questions=source.text.includes('four')?['When does rule four apply?']:[];r.clarification_answers=Object.fromEntries(r.clarification_questions.map(q=>[q,'']));r.extraction_state='completed';
     }
    }
+   if(operation==='discard'){r.state='rejected';r.proposals=[];r.removed_claim_ids=[];r.clarification_questions=[];r.clarification_answers={};}
    if(operation==='review'){
     assert.equal(body.expected_revision,r.revision);r.proposals=body.proposals;r.clarification_answers=body.clarification_answers;r.removal_reason=body.removal_reason;r.revision++;
    }
@@ -49,7 +50,7 @@ async function fixture(browser, t, {role='ADMIN',empty=false,withoutCriteria=fal
     const version={version_id:r.draft_version_id,title:r.title,claims:[...merged.values()],status:'draft',changes,clarification_answers:{...r.clarification_answers,...Object.fromEntries(r.proposals.filter(p=>p.decision==='confirmed'&&p.clarification_question).map(p=>[p.clarification_question,p.clarification_answer]))},content_digest:'d'.repeat(64)};versions.unshift(version);r.saved_version=version;r.state='saved';
    }
   }
-  if(path.startsWith(root+'/versions/')){const identity=path.slice((root+'/versions/').length).split('/')[0];json=versions.find(v=>v.version_id===identity);if(path.endsWith('/approve')){if(role!=='ADMIN'){status=403;json={detail:'Project administrator required.'};}else{json.status='approved';json.approved_by='Fixture';active=json.version_id;}}}
+  if(path.startsWith(root+'/versions/')){const identity=path.slice((root+'/versions/').length).split('/')[0];json=versions.find(v=>v.version_id===identity);if(path.endsWith('/approve')){if(role!=='ADMIN'){status=403;json={detail:'Project administrator required.'};}else{json.status='approved';json.approved_by='fixture-id';json.approved_by_name='Fixture';active=json.version_id;}}}
   if(path.startsWith(root+'/sources/'))json=sources.find(s=>s.source_id===path.slice((root+'/sources/').length));
   if(path===root+'/stories/ST1/analysis')json=analysis;
   if(path===root+'/stories/ST1/analyze')json=analysis={analysis_id:'a'.repeat(32),status:'needs_review',summary:'Clarify timing',analysis_mode:active?'knowledge_aware':'story_only',knowledge_version_id:active,findings:[{finding_id:'F1',category:'missing_detail',severity:'blocker',description:'Missing timing',question:'When should confirmation appear?'}]};

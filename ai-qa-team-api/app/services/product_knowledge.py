@@ -49,6 +49,7 @@ class ProductKnowledge:
             if receipt["content_digest"] != document["content_digest"]:
                 raise HTTPException(409, "Knowledge approval integrity check failed.")
             return {**document, "status": "approved", "approved_by": receipt["approved_by"],
+                    "approved_by_name": receipt.get("approved_by_name", "Project reviewer"),
                     "approved_at": receipt["approved_at"]}
         return document
 
@@ -194,7 +195,7 @@ class ProductKnowledge:
             return self.public(existing)
         return self.public(document)
 
-    async def approve(self, project, actor, version_id):
+    async def approve(self, project, actor, version_id, *, actor_name="Project reviewer"):
         require_features("product_knowledge")
         document = await self.record("product_knowledge_versions", project, version_id)
         if document["status"] == "approved":
@@ -217,6 +218,7 @@ class ProductKnowledge:
         receipt = {"_id": self.approval_key(project, parent), "record_type": "knowledge_approval",
                    "scope_project_id": project, "parent_version_id": parent, "approved_version_id": version_id,
                    "content_digest": document["content_digest"], "approved_by": actor,
+                   "approved_by_name": actor_name,
                    "approved_at": datetime.now(timezone.utc).isoformat()}
         try:
             await self.db["product_knowledge_versions"].insert_one(receipt)

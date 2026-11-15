@@ -1,5 +1,27 @@
 # QA Agent review redesign — 2026-11-15
 
+## Follow-up: current-only table and stale-request discard
+
+Historical versions/source lists are no longer rendered in the workspace. Approved
+retains its table, with source/topic and Review/Edit/Remove actions. Evidence for a
+current rule opens privately through Review. Backend history and reference APIs
+remain intact. New approval receipts store the authenticated approver name; retries
+preserve that snapshot. Older own-user approvals use a display-only authenticated
+profile fallback; unavailable names display a neutral label rather than raw IDs.
+
+The project-authorized revision-checked `/training/{id}/discard` operation cancels
+editable training/correction/removal requests, even against stale knowledge, without
+publishing, restoring or deleting approved rules. Running extraction must finish or
+reconcile first. Saved immutable drafts/approved training cannot be revoked through
+discard because approval may race; start an explicit successor to change knowledge.
+Discarded requests cannot be rebased. No migration is required; historic receipts
+are not rewritten. The original History UI description below is superseded.
+
+Follow-up verification: 51 backend knowledge/training/disabled-ingestion tests and
+8 intercepted-API Edge browser checks passed, including the current-only table,
+name/topic display and stale removal discard. TypeScript, focused lint, whitespace
+and credential-pattern scan passed. These did not use real login, Mongo or AI.
+
 ## Scope
 
 Teach, Review (pending count) and Approved tabs reuse the knowledge route, APIs,

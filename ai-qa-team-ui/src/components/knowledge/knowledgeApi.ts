@@ -25,6 +25,7 @@ export interface KnowledgeVersion {
   parent_version_id?: string | null;
   changes?: { action: "add" | "replace" | "remove"; claim_id: string; before: Claim | null; after: Claim | null }[];
   approved_by?: string;
+  approved_by_name?: string;
   approved_at?: string;
 }
 
