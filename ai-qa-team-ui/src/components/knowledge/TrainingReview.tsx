@@ -80,6 +80,10 @@ export default function TrainingReview({ initial, base, canApprove, onSession, o
   return <section aria-label="Training review" className="workspace-card p-5 space-y-4">
     <div><p className="workspace-eyebrow">Review</p><h2>Review What the Agent Learned</h2><p>{session.title}</p></div>
     <p>Existing approved knowledge is retained automatically. Confirmed proposals are saved only after explicit approval.</p>
+    {session.state === "reviewing" && session.extraction_state !== "running" && <button className="workspace-button" disabled={dirty || saving || autoSaving} onClick={()=>{
+      if(!window.confirm("Discard this pending request? Current approved knowledge will not change."))return;
+      void perform(()=>knowledgeRequest(path+"/discard",{expected_revision:session.revision}));
+    }}>Discard request</button>}
     {session.state !== "rejected" && session.base_version_id !== currentVersionId && session.saved_version?.status !== "approved" && <div className="design-state">
       <p>Approved knowledge changed. Your review and extraction are retained. Review these proposals against current knowledge without another AI request.</p>
       <button className="workspace-button" disabled={dirty || saving} onClick={() => void perform(() => knowledgeRequest(path + "/rebase", {

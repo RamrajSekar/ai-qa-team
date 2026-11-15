@@ -193,6 +193,8 @@ class KnowledgeTraining:
 
     async def rebase(self, project, actor, identity, payload):
         row = await self.row(project, identity)
+        if row["state"] == "rejected":
+            raise HTTPException(409, "Discarded reviews cannot be resumed. Start intentional new training.")
         if row["revision"] != payload.expected_revision or row["extraction_state"] != "completed":
             raise HTTPException(409, "Reload the completed review before continuing.")
         if (await self.get(project, identity)).get("saved_version", {}).get("status") == "approved":
@@ -216,6 +218,24 @@ class KnowledgeTraining:
             if existing["input_digest"] != fingerprint:
                 raise HTTPException(409, "This review request has different inputs.") from None
         return await self.get(project, payload.request_id)
+
+    async def discard(self, project, actor, identity, payload):
+        row = await self.row(project, identity)
+        if row["state"] == "rejected":
+            return self.public(row)
+        # Only editable reviews can be discarded. Saved immutable drafts may be
+        # concurrently approved; do not pretend to revoke an approval here.
+        if row["state"] != "reviewing" or row["extraction_state"] == "running":
+            raise HTTPException(409, "Only an editable, non-running review can be discarded.")
+        closed = await self.rows.find_one_and_update({"_id": row["_id"], "project_id": project,
+            "revision": payload.expected_revision, "state": "reviewing", "extraction_state": row["extraction_state"]},
+            {"$set": {"state": "rejected", "revision": row["revision"] + 1, "proposals": [],
+                "removed_claim_ids": [], "clarification_questions": [], "clarification_answers": {},
+                "source_input": None, "removal_reason": "", "completed_by": actor,
+                "completed_at": now(), "updated_at": now()}}, return_document=ReturnDocument.AFTER)
+        if not closed:
+            raise HTTPException(409, "Review changed. Refresh status before discarding.")
+        return self.public(closed)
 
     async def save(self, project, actor, identity, payload):
         row = await self.row(project, identity)

@@ -58,6 +58,37 @@ class TrainingTests(unittest.IsolatedAsyncioTestCase):
     async def initial(self):
         return await self.approve(await self.save(await self.accept(await self.extract(await self.start()))))
 
+    async def test_discard_stale_correction_and_removal_preserves_approved_knowledge(self):
+        original = await self.initial()
+        pending = []
+        for index, mode in enumerate(("correction", "removal")):
+            response = await self.client.post(self.base+"/training", json={"request_id":f"{100+index:032x}",
+                "title":"Pending request", "mode":mode,"claim_id":original["claims"][0]["claim_id"]})
+            pending.append(response.json())
+        await self.initial()  # Both pending bases are now stale.
+        before = deepcopy(self.db["product_knowledge_versions"].docs)
+        calls = self.usage.execute.await_count
+        self.user["role"] = "MEMBER"
+        for row in pending:
+            path=self.base+"/training/"+row["review_id"]+"/discard"
+            response=await self.client.post(path,json={"expected_revision":9})
+            self.assertEqual(response.status_code,409)
+            response=await self.client.post(path,json={"expected_revision":row["revision"]})
+            self.assertEqual(response.status_code,200,response.text)
+            self.assertEqual(response.json()["state"],"rejected")
+            self.assertEqual(response.json()["removed_claim_ids"],[])
+            self.assertEqual((await self.client.post(path,json={"expected_revision":row["revision"]})).status_code,200)
+            self.assertEqual((await self.client.post(path.replace("P1","P2"),json={"expected_revision":0})).status_code,404)
+        self.assertEqual(self.db["product_knowledge_versions"].docs,before)
+        self.assertEqual(self.usage.execute.await_count,calls)
+
+    async def test_discard_cannot_revoke_saved_or_approved_training(self):
+        review = await self.save(await self.accept(await self.extract(await self.start())))
+        path=self.base+"/training/"+review["review_id"]+"/discard"
+        self.assertEqual((await self.client.post(path,json={"expected_revision":review["revision"]})).status_code,409)
+        await self.approve(review)
+        self.assertEqual((await self.client.post(path,json={"expected_revision":review["revision"]})).status_code,409)
+
     async def test_all_rejected_review_closes_without_answers_or_knowledge_write(self):
         original = await self.initial()
         self.questions = ["Unused clarification?"]

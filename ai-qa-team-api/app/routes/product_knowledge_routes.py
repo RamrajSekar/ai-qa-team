@@ -80,6 +80,12 @@ async def rebase_training_review(project_id: str, review_id: VersionId, payload:
     return await training_service().rebase(project_id, actor_id(user), review_id, payload)
 
 
+@router.post("/training/{review_id}/discard")
+async def discard_training_review(project_id: str, review_id: VersionId, payload: TrainingSave, user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await training_service().discard(project_id, actor_id(user), review_id, payload)
+
+
 async def ai_result(awaitable):
     try:
         return await awaitable
@@ -92,7 +98,13 @@ async def ai_result(awaitable):
 @router.get("")
 async def overview(project_id: str, user=Depends(get_current_user)):
     await require_project_member(project_id, user)
-    return await service().overview(project_id)
+    result = await service().overview(project_id)
+    # Display-only fallback for older approvals by the signed-in reviewer. Never
+    # mutate historical receipts or substitute an untrusted client identity.
+    for version in result["versions"]:
+        if version.get("approved_by") == actor_id(user) and version.get("approved_by_name") in (None, "Project reviewer"):
+            version["approved_by_name"] = user.get("name") or user.get("full_name") or user.get("email") or "Project reviewer"
+    return result
 
 
 @router.get("/uploads")
@@ -201,7 +213,8 @@ async def knowledge_version(project_id: str, version_id: VersionId, user=Depends
 @router.post("/versions/{version_id}/approve")
 async def approve(project_id: str, version_id: VersionId, user=Depends(get_current_user)):
     await require_project_admin(project_id, user)
-    return await service().approve(project_id, actor_id(user), version_id)
+    return await service().approve(project_id, actor_id(user), version_id,
+        actor_name=user.get("name") or user.get("full_name") or user.get("email") or "Project reviewer")
 
 
 @router.post("/stories/{story_id}/analyze", dependencies=[Depends(feature_required("story_analysis"))])

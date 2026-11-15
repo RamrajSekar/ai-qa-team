@@ -1,5 +1,21 @@
 const {test,before,after}=require('node:test');const assert=require('node:assert/strict');
 
+test('current table hides history, shows name/topic and permits discarding a stale removal',async t=>{
+ const {page,reviews,versions}=await fixture(browser,t);await page.goto(base+'/projects/P1/knowledge');
+ await teach(page,'Landing page','Rule one.');await confirmAll(page);await saveApprove(page);
+ await page.getByRole('table',{name:'Current approved knowledge'}).waitFor();
+ await page.getByText('Approved by Fixture',{exact:true}).waitFor();
+ assert.equal(await page.getByText('History and sources',{exact:true}).count(),0);
+ await page.getByRole('cell',{name:'Landing page',exact:true}).waitFor();
+ page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Remove',exact:true}).click();
+ reviews[0].base_version_id='f'.repeat(32);await page.reload();
+ await page.getByText('Approved knowledge changed.',{exact:false}).waitFor();
+ page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Discard request',exact:true}).click();
+ await page.getByRole('tab',{name:'Approved',exact:true}).click();
+ assert.equal(await page.getByRole('row',{name:'Approved rule',exact:true}).count(),1);
+ assert.equal(versions.length,1);assert.equal(reviews[0].state,'rejected');
+});
+
 test('autosave keeps focus and edits typed while the previous save is in flight',async t=>{
  const f=await fixture(browser,t);const {page,context,reviews}=f;
  await page.goto(base+'/projects/P1/knowledge');await teach(page,'Typing review','Rule four.');
@@ -56,11 +72,11 @@ test('admin creates project, teaches three rules, adds fourth, resumes clarifica
  await page.goto(base+'/projects');await page.goBack();
  await page.getByLabel('When does rule four apply?',{exact:true}).waitFor();assert.equal(await page.getByLabel('When does rule four apply?',{exact:true}).inputValue(),'After saving.');assert.equal(extracts(),2);
  await saveApprove(page);assert.equal(await page.getByRole('row',{name:'Approved rule',exact:true}).count(),4);
- const before=structuredClone(versions[0].claims);await page.getByRole('row',{name:'Approved rule',exact:true}).first().getByRole('button',{name:'Correct',exact:true}).click();
+ const before=structuredClone(versions[0].claims);await page.getByRole('row',{name:'Approved rule',exact:true}).first().getByRole('button',{name:'Edit',exact:true}).click();
  const card=page.getByRole('article',{name:'Proposal 1',exact:true});await card.getByRole('button',{name:'Edit',exact:true}).click();const correctionSaved=page.waitForResponse(response=>response.url().endsWith('/review')&&response.request().method()==='POST');await page.getByLabel('Rule statement',{exact:true}).fill('Rule one, clarified.');await correctionSaved;
  await page.getByRole('status').filter({hasText:/^Review progress saved$/}).waitFor();await card.getByRole('button',{name:'Confirm',exact:true}).click();await page.getByRole('status').filter({hasText:/^Review progress saved$/}).waitFor();await saveApprove(page);
  assert.equal(versions[0].claims[0].statement,'Rule one, clarified.');assert.deepEqual(versions[0].claims.slice(1),before.slice(1));assert.equal(extracts(),2);
- await page.getByRole('row',{name:'Approved rule',exact:true}).first().getByRole('button',{name:'View source',exact:true}).click();await page.getByRole('dialog',{name:'Source evidence',exact:true}).waitFor();await page.getByRole('button',{name:'Close evidence',exact:true}).click();
+ await page.getByRole('row',{name:'Approved rule',exact:true}).first().getByRole('button',{name:'Review',exact:true}).click();await page.getByRole('dialog',{name:'Source evidence',exact:true}).waitFor();await page.getByRole('button',{name:'Close evidence',exact:true}).click();
  if(process.env.QA_AGENT_SCREENSHOT){await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:process.env.QA_AGENT_SCREENSHOT,fullPage:true});}
  await page.setViewportSize({width:390,height:844});assert.ok(await page.locator('main').evaluate(node=>node.scrollWidth<=node.clientWidth+1));
 });

@@ -33,6 +33,18 @@ class Collection(BaseCollection):
 
 
 class KnowledgeTests(unittest.IsolatedAsyncioTestCase):
+    async def test_approval_name_is_server_owned_and_immutable_on_retry(self):
+        first = await self.approved()
+        draft = await self.service.create_version("P1", "reviewer", KnowledgeDraft(title="Correction",
+            parent_version_id=first["version_id"], claims=[{**self.claim,"statement":"Updated rule"}]))
+        self.user["name"] = "Alice Reviewer"
+        path=self.base+"/versions/"+draft["version_id"]+"/approve"
+        response=await self.client.post(path)
+        self.assertEqual(response.status_code,200,response.text)
+        self.assertEqual(response.json()["approved_by_name"],"Alice Reviewer")
+        self.user["name"] = "Changed Profile"
+        self.assertEqual((await self.client.post(path)).json()["approved_by_name"],"Alice Reviewer")
+
     async def asyncSetUp(self):
         self.db = {key: Collection() for key in ("product_knowledge_sources", "product_knowledge_versions", "story_analyses", "prompt_definitions")}
         self.db["stories"] = Collection({"project_id": "P1", "story_id": "ST1", "title": "Save draft",
