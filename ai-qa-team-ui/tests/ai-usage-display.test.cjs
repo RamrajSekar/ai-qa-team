@@ -53,3 +53,14 @@ test('legal pages and footer links remain unpublished',async t=>{
   assert.equal(await page.getByText('support@aiqa.com',{exact:true}).count(),0);
  }
 });
+
+test('dashboard shows Test Cases without AI usage meters, charts or configuration reads',async t=>{
+ const {page,context,calls}=await fixture(browser,t);
+ await context.route(url=>url.hostname==='feature-api.test'&&url.pathname==='/auth/me',route=>route.fulfill({headers:{'access-control-allow-origin':base,'access-control-allow-credentials':'true'},json:{user:{email:'fixture@example.com',name:'Fixture',onboarding:{onboarding_status:'completed'},subscription:{ai_allowance_version:1,usage:{testcases_used:4},limits:{testcases_limit:0,testcases_basic_limit:10,testcases_medium_limit:0,testcases_advanced_limit:0}}}}}));
+ await page.goto(base+'/dashboard');await page.getByText('Test Cases',{exact:true}).waitFor();
+ const card=page.getByText('Test Cases',{exact:true}).locator('..');assert.match(await card.innerText(),/4\s*\/\s*10/);
+ assert.equal(await page.getByText('Other AI usage',{exact:true}).count(),0);
+ assert.equal(await page.getByText('Managed AI Requests',{exact:true}).count(),0);
+ assert.equal(await page.locator('.recharts-wrapper').count(),0);
+ assert.equal(calls.filter(call=>call.path.endsWith('/ai/configuration')).length,0);
+});

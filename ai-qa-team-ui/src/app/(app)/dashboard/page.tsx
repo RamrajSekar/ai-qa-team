@@ -1,5 +1,4 @@
 "use client";
-import AIPoolUsage from "@/components/account/AIPoolUsage";
 import type { UsageStats, UsageLimits } from "@/types/user";
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 
@@ -7,14 +6,12 @@ import { useState } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import CreateProjectModal from "@/components/projects/CreateProjectModal";
 import ExecutionTrendChart from "@/components/dashboard/ExecutionTrendChart";
-import AiUsageChart from "@/components/dashboard/AiUsage";
 import OnboardingModal from "@/components/onboarding/OnboardingModal";
 import { useProjects } from "@/hooks/useProjects";
 import Link from "next/link";
 
 export default function DashboardPage() {
   const { enabled } = useFeatures();
-  const aiEnabled = enabled("scenario_generation") || enabled("test_generation") || enabled("product_knowledge") || enabled("story_analysis");
   const { user, refreshSubscription } = useAuth();
   const { projects, loading, reload: loadProjects } = useProjects();
 
@@ -29,6 +26,9 @@ export default function DashboardPage() {
 
   const usage: Partial<UsageStats> = user.subscription?.usage || {};
   const limits: Partial<UsageLimits> = user.subscription?.limits || {};
+  const testCaseLimit = limits.testcases_limit === 0
+    ? (limits.testcases_basic_limit ?? 0) + (limits.testcases_medium_limit ?? 0) + (limits.testcases_advanced_limit ?? 0)
+    : limits.testcases_limit;
 
   return (
     <div className="space-y-8">
@@ -62,7 +62,7 @@ export default function DashboardPage() {
         {enabled("story_management") && <KPI title="Stories" used={usage.stories_used} max={limits.stories_limit} />}
         {enabled("scenario_generation") && <KPI title="Scenarios" used={usage.scenarios_used} max={limits.scenarios_limit} />}
         {enabled("automation_execution_ui") && <KPI title="Executions" used={usage.executions_used} max={limits.executions_limit} />}
-        {aiEnabled && (user.subscription?.ai_allowance_version === 1 ? <AIPoolUsage usage={usage} limits={limits} /> : <KPI title="AI Credits" used={usage.ai_gen_used} max={limits.ai_gen_limit} />)}
+        {enabled("test_generation") && <KPI title="Test Cases" used={usage.testcases_used} max={testCaseLimit} />}
         <KPI title="Team Members" used={(usage.team_members_used ?? 0) + 1} max={limits.team_members_limit == null ? limits.team_members_limit : limits.team_members_limit + 1} />
       </div>
 
@@ -77,7 +77,6 @@ export default function DashboardPage() {
             { date: "Fri", total: 9, passed: 7, failed: 2 },
           ]}
         />}
-        {aiEnabled && <AiUsageChart />}
       </div>
 
       {/* PROJECT LIST */}

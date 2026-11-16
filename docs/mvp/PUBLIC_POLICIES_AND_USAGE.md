@@ -1,6 +1,6 @@
 # Selected AI pool and draft public policies
 
-2026-11-16. The Account and Dashboard usage display emphasizes the saved AI mode
+2026-11-16. The Account subscription usage display emphasizes the saved AI mode
 for a project. Other AI usage is collapsed by default. With multiple authorized
 projects, a selector chooses which project's saved mode to display; the balances
 remain account-wide. Null saved configuration means Managed, consistent with the
@@ -51,3 +51,12 @@ and footer links. Source-only TypeScript and changed-file ESLint passed.
 No real provider, mail delivery, published legal-page review or production
 privacy/deletion workflow was verified. Existing generated Next development
 artifacts are excluded from the source-only TypeScript check.
+
+Dashboard refinement: AI allowance meters and the sample AI chart are removed
+from Dashboard. Test Cases is shown with the saved total usage and effective
+complexity-tier capacity. Account subscription retains the selected-mode display.
+
+Dashboard follow-up verification: all four intercepted browser checks passed,
+including a saved Test Cases count of 4/10, no Dashboard AI meters/chart or
+AI-configuration reads, and preserved Account usage behavior. Source-only
+TypeScript, changed-file ESLint and Git whitespace checks passed.

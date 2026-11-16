@@ -1,6 +1,7 @@
 // src/types/user.ts
 
 export interface UsageStats {
+  testcases_used?: number;
   stories_used: number;
   scenarios_used: number;
   executions_used: number;
@@ -12,6 +13,10 @@ export interface UsageStats {
 }
 
 export interface UsageLimits {
+  testcases_limit?: number;
+  testcases_basic_limit?: number;
+  testcases_medium_limit?: number;
+  testcases_advanced_limit?: number;
   stories_limit: number;
   scenarios_limit: number;
   executions_limit: number;
