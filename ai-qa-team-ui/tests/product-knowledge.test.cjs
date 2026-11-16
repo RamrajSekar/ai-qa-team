@@ -32,7 +32,7 @@ test('existing story analysis, stale findings and scenario count controls', asyn
     if (url.pathname === root + '/versions') { json = { ...body, version_id: 'b'.repeat(32), status: 'draft', content_digest: 'c'.repeat(64) }; versions.push(json); }
     if (url.pathname.endsWith('/versions/' + 'b'.repeat(32) + '/approve')) { versions[0].status = 'approved'; active = versions[0].version_id; json = versions[0]; }
     if (url.pathname === root + '/stories/ST1/analysis') json = analysis;
-    if (url.pathname === root + '/stories/ST1/analyze') json = analysis = { analysis_id: 'd'.repeat(32), status: 'needs_review', summary: 'Clarify timing', knowledge_version_id: active,
+    if (url.pathname === root + '/stories/ST1/analyze') json = analysis = { analysis_id: 'd'.repeat(32), status: 'needs_review', summary: 'Clarify timing', analysis_mode:url.searchParams.get('analysis_mode'), knowledge_version_id: active,
       findings: [{ finding_id: 'F1', category: 'missing_detail', severity: 'blocker', description: 'Missing timing', question: 'When should confirmation appear?' }] };
     if (url.pathname.endsWith('/analysis/' + 'd'.repeat(32) + '/review')) { assert.equal(body.resolutions[0].rationale, 'After Save is clicked.'); json = analysis = { ...analysis, status: 'reviewed', resolutions: body.resolutions }; }
     if (url.pathname === '/scenarios/generate-from-story') { requested = url.searchParams.get('count'); json = { scenarios: [{ scenario_id: 'SC1' }], summary: { message: '1 of 4 requested scenarios generated (allowed 4).' } }; }
@@ -42,6 +42,7 @@ test('existing story analysis, stale findings and scenario count controls', asyn
   versions.push({version_id:'b'.repeat(32),title:'Existing approved rules',status:'approved',claims:[{claim_id:'K1',statement:'Show Draft saved.',quote:'Draft saved',epistemic_status:'expected'}]});
   active=versions[0].version_id;
   await page.goto(base + '/projects/P1/stories/ST1');
+  await page.getByLabel('Analysis mode', {exact:true}).selectOption('knowledge_aware');
   await page.getByRole('button', { name: 'Analyze with AI' }).click().catch(async error => { console.log('Fixture-only page text:', await page.locator('body').innerText()); throw error; });
   const approve = page.getByRole('button', { name: 'Approve analysis review (project admin)' });
   await approve.waitFor(); assert.equal(await approve.isDisabled(), true);

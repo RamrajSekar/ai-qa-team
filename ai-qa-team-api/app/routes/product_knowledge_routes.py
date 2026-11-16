@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, Request
@@ -226,9 +226,11 @@ async def approve(project_id: str, version_id: VersionId, user=Depends(get_curre
 
 
 @router.post("/stories/{story_id}/analyze", dependencies=[Depends(feature_required("story_analysis"))])
-async def analyze(project_id: str, story_id: StoryId, user=Depends(get_current_user)):
+async def analyze(project_id: str, story_id: StoryId,
+                  analysis_mode: Literal["story_only", "knowledge_aware"] | None = Query(default=None),
+                  user=Depends(get_current_user)):
     await require_project_member(project_id, user)
-    return await ai_result(service().analyze(project_id, user, story_id))
+    return await ai_result(service().analyze(project_id, user, story_id, analysis_mode=analysis_mode))
 
 
 @router.get("/stories/{story_id}/analysis", dependencies=[Depends(feature_required("story_analysis"))])
