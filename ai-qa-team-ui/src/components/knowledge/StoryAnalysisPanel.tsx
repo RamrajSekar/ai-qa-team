@@ -4,6 +4,7 @@ import Link from "next/link";
 import { knowledgeRequest } from "./knowledgeApi";
 import { useProjects } from "@/hooks/useProjects";
 import { DesignBadge } from "@/components/projects/DesignWorkspace";
+import StoryKnowledgeReview from "./StoryKnowledgeReview";
 
 interface Analysis {
   analysis_id: string; status: string; stale?: boolean; summary: string; knowledge_version_id: string | null;
@@ -60,11 +61,11 @@ export default function StoryAnalysisPanel({ projectId, storyId }: { projectId: 
       <p>{analysis.summary}</p>
       <label>Finding category<select aria-label="Finding category" value={category} onChange={event => setCategory(event.target.value)}><option value="all">All findings</option>{Object.entries(categories).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       {!analysis.findings.length && <p>No findings proposed. Explicit review is still required.</p>}
-      {analysis.findings.filter(finding => category === "all" || finding.category === category).map(finding => <div className="border rounded p-3 space-y-2" key={finding.finding_id}>
+      {analysis.findings.filter(finding => (analysis.stale || finding.category !== "knowledge_conflict") && (category === "all" || finding.category === category)).map(finding => <div className="border rounded p-3 space-y-2" key={finding.finding_id}>
         <p><strong>{finding.severity === "blocker" ? "Blocker" : "Warning"} · {categories[finding.category] || finding.category}</strong>: {finding.description}</p><p>{finding.question}</p>
         {finding.criterion_quote && <blockquote>Acceptance criterion: {finding.criterion_quote}</blockquote>}
         {finding.knowledge_claim_id && analysis.knowledge_version_id && <Link className="underline" href={`/projects/${projectId}/knowledge#claim-${analysis.knowledge_version_id}-${finding.knowledge_claim_id}`}>Inspect linked knowledge rule</Link>}
-        {canReview && analysis.status !== "reviewed" && !analysis.stale && <>
+        {canReview && analysis.status !== "reviewed" && !analysis.stale && !analysis.findings.some(item => item.category === "knowledge_conflict") && <>
           <label className="block">Decision <select value={resolutions[finding.finding_id]?.decision || "clarified"}
             onChange={event => setResolutions(items => ({ ...items, [finding.finding_id]: {
               rationale: items[finding.finding_id]?.rationale || "", decision: event.target.value as "clarified" | "dismissed",
@@ -76,8 +77,10 @@ export default function StoryAnalysisPanel({ projectId, storyId }: { projectId: 
         </>}
         {analysis.resolutions?.find(item => item.finding_id === finding.finding_id)?.rationale && <p>Reviewed: {analysis.resolutions.find(item => item.finding_id === finding.finding_id)?.rationale}</p>}
       </div>)}
-      {canReview && analysis.status !== "reviewed" && !analysis.stale && <button className="workspace-button" disabled={busy || analysis.findings.some(item => item.severity === "blocker" && !resolutions[item.finding_id]?.rationale.trim())}
+      {canReview && analysis.status !== "reviewed" && !analysis.stale && !analysis.findings.some(item => item.category === "knowledge_conflict") && <button className="workspace-button" disabled={busy || analysis.findings.some(item => item.severity === "blocker" && !resolutions[item.finding_id]?.rationale.trim())}
         onClick={() => void perform(true)}>Approve analysis review (project admin)</button>}
+      <StoryKnowledgeReview key={analysis.analysis_id} projectId={projectId} storyId={storyId} analysis={analysis} admin={canReview}
+        onComplete={async () => { await load(); window.dispatchEvent(new Event("story-analysis-updated")); }} />
     </>}
     {error && <p role="alert">{error}</p>}
   </section>;

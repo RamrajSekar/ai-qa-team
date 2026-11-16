@@ -33,7 +33,7 @@ async function setup(t,{role='ADMIN',withoutCriteria=false}={}){
  return {...f,rows,calls};
 }
 test('intentional removal is reviewed, approved, activated and selected explicitly for generation',async t=>{
- const {page,rows,calls}=await setup(t);await page.goto(base+'/projects/P1/stories/ST1');
+ const {page,rows,calls}=await setup(t);await page.goto(base+'/projects/P1/stories/ST1');await page.getByText('Advanced generation context',{exact:true}).click();
  await page.getByLabel('Generation context',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Generate scenarios with AI'}).isDisabled(),true);
  await page.getByText('Record a requirement decision or prepare provisional designs',{exact:true}).click();
  await page.getByLabel('Target release / cycle',{exact:true}).fill('Release 2');
@@ -49,11 +49,11 @@ test('intentional removal is reviewed, approved, activated and selected explicit
  assert.equal(calls.filter(call=>call.path==='/scenarios/generate-from-story').length,0);
  await page.getByRole('button',{name:'Generate scenarios with AI'}).click();await page.getByText('1 scenario draft generated.',{exact:true}).waitFor();
  assert.equal(calls.find(call=>call.path==='/scenarios/generate-from-story').context,rows[0].context_id);
- await page.reload();await page.getByRole('button',{name:'Review',exact:true}).waitFor();
+ await page.reload();await page.getByText('Advanced generation context',{exact:true}).click();await page.getByRole('button',{name:'Review',exact:true}).waitFor();
  assert.equal(calls.filter(call=>call.path==='/scenarios/generate-from-story').length,1);
 });
 test('provisional story-only context works without criteria and remains labelled',async t=>{
- const {page,rows}=await setup(t,{withoutCriteria:true});await page.goto(base+'/projects/P1/stories/ST1');
+ const {page,rows}=await setup(t,{withoutCriteria:true});await page.goto(base+'/projects/P1/stories/ST1');await page.getByText('Advanced generation context',{exact:true}).click();
  await page.getByText('Record a requirement decision or prepare provisional designs',{exact:true}).click();
  await page.getByLabel('Design basis',{exact:true}).selectOption('story_only_provisional');await page.getByLabel('Target release / cycle',{exact:true}).fill('Discovery cycle');
  await page.getByRole('button',{name:'Save requirements draft'}).click();await page.getByRole('button',{name:'Approve requirements context'}).click();
@@ -63,11 +63,11 @@ test('provisional story-only context works without criteria and remains labelled
  assert.equal(rows[0].decisions.length,0);
 });
 test('clarification decisions persist but cannot be approved as intentional changes',async t=>{
- const {page}=await setup(t);await page.goto(base+'/projects/P1/stories/ST1');
+ const {page}=await setup(t);await page.goto(base+'/projects/P1/stories/ST1');await page.getByText('Advanced generation context',{exact:true}).click();
  await page.getByText('Record a requirement decision or prepare provisional designs',{exact:true}).click();
  await page.getByLabel('Target release / cycle',{exact:true}).fill('Release pending');await page.getByLabel('Decision 1',{exact:true}).selectOption('needs_clarification');
  await page.getByLabel('Reason 1',{exact:true}).fill('Product owner must clarify.');await page.getByRole('button',{name:'Save requirements draft'}).click();
  await page.getByRole('region',{name:'Requirements approval review'}).waitFor();assert.equal(await page.getByRole('button',{name:'Approve requirements context'}).isDisabled(),true);
- await page.reload();await page.getByRole('button',{name:'Review',exact:true}).click();await page.getByRole('region',{name:'Requirements approval review'}).locator('p').filter({hasText:'Product owner must clarify.'}).first().waitFor();
+ await page.reload();await page.getByText('Advanced generation context',{exact:true}).click();await page.getByRole('button',{name:'Review',exact:true}).click();await page.getByRole('region',{name:'Requirements approval review'}).locator('p').filter({hasText:'Product owner must clarify.'}).first().waitFor();
  assert.equal(await page.getByRole('button',{name:'Activate release requirements'}).count(),0);
 });
