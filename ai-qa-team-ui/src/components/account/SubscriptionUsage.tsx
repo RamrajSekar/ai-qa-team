@@ -1,4 +1,5 @@
 "use client";
+import AIPoolUsage from "./AIPoolUsage";
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 import styles from "./SubscriptionUsage.module.css";
 
@@ -42,10 +43,7 @@ export default function SubscriptionUsage({ subscription }: { subscription: Acco
 
     {subscription.ai_allowance_version === 1 ? <section className={styles.group} aria-labelledby="ai-credit-title">
       <h3 id="ai-credit-title">AI Usage</h3><p className={styles.description}>Separate monthly allowances shared across your account. Switching AI mode does not reset either balance.</p>
-      <div className={styles.grid}>
-        <div className={styles.ai}>{meter("Managed AI Requests", "managed_ai_credits_used")}</div>
-        <div className={styles.ai}>{meter("BYOK AI Requests", "byok_ai_requests_used")}</div>
-      </div>
+      <AIPoolUsage usage={subscription.usage} limits={subscription.limits} />
       <p className={styles.note}>Each AI request uses one unit from its mode’s allowance and may generate multiple items. Managed uses platform credentials; BYOK uses your key and provider billing. Browser-execution AI is not included yet.</p>
     </section> : <section className={styles.ai} aria-labelledby="ai-credit-title">
       <div><h3 id="ai-credit-title">AI Requests</h3><p className={styles.description}>Monthly allowance shared by product knowledge extraction, story analysis, scenario design and AI test case design. Optional bug analysis also uses this allowance.</p></div>
