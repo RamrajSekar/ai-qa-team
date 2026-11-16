@@ -120,3 +120,8 @@
 .lp-pricing-price small { display:block; font-size:12px; font-weight:400; }
 .lp-pricing-card ul { padding-left:18px; flex:1; line-height:1.8; font-size:13px; }
 @media(max-width:800px) { .lp-pricing-grid { grid-template-columns:minmax(0,1fr); } }
+
+.public-landing .lp-policy { max-width: 850px; }
+.public-landing .lp-policy h2 { font-size: 21px; letter-spacing: -.3px; margin-bottom: 10px; }
+.public-landing .lp-policy section p + p { margin-top: 12px; }
+.public-landing .lp-policy a { text-decoration: underline; overflow-wrap: anywhere; }
