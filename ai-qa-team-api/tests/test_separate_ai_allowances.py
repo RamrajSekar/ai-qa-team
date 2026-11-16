@@ -121,3 +121,38 @@ class SeparateAllowanceTests(unittest.IsolatedAsyncioTestCase):
 
 
 if __name__ == "__main__": unittest.main()
+
+
+class LegacyPreflightTests(unittest.IsolatedAsyncioTestCase):
+    async def test_versioned_account_does_not_enforce_legacy_aggregate(self):
+        from unittest.mock import AsyncMock
+        from app.utils.subscription_dependency import subscription_required
+        user={"_id":"synthetic-user"}
+        sub={"billing_scope":"ACCOUNT","status":"active","ai_allowance_version":1,
+             "usage":{"ai_gen_used":3,"managed_ai_credits_used":3,"byok_ai_requests_used":1},
+             "limits":{"ai_gen_limit":3,"managed_ai_credits_limit":25,"byok_ai_requests_limit":25}}
+        with patch('app.utils.subscription_dependency.get_subscription',new=AsyncMock(return_value=sub)):
+            self.assertEqual(await subscription_required('ai_generation')(user),user)
+        self.assertEqual(sub['usage']['ai_gen_used'],3)
+
+    async def test_legacy_accounts_keep_their_aggregate_limit(self):
+        from unittest.mock import AsyncMock
+        from fastapi import HTTPException
+        from app.utils.subscription_dependency import subscription_required
+        for scope in ('USER','ACCOUNT'):
+            sub={"billing_scope":scope,"status":"active","usage":{"ai_gen_used":3},"limits":{"ai_gen_limit":3}}
+            with patch('app.utils.subscription_dependency.get_subscription',new=AsyncMock(return_value=sub)):
+                with self.assertRaises(HTTPException) as error:
+                    await subscription_required('ai_generation')({"_id":"synthetic-user"})
+                self.assertEqual(error.exception.status_code,403)
+
+    async def test_inactive_versioned_account_and_non_ai_capacity_still_block(self):
+        from unittest.mock import AsyncMock
+        from fastapi import HTTPException
+        from app.utils.subscription_dependency import subscription_required
+        sub={"billing_scope":"ACCOUNT","ai_allowance_version":1,"status":"inactive",
+             "usage":{"stories_used":5},"limits":{"stories_limit":5}}
+        with patch('app.utils.subscription_dependency.get_subscription',new=AsyncMock(return_value=sub)):
+            with self.assertRaises(HTTPException):await subscription_required('ai_generation')({"_id":"synthetic-user"})
+            sub['status']='active'
+            with self.assertRaises(HTTPException):await subscription_required('stories')({"_id":"synthetic-user"})

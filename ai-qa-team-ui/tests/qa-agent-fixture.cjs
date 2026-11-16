@@ -52,6 +52,7 @@ async function fixture(browser, t, {role='ADMIN',empty=false,withoutCriteria=fal
   }
   if(path.startsWith(root+'/versions/')){const identity=path.slice((root+'/versions/').length).split('/')[0];json=versions.find(v=>v.version_id===identity);if(path.endsWith('/approve')){if(role!=='ADMIN'){status=403;json={detail:'Project administrator required.'};}else{json.status='approved';json.approved_by='fixture-id';json.approved_by_name='Fixture';active=json.version_id;}}}
   if(path.startsWith(root+'/sources/'))json=sources.find(s=>s.source_id===path.slice((root+'/sources/').length));
+  if(path===root+'/stories/ST1/requirements')json={contexts:[],rules:[]};
   if(path===root+'/stories/ST1/analysis')json=analysis;
   if(path===root+'/stories/ST1/analyze')json=analysis={analysis_id:'a'.repeat(32),status:'needs_review',summary:'Clarify timing',analysis_mode:url.searchParams.get('analysis_mode')||(active?'knowledge_aware':'story_only'),knowledge_version_id:url.searchParams.get('analysis_mode')==='story_only'?null:active,findings:[{finding_id:'F1',category:'missing_detail',severity:'blocker',description:'Missing timing',question:'When should confirmation appear?'}]};
   if(path.endsWith('/analysis/'+'a'.repeat(32)+'/review'))json=analysis={...analysis,status:'reviewed',resolutions:body.resolutions};

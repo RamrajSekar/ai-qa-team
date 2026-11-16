@@ -54,9 +54,12 @@ class TestDesignReview:
                 "source_digest": digest([case, scenario, story]), "knowledge_version_id": None, "knowledge_digest": None,
                 "story_analysis_id": None, "analysis_digest": None, "source_context_changed": False}
             return snapshot, story, {"claims": []}
-        reviewed = await self.knowledge.generation_context(project, story["story_id"])
+        reviewed = await self.knowledge.generation_context(project, story["story_id"], scenario.get("requirements_context_id"))
+        story = reviewed.get("requirements_story", story)
         knowledge, analysis = reviewed["knowledge"], reviewed["analysis"]
-        changed = any((record.get("knowledge_version_id") and record["knowledge_version_id"] != knowledge["version_id"])
+        changed = any(record.get("requirements_context_id") != reviewed.get("requirements_context_id")
+                      or record.get("requirements_context_digest") != reviewed.get("requirements_context_digest")
+                      or (record.get("knowledge_version_id") and record["knowledge_version_id"] != knowledge["version_id"])
                       or (record.get("story_analysis_id") and record["story_analysis_id"] != analysis["analysis_id"])
                       for record in (case, scenario))
         snapshot = {"story_id": story["story_id"], "scenario_id": scenario["scenario_id"],
@@ -64,7 +67,8 @@ class TestDesignReview:
             "scenario_snapshot": {key: scenario.get(key) for key in ("title", "description", "purpose", "role", "coverage_type", "preconditions", "expected_outcome")},
             "source_digest": digest([case, scenario, story]),
             "knowledge_version_id": knowledge["version_id"], "knowledge_digest": knowledge["content_digest"],
-            "story_analysis_id": analysis["analysis_id"], "analysis_digest": digest(analysis), "source_context_changed": bool(changed)}
+            "story_analysis_id": analysis["analysis_id"], "analysis_digest": digest(analysis), "source_context_changed": bool(changed),
+            **{key:reviewed[key] for key in ("requirements_context_id","requirements_context_digest","design_basis","target_release","criteria_basis") if key in reviewed}}
         return snapshot, story, knowledge
 
     async def state(self, project, testcase):

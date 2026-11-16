@@ -5,3 +5,7 @@ Accepted 2026-11-11: use `dev` as the single ongoing development branch. Before 
 ## Consolidation verification
 
 TypeScript passed after merge. Six focused UI proxy/preparation/startup tests passed. Changed-file credential-pattern and Git whitespace checks passed. The API visual specification unittest stalled without output and was interrupted; it did not pass. Production deployment, real login, provider calls and browser execution were not verified by this consolidation.
+
+Amendment 2026-11-16: the agent implements, verifies, pushes `dev` and creates
+a pull request. The user reviews checks/results and performs the merge. Do not
+automatically merge or promote a PR unless the user explicitly changes this instruction.

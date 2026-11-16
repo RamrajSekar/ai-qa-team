@@ -198,6 +198,7 @@ async def generate_testcases(
                         "status": "draft", "spec_kind": "detailed-case-v1",
                         "knowledge_version_id": scenario["knowledge_version_id"],
                         "story_analysis_id": scenario["story_analysis_id"],
+                        **{key:scenario[key] for key in ("requirements_context_id","requirements_context_digest","design_basis","target_release","criteria_basis") if key in scenario},
                         "natural_steps": [{"action": step["instruction"], "expected": step["expected"]} for step in plan["procedure"]],
                         "steps": [{"action": "unknown", "description": step["instruction"], "expected": step["expected"]} for step in plan["procedure"]]})
 
@@ -213,7 +214,7 @@ async def generate_testcases(
                 title=doc["title"],
                 description=doc.get("description"),
                 **{key: doc[key] for key in ("spec_kind", "purpose", "role", "preconditions", "public_data", "assertions", "cleanup",
-                                           "acceptance_criteria_refs", "rule_references", "knowledge_version_id", "story_analysis_id") if key in doc},
+                                           "acceptance_criteria_refs", "rule_references", "knowledge_version_id", "story_analysis_id", "requirements_context_id", "requirements_context_digest", "design_basis", "target_release", "criteria_basis", "requirements_review_required", "requirements_review_release") if key in doc},
                 complexity=doc.get("complexity"),
                 steps=[TestStep(**s) for s in doc.get("steps", [])],
                 status=doc["status"],

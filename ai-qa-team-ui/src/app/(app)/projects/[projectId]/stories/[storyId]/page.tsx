@@ -16,6 +16,7 @@ import RecordingViewer from "@/components/recorder/RecordingViewer";
 import RecorderOverlay from "@/components/recorder/RecorderOverlay";
 
 import type { Scenario } from "@/types/scenario";
+import RequirementContextsPanel from "@/components/knowledge/RequirementContextsPanel";
 import StoryAnalysisPanel from "@/components/knowledge/StoryAnalysisPanel";
 import ScenarioTable from "@/components/scenarios/ScenarioTable";
 import ScenarioModal from "@/components/scenarios/ScenarioModal";
@@ -42,6 +43,7 @@ export default function StoryDetailsPage() {
   const [scenarioModalOpen, setScenarioModalOpen] = useState(false);
   const [editingScenario, setEditingScenario] = useState<Scenario | undefined>();
   const [viewScenario, setViewScenario] = useState<Scenario | null>(null);
+  const [requirementsContext,setRequirementsContext]=useState<string|null>(null);
   const [scenarioCount, setScenarioCount] = useState(3);
   const [generationMessage, setGenerationMessage] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -51,6 +53,7 @@ export default function StoryDetailsPage() {
   // LOAD STORY
   // -----------------------------
   const loadStory = useCallback(async () => {
+    setRequirementsContext(null);
     setStoryError("");
     try {
       const res = await apiFetch(`/stories/${storyId}?project_id=${projectId}`);
@@ -97,7 +100,7 @@ export default function StoryDetailsPage() {
     setGenerating(true);
     setScenarioError("");
     try {
-      const response = await apiFetch(`/scenarios/generate-from-story?story_id=${encodeURIComponent(storyId)}&count=${scenarioCount}&complexity=basic`, {
+      const response = await apiFetch(`/scenarios/generate-from-story?story_id=${encodeURIComponent(storyId)}&count=${scenarioCount}&complexity=basic${requirementsContext&&requirementsContext!=="current"?`&requirements_context_id=${encodeURIComponent(requirementsContext)}`:""}`, {
         method: "POST",
       });
       if (!response.ok) {
@@ -178,7 +181,7 @@ export default function StoryDetailsPage() {
         </div>
       </div>
 
-      <FeatureGate names={["product_knowledge", "story_analysis"]}><StoryAnalysisPanel projectId={projectId} storyId={storyId} /></FeatureGate>
+      <FeatureGate names={["product_knowledge", "story_analysis"]}><StoryAnalysisPanel projectId={projectId} storyId={storyId} /><RequirementContextsPanel projectId={projectId} storyId={storyId} selected={requirementsContext} onSelect={setRequirementsContext} onActivated={loadScenarios} /></FeatureGate>
 
       {/* SCENARIOS SECTION */}
       <FeatureGate names={["scenario_generation"]}><div className="space-y-4">
@@ -186,7 +189,7 @@ export default function StoryDetailsPage() {
           <h2 className="text-xl font-semibold">Scenarios</h2>
           <div className="flex flex-wrap gap-2 story-coverage-actions">
           <label>Requested scenarios <input aria-label="Requested scenarios" type="number" min={1} max={20} value={scenarioCount} onChange={event => setScenarioCount(Math.max(1, Math.min(20, Number(event.target.value) || 1)))} /></label>
-          <button type="button" className="workspace-button workspace-primary" disabled={generating || !story.acceptance_criteria?.trim()}
+          <button type="button" className="workspace-button workspace-primary" disabled={generating || (enabled("product_knowledge","story_analysis") && !requirementsContext) || (!story.acceptance_criteria?.trim() && (!requirementsContext || requirementsContext==="current"))}
             onClick={() => void generateScenario()}>
             {generating ? "Generating scenarios…" : "Generate scenarios with AI"}
           </button>
@@ -202,7 +205,7 @@ export default function StoryDetailsPage() {
           </div>
         </div>
         <p className="text-sm">Scenarios describe coverage intent (what to verify). Test cases contain detailed procedures and explicit expected results (how to verify). Requested counts are bounded by plan limits and supported coverage; generation can return fewer distinct scenarios.</p>
-        {!story.acceptance_criteria?.trim() && <p className="text-sm">Add story acceptance criteria to generate a scenario with AI.</p>}
+        {!story.acceptance_criteria?.trim() && <p className="text-sm">Add acceptance criteria for current-knowledge generation, or explicitly review and select a release/provisional requirements context.</p>}
         {generationMessage && <p role="status">{generationMessage}</p>}
         {scenarioError && <p role="alert" className="text-sm text-red-700">{scenarioError}</p>}
 

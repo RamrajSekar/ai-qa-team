@@ -13,7 +13,7 @@ interface Version { approved_by?: string; approved_by_display_name?: string; app
 interface ReviewState {
   approval_policy?: { admin_only: boolean; can_approve: boolean };
   active_version_id: string | null; review_required: boolean; context_ready: boolean; context_error: string | null;
-  current_context: { story_snapshot: { acceptance_criteria: string }; knowledge_version_id: string | null; story_analysis_id: string | null; source_digest: string; source_context_changed: boolean } | null;
+  current_context: { design_basis?: string; target_release?: string; criteria_basis?: string; story_snapshot: { acceptance_criteria: string }; knowledge_version_id: string | null; story_analysis_id: string | null; source_digest: string; source_context_changed: boolean } | null;
   approved_expected_rules: { claim_id: string; statement: string }[]; versions: Version[];
 }
 const clean = (values: string[]) => values.map(item => item.trim()).filter(Boolean);
@@ -137,11 +137,11 @@ function ReviewForm({ testcase, projectId, canApprove }: { testcase: CatalogCase
         <button className="workspace-button" onClick={() => update({ procedure: design.procedure.filter((_, i) => i !== index) })}>Remove Test Step {index+1}</button>
       </div>)}
       <button className="workspace-button" disabled={design.procedure.length >= 40} onClick={() => update({ procedure: [...design.procedure, { instruction: "", expected: "" }] })}>Add Test Step</button>
-      <fieldset className="space-y-2"><legend className="font-semibold">Acceptance criteria covered (optional)</legend><p>Select relevant criteria when useful. These options come from the source story; you do not need to type reference IDs.</p>
+      <fieldset className="space-y-2"><legend className="font-semibold">{state?.current_context?.criteria_basis ? "Requirements covered (optional)" : "Acceptance criteria covered (optional)"}</legend><p>Select relevant excerpts when useful. Release-context options can include explicitly approved expectations or provisional story requirements; you do not need to type reference IDs.</p>
         {!criterionOptions.length && <p>No criteria available to link.</p>}
         {criterionOptions.map((quote, index) => <label className="review-choice" key={quote}><input type="checkbox" checked={design.acceptance_criteria_refs.includes(quote)} disabled={!design.acceptance_criteria_refs.includes(quote) && design.acceptance_criteria_refs.length >= 15} onChange={event => update({ acceptance_criteria_refs: event.target.checked ? [...design.acceptance_criteria_refs, quote] : design.acceptance_criteria_refs.filter(value => value !== quote) })} /><span>Criterion {index+1}: {quote}{!criteria.includes(quote) && " (no longer in source story)"}</span></label>)}
       </fieldset>
-      {(rules.length > 0 || unavailableRules.length > 0) && <fieldset className="space-y-2"><legend className="font-semibold">Related approved product rules (optional)</legend><p>Link only rules that define this case’s expected behavior. This is separate from approving the test case.</p>
+      {(rules.length > 0 || unavailableRules.length > 0) && <fieldset className="space-y-2"><legend className="font-semibold">{state?.current_context?.design_basis === "approved_change" ? "Approved release requirements (optional)" : "Related approved product rules (optional)"}</legend><p>Link only rules that define this case’s expected behavior. This is separate from approving the test case.</p>
         {rules.map(rule => <label className="review-choice" key={rule.claim_id}><input type="checkbox" checked={design.rule_references.includes(rule.claim_id)} disabled={!design.rule_references.includes(rule.claim_id) && design.rule_references.length >= 30} onChange={event => update({ rule_references: event.target.checked ? [...design.rule_references, rule.claim_id] : design.rule_references.filter(id => id !== rule.claim_id) })} /><span>{rule.statement}</span></label>)}
         {unavailableRules.length > 0 && <div><p>Some existing rule links are unavailable in the approved knowledge version.</p><button className="workspace-button" onClick={() => update({ rule_references: design.rule_references.filter(id => !unavailableRules.includes(id)) })}>Remove unavailable rule links</button></div>}
       </fieldset>}

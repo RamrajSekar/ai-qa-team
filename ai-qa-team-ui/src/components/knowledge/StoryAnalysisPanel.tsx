@@ -42,6 +42,7 @@ export default function StoryAnalysisPanel({ projectId, storyId }: { projectId: 
         resolutions: Object.entries(resolutions).filter(([, value]) => value.rationale.trim()).map(([finding_id, value]) => ({ finding_id, ...value })),
       } : {});
       await load();
+      window.dispatchEvent(new Event("story-analysis-updated"));
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Could not analyze or review story."); }
     finally { setBusy(false); }
   }

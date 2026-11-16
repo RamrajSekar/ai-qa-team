@@ -7,6 +7,8 @@ from fastapi.responses import FileResponse
 from app.db.connection import db
 from app.models.product_knowledge import KnowledgeSourceInput, KnowledgeDraft, ReviewStoryAnalysis
 from app.models.knowledge_training import TrainingStart, TrainingReview, TrainingExtract, TrainingSave, TrainingRebase
+from app.models.requirement_context import RequirementDraft
+from app.services.requirement_contexts import RequirementContexts
 from app.models.knowledge_ask import KnowledgeQuestion
 from app.services.knowledge_ask import KnowledgeAsk
 from app.services.knowledge_training import KnowledgeTraining
@@ -244,3 +246,34 @@ async def review_analysis(project_id: str, story_id: StoryId, analysis_id: Versi
                           payload: ReviewStoryAnalysis, user=Depends(get_current_user)):
     await require_project_admin(project_id, user)
     return await service().review_analysis(project_id, actor_id(user), story_id, analysis_id, payload)
+
+
+@router.get("/stories/{story_id}/requirements")
+async def requirement_contexts(project_id: str, story_id: StoryId, user=Depends(get_current_user)):
+    await require_project_member(project_id,user)
+    return await RequirementContexts(db).listing(project_id,story_id)
+
+
+@router.post("/stories/{story_id}/requirements")
+async def create_requirements(project_id: str, story_id: StoryId, payload: RequirementDraft, user=Depends(get_current_user)):
+    await require_project_member(project_id,user)
+    return await RequirementContexts(db).create(project_id,story_id,actor_id(user),payload)
+
+
+@router.get("/stories/{story_id}/requirements/{context_id}")
+async def read_requirements(project_id: str, story_id: StoryId, context_id: VersionId, user=Depends(get_current_user)):
+    await require_project_member(project_id,user)
+    service=RequirementContexts(db);row=await service.row(project_id,story_id,context_id)
+    return {**await service.view(row),"impact":await service.impact(row)}
+
+
+@router.post("/stories/{story_id}/requirements/{context_id}/approve")
+async def approve_requirements(project_id: str, story_id: StoryId, context_id: VersionId, user=Depends(get_current_user)):
+    await require_project_admin(project_id,user)
+    return await RequirementContexts(db).approve(project_id,story_id,context_id,user)
+
+
+@router.post("/stories/{story_id}/requirements/{context_id}/activate")
+async def activate_requirements(project_id: str, story_id: StoryId, context_id: VersionId, user=Depends(get_current_user)):
+    await require_project_admin(project_id,user)
+    return await RequirementContexts(db).activate(project_id,story_id,context_id,actor_id(user))
