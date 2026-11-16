@@ -36,7 +36,7 @@ export default function ScenarioTable({ scenarios, onEdit, onDelete, onView }: P
             <tr key={s.scenario_id} className="border-t hover:bg-gray-50">
               <td className="p-3">{s.scenario_id}</td>
               <td className="p-3">{s.title}</td>
-              <td className="p-3">{s.approved ? "Approved" : "Pending approval"}</td>
+              <td className="p-3">{s.requirements_review_required ? `Needs review (${s.requirements_review_release})` : s.approved ? "Approved" : "Pending approval"}{s.design_basis === "story_only_provisional" && <p>Provisional · story-only</p>}{s.target_release && <p>{s.target_release}</p>}</td>
               <td className="p-3 text-center">
                 <div className="flex items-center justify-center gap-3">
                   <button

@@ -1,6 +1,6 @@
 from app.services.prompt_registry_service import get_active as get_active_prompt
 from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import List, Optional
+from typing import List, Optional, Annotated
 from datetime import datetime, timezone
 
 from app.db.connection import db
@@ -85,7 +85,7 @@ def _build_scenario_response(doc: dict) -> ScenarioResponse:
         title=doc["title"],
         description=doc.get("description", ""),
         **{key: doc[key] for key in ("spec_kind", "purpose", "role", "coverage_type", "expected_outcome", "preconditions",
-                                   "acceptance_criteria_refs", "rule_references", "knowledge_version_id", "story_analysis_id") if key in doc},
+                                   "acceptance_criteria_refs", "rule_references", "knowledge_version_id", "story_analysis_id", "requirements_context_id", "requirements_context_digest", "design_basis", "target_release", "criteria_basis", "requirements_review_required", "requirements_review_release") if key in doc},
         steps=normalized_steps,
         status=doc.get("status", "pending"),
         complexity=doc.get("complexity", ""),
@@ -162,7 +162,8 @@ async def create_scenario(
             KnowledgeTestDesign.references(intent, story, context["knowledge"])
             doc.update({**intent.model_dump(), "steps": [], "spec_kind": "coverage-intent-v1",
                         "knowledge_version_id": context["knowledge"]["version_id"],
-                        "story_analysis_id": context["analysis"]["analysis_id"]})
+                        "story_analysis_id": context["analysis"]["analysis_id"],
+                            **{key:context[key] for key in ("requirements_context_id","requirements_context_digest","design_basis","target_release","criteria_basis") if key in context}})
 
         result = await db["scenarios"].insert_one(doc)
         doc["_id"] = result.inserted_id
@@ -370,6 +371,7 @@ async def generate_scenarios_from_story(
     story_id: str = Query(...),
     count: int = Query(3, ge=1, le=20),
     complexity: str = Query("basic"),
+    requirements_context_id: Annotated[str | None, Query(pattern=r"^[0-9a-f]{32}$")] = None,
     current_user=Depends(get_current_user),
     _: None = Depends(subscription_required("ai_generation")),
 ):
@@ -410,8 +412,10 @@ async def generate_scenarios_from_story(
         )
 
         context = None
+        if requirements_context_id and not knowledge_mode:
+            raise HTTPException(409,"Requirements contexts require knowledge and analysis features; no legacy fallback.")
         if knowledge_mode:
-            ai_list, context = await KnowledgeTestDesign(db).scenarios(story["project_id"], current_user, story, allowed, complexity)
+            ai_list, context = await KnowledgeTestDesign(db).scenarios(story["project_id"], current_user, story, allowed, complexity, requirements_context_id=requirements_context_id)
         else:
             resolved_prompt = await get_active_prompt("LEGACY_STORY_SCENARIOS", database=db)
             prompt = build_scenario_prompt_from_story(agent, story, allowed, complexity, template=resolved_prompt["system_prompt"])
@@ -449,7 +453,8 @@ async def generate_scenarios_from_story(
             if context:
                 doc.update({**item, "spec_kind": "coverage-intent-v1", "steps": [],
                             "knowledge_version_id": context["knowledge"]["version_id"],
-                            "story_analysis_id": context["analysis"]["analysis_id"]})
+                            "story_analysis_id": context["analysis"]["analysis_id"],
+                            **{key:context[key] for key in ("requirements_context_id","requirements_context_digest","design_basis","target_release","criteria_basis") if key in context}})
 
             res = await db["scenarios"].insert_one(doc)
             doc["_id"] = res.inserted_id
@@ -620,15 +625,17 @@ async def approve_scenario(
 
     await require_project_member(scenario["project_id"], current_user)
     if scenario.get("spec_kind") == "coverage-intent-v1":
-        context = await KnowledgeTestDesign(db).knowledge.generation_context(scenario["project_id"], scenario["story_id"])
-        if (scenario.get("knowledge_version_id") != context["knowledge"]["version_id"]
+        context = await KnowledgeTestDesign(db).knowledge.generation_context(scenario["project_id"], scenario["story_id"], scenario.get("requirements_context_id"))
+        if (scenario.get("requirements_context_id") != context.get("requirements_context_id")
+                or scenario.get("requirements_context_digest") != context.get("requirements_context_digest")
+                or scenario.get("knowledge_version_id") != context["knowledge"]["version_id"]
                 or scenario.get("story_analysis_id") != context["analysis"]["analysis_id"]):
             raise HTTPException(409, "Knowledge or story analysis changed. Create a successor scenario.")
         try:
             intent = ScenarioIntent(**{key: scenario.get(key) for key in ScenarioIntent.model_fields})
         except ValidationError:
             raise HTTPException(422, "Complete the scenario intent and expected outcome before approval.") from None
-        story = await KnowledgeTestDesign(db).knowledge.story(scenario["project_id"], scenario["story_id"])
+        story = context.get("requirements_story") or await KnowledgeTestDesign(db).knowledge.story(scenario["project_id"], scenario["story_id"])
         KnowledgeTestDesign.references(intent, story, context["knowledge"])
     await db["scenarios"].update_one(
         {"scenario_id": scenario_id, "project_id": scenario["project_id"]},

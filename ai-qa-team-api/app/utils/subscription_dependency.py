@@ -23,6 +23,12 @@ def subscription_required(resource_type: str):
         if sub.get("billing_scope") == "ACCOUNT" and sub.get("status") != "active":
             raise HTTPException(403, "No active account subscription.")
 
+        # Versioned account AI pools are reserved atomically by AIUsageService
+        # after provider resolution. The retained aggregate is not a third quota.
+        if (resource_type == "ai_generation" and sub.get("billing_scope") == "ACCOUNT"
+                and sub.get("ai_allowance_version") == 1):
+            return current_user
+
         plan = sub.get("plan", "free")
         usage = sub.get("usage", {})
         limits = sub.get("limits", {})

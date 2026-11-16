@@ -24,6 +24,12 @@ export interface Scenario {
   complexity?: string;
   approved?: boolean;
   spec_kind?: string;
+  requirements_context_id?: string;
+  design_basis?: string;
+  target_release?: string;
+  criteria_basis?: string;
+  requirements_review_required?: boolean;
+  requirements_review_release?: string;
   purpose?: string;
   role?: string | null;
   coverage_type?: "happy_path" | "negative" | "boundary" | "exception";

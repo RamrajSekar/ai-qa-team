@@ -43,6 +43,13 @@ class ScenarioUpdate(BaseModel):
 
 
 class ScenarioResponse(BaseModel):
+    requirements_context_id: Optional[str] = None
+    requirements_context_digest: Optional[str] = None
+    design_basis: Optional[str] = None
+    target_release: Optional[str] = None
+    criteria_basis: Optional[str] = None
+    requirements_review_required: bool = False
+    requirements_review_release: Optional[str] = None
     scenario_id: str
     story_id: str
     project_id: str

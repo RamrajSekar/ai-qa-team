@@ -42,3 +42,4 @@ async def init_indexes():
     ])
     await db["ai_usage_records"].create_index([("billing_owner", 1), ("billing_period_start", 1)])
     await db["ai_usage_records"].create_index([("account_id", 1), ("billing_period_start", 1)])
+    await db["requirement_contexts"].create_index([("project_id", 1), ("story_id", 1), ("record_type", 1), ("created_at", -1)])

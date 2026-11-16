@@ -334,8 +334,11 @@ class ProductKnowledge:
             raise HTTPException(409, "Analysis review changed. Reload before continuing.")
         return self.public(updated)
 
-    async def generation_context(self, project, story_id):
+    async def generation_context(self, project, story_id, requirements_context_id=None):
         require_features("product_knowledge", "story_analysis")
+        if requirements_context_id:
+            from app.services.requirement_contexts import RequirementContexts
+            return await RequirementContexts(self.db).resolve(project,story_id,requirements_context_id)
         story = await self.story(project, story_id)
         if not str(story["acceptance_criteria"] or "").strip():
             raise HTTPException(409, "Add acceptance criteria before knowledge-aware generation.")

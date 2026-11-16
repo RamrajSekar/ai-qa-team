@@ -19,10 +19,11 @@ class KnowledgeTestDesign:
         if set(item.rule_references) - rules:
             raise HTTPException(502, "Generated expectations cited an unavailable approved rule.")
 
-    async def scenarios(self, project, user, story, count, complexity):
+    async def scenarios(self, project, user, story, count, complexity, requirements_context_id=None):
         require_features("product_knowledge", "story_analysis", "scenario_generation")
         story = await self.knowledge.story(project, story["story_id"])
-        context = await self.knowledge.generation_context(project, story["story_id"])
+        context = await self.knowledge.generation_context(project, story["story_id"], requirements_context_id)
+        story = context.get("requirements_story", story)
         result = await self.knowledge.ai(AIOperation.SCENARIO_DESIGN, project, user,
             {"story": story, "approved_context": context, "requested_count": count, "complexity": complexity}, ScenarioIntents,
             "scenario_design_v1")
@@ -35,11 +36,14 @@ class KnowledgeTestDesign:
 
     async def testcases(self, project, user, scenario, count):
         require_features("product_knowledge", "story_analysis", "test_generation")
-        context = await self.knowledge.generation_context(project, scenario["story_id"])
-        if (scenario.get("knowledge_version_id") != context["knowledge"]["version_id"]
+        context = await self.knowledge.generation_context(project, scenario["story_id"], scenario.get("requirements_context_id"))
+        if (scenario.get("requirements_context_id") != context.get("requirements_context_id")
+                or scenario.get("requirements_context_digest") != context.get("requirements_context_digest")
+                or scenario.get("knowledge_version_id") != context["knowledge"]["version_id"]
                 or scenario.get("story_analysis_id") != context["analysis"]["analysis_id"]):
             raise HTTPException(409, "Scenario knowledge or analysis changed. Review a successor scenario before test design.")
         story = await self.knowledge.story(project, scenario["story_id"])
+        story = context.get("requirements_story", story)
         result = await self.knowledge.ai(AIOperation.TEST_DESIGN, project, user,
             {"story": story, "scenario": {key: scenario.get(key) for key in (
                 "scenario_id", "title", "description", "purpose", "role", "coverage_type", "preconditions",
