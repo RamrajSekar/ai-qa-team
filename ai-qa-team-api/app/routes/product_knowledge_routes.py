@@ -9,6 +9,8 @@ from app.models.product_knowledge import KnowledgeSourceInput, KnowledgeDraft, R
 from app.models.knowledge_training import TrainingStart, TrainingReview, TrainingExtract, TrainingSave, TrainingRebase
 from app.models.requirement_context import RequirementDraft
 from app.services.requirement_contexts import RequirementContexts
+from app.models.story_knowledge_review import StoryKnowledgeReviewInput
+from app.services.story_knowledge_review import StoryKnowledgeReview
 from app.models.knowledge_ask import KnowledgeQuestion
 from app.services.knowledge_ask import KnowledgeAsk
 from app.services.knowledge_training import KnowledgeTraining
@@ -277,3 +279,27 @@ async def approve_requirements(project_id: str, story_id: StoryId, context_id: V
 async def activate_requirements(project_id: str, story_id: StoryId, context_id: VersionId, user=Depends(get_current_user)):
     await require_project_admin(project_id,user)
     return await RequirementContexts(db).activate(project_id,story_id,context_id,actor_id(user))
+
+
+@router.get("/stories/{story_id}/change-reviews")
+async def story_change_reviews(project_id: str, story_id: StoryId, user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await StoryKnowledgeReview(db).listing(project_id, story_id)
+
+
+@router.post("/stories/{story_id}/change-reviews")
+async def submit_story_change(project_id: str, story_id: StoryId, payload: StoryKnowledgeReviewInput, user=Depends(get_current_user)):
+    await require_project_member(project_id, user)
+    return await StoryKnowledgeReview(db).submit(project_id, story_id, actor_id(user), payload)
+
+
+@router.post("/stories/{story_id}/change-reviews/{review_id}/approve")
+async def approve_story_change(project_id: str, story_id: StoryId, review_id: VersionId, user=Depends(get_current_user)):
+    await require_project_admin(project_id, user)
+    return await StoryKnowledgeReview(db).approve(project_id, story_id, review_id, user)
+
+
+@router.post("/stories/{story_id}/change-reviews/{review_id}/activate")
+async def activate_story_change(project_id: str, story_id: StoryId, review_id: VersionId, user=Depends(get_current_user)):
+    await require_project_admin(project_id, user)
+    return await StoryKnowledgeReview(db).approve(project_id, story_id, review_id, user, activate=True)

@@ -181,7 +181,7 @@ export default function StoryDetailsPage() {
         </div>
       </div>
 
-      <FeatureGate names={["product_knowledge", "story_analysis"]}><StoryAnalysisPanel projectId={projectId} storyId={storyId} /><RequirementContextsPanel projectId={projectId} storyId={storyId} selected={requirementsContext} onSelect={setRequirementsContext} onActivated={loadScenarios} /></FeatureGate>
+      <FeatureGate names={["product_knowledge", "story_analysis"]}><StoryAnalysisPanel projectId={projectId} storyId={storyId} /><details className="workspace-card p-5"><summary className="font-medium cursor-pointer">Advanced generation context</summary><RequirementContextsPanel projectId={projectId} storyId={storyId} selected={requirementsContext} onSelect={setRequirementsContext} onActivated={loadScenarios} /></details></FeatureGate>
 
       {/* SCENARIOS SECTION */}
       <FeatureGate names={["scenario_generation"]}><div className="space-y-4">
