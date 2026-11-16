@@ -243,19 +243,33 @@ class ProductKnowledge:
 
     @staticmethod
     def analysis_stale(document, story, knowledge):
+        if (document.get("analysis_scope_version") == 1
+                and document.get("analysis_mode") == "story_only"):
+            return document["story_digest"] != digest(story)
         # Legacy analyses are knowledge-aware. A newly approved knowledge snapshot
         # invalidates story-only review rather than silently upgrading its basis.
         return (document["story_digest"] != digest(story)
                 or document.get("knowledge_version_id") != (knowledge["version_id"] if knowledge else None)
                 or (document.get("analysis_mode", "knowledge_aware") == "knowledge_aware" and not knowledge))
 
-    async def analyze(self, project, user, story_id):
+    async def analyze(self, project, user, story_id, analysis_mode=None):
         require_features("product_knowledge", "story_analysis")
         story = await self.story(project, story_id)
-        knowledge = await self.active(project)
-        if knowledge:
+        if analysis_mode not in (None, "story_only", "knowledge_aware"):
+            raise HTTPException(422, "Select Story clarity or Check against product knowledge.")
+        knowledge = None if analysis_mode == "story_only" else await self.active(project)
+        excluded = []
+        if analysis_mode == "knowledge_aware":
+            if not knowledge:
+                raise HTTPException(409, "No approved product knowledge is available. Choose Story clarity explicitly.")
+            knowledge, excluded = await self.analysis_knowledge(project, story_id, knowledge)
+            if not knowledge["claims"]:
+                names = "; ".join(item["claim_id"] + ": " + item["statement"][:120] for item in excluded)
+                raise HTTPException(409, "No independently sourced approved rules remain. Excluded same-story rules: " + names + ". Choose Story clarity explicitly; no AI request was made.")
+        elif knowledge:
+            # Preserve omitted-mode callers and legacy records' original safeguards.
             await self.independent_knowledge(project, story_id, knowledge)
-        mode = "knowledge_aware" if knowledge else "story_only"
+        mode = analysis_mode or ("knowledge_aware" if knowledge else "story_only")
         result = await self.ai(AIOperation.STORY_ANALYSIS, project, user,
             {"story": story, "knowledge": self.public(knowledge) if knowledge else None,
              "analysis_mode": mode,
@@ -270,13 +284,19 @@ class ProductKnowledge:
         for finding in result.findings:
             if ((finding.criterion_quote and finding.criterion_quote not in (story["acceptance_criteria"] or ""))
                     or (finding.knowledge_claim_id and finding.knowledge_claim_id not in allowed_claims)
-                    or (not knowledge and finding.category == "knowledge_conflict")):
+                    or (not knowledge and finding.category == "knowledge_conflict")
+                    or (analysis_mode == "knowledge_aware" and finding.category == "knowledge_conflict"
+                        and not finding.knowledge_claim_id)):
                 raise HTTPException(502, "AI findings cited unavailable criteria or knowledge.")
         identity = uuid4().hex
         document = {**result.model_dump(), "_id": identity, "analysis_id": identity, "project_id": project,
                     "story_id": story_id, "story_digest": digest(story), "analysis_mode": mode,
                     "knowledge_version_id": knowledge["version_id"] if knowledge else None,
                     "status": "needs_review", "created_at": datetime.now(timezone.utc).isoformat()}
+        if analysis_mode:
+            document.update(analysis_scope_version=1,
+                included_knowledge_claim_ids=[claim["claim_id"] for claim in knowledge["claims"]] if knowledge else [],
+                excluded_knowledge_claims=excluded)
         await self.db["story_analyses"].insert_one(document)
         return self.public(document)
 
@@ -339,6 +359,21 @@ class ProductKnowledge:
         result = await self.extract(project, user, source["source_id"])
         for claim in result.claims: claim.epistemic_status = "inferred"
         return {"source": {**source, "origin": origin}, **result.model_dump(), "requires_review": True}
+
+    async def analysis_knowledge(self, project, story_id, knowledge):
+        source_ids = {claim["source_id"] for claim in knowledge["claims"]}
+        sources = await self.db["product_knowledge_sources"].find({"project_id": project,
+            "source_id": {"$in": list(source_ids)}}).to_list(100)
+        if {source["source_id"] for source in sources} != source_ids:
+            raise HTTPException(409, "An approved knowledge source is unavailable. Review current source evidence, or choose Story clarity explicitly.")
+        same_story = {source["source_id"] for source in sources if source.get("origin", {}).get("story_id") == story_id}
+        excluded = [{"claim_id": claim["claim_id"], "statement": claim["statement"],
+            "source_id": claim["source_id"], "reason": "Supported only by this story; not independent evidence."}
+            for claim in knowledge["claims"] if claim["source_id"] in same_story]
+        # Do not send successor change history or clarification text from excluded rules.
+        eligible = {"version_id": knowledge["version_id"],
+            "claims": [claim for claim in knowledge["claims"] if claim["source_id"] not in same_story]}
+        return eligible, excluded
 
     async def independent_knowledge(self, project, story_id, knowledge):
         sources = await self.db["product_knowledge_sources"].find({"project_id": project, "source_id": {"$in": list({claim["source_id"] for claim in knowledge["claims"]})}}).to_list(100)

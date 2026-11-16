@@ -21,3 +21,43 @@ test('story-only review without acceptance criteria is labelled and survives ref
  assert.equal(f.calls.filter(c=>c.path.endsWith('/analyze')).length,1);
  await f.page.getByText('Reviewed: Confirm after the user saves.',{exact:true}).waitFor();
 });
+
+
+test('explicit comparison shows excluded rules and refresh never repeats analysis',async t=>{
+ const browser=await chromium.launch({headless:true,channel:'msedge'});t.after(()=>browser.close());
+ const {page,context}=await fixture(browser,t);let latest=null;const modes=[];
+ const headers={'access-control-allow-origin':base,'access-control-allow-credentials':'true','access-control-allow-headers':'content-type','access-control-allow-methods':'GET,POST,OPTIONS'};
+ await context.route(url=>url.pathname.endsWith('/stories/ST1/analysis'),route=>route.fulfill({headers,json:latest}));
+ await context.route(url=>url.pathname.endsWith('/stories/ST1/analyze'),route=>{
+  if(route.request().method()==='OPTIONS')return route.fulfill({status:204,headers});
+  const mode=new URL(route.request().url()).searchParams.get('analysis_mode');modes.push(mode);
+  latest={analysis_id:'a'.repeat(32),status:'needs_review',stale:false,summary:'Review independent rules',analysis_mode:mode,knowledge_version_id:mode==='knowledge_aware'?'b'.repeat(32):null,findings:[],excluded_knowledge_claims:mode==='knowledge_aware'?[{claim_id:'K2',statement:'Show Signup.',source_id:'c'.repeat(32),reason:'Supported only by this story; not independent evidence.'}]:[]};
+  return route.fulfill({headers,json:latest});
+ });
+ await page.goto(base+'/projects/P1/stories/ST1');await page.getByLabel('Analysis mode',{exact:true}).waitFor();
+ assert.equal(await page.getByLabel('Analysis mode',{exact:true}).inputValue(),'story_only');
+ await page.getByLabel('Analysis mode',{exact:true}).selectOption('knowledge_aware');assert.equal(modes.length,0);
+ await page.getByRole('button',{name:'Analyze with AI'}).click();
+ await page.getByRole('region',{name:'Excluded knowledge rules'}).waitFor();await page.getByText('Show Signup.',{exact:true}).waitFor();
+ await page.reload();await page.getByRole('region',{name:'Excluded knowledge rules'}).waitFor();assert.deepEqual(modes,['knowledge_aware']);
+ await page.getByLabel('Analysis mode',{exact:true}).selectOption('story_only');await page.getByRole('button',{name:'Analyze with AI'}).click();
+ await page.getByText('Story-only analysis — not validated',{exact:false}).waitFor();
+ assert.equal(await page.getByRole('region',{name:'Excluded knowledge rules'}).count(),0);
+ assert.deepEqual(modes,['knowledge_aware','story_only']);
+});
+
+test('no eligible rules offers explicit story clarity without a silent retry',async t=>{
+ const browser=await chromium.launch({headless:true,channel:'msedge'});t.after(()=>browser.close());
+ const {page,context}=await fixture(browser,t);const calls=[];
+ await context.route(url=>url.pathname.endsWith('/stories/ST1/analyze'),route=>{
+  if(route.request().method()==='OPTIONS')return route.fallback();
+  const mode=new URL(route.request().url()).searchParams.get('analysis_mode');calls.push(mode);
+  if(mode==='story_only')return route.fallback();
+  return route.fulfill({status:409,headers:{'access-control-allow-origin':base,'access-control-allow-credentials':'true'},json:{detail:'No independently sourced approved rules remain. Excluded same-story rules: K2: Show Signup. Choose Story clarity explicitly; no AI request was made.'}});
+ });
+ await page.goto(base+'/projects/P1/stories/ST1');await page.getByLabel('Analysis mode',{exact:true}).selectOption('knowledge_aware');
+ await page.getByRole('button',{name:'Analyze with AI'}).click();await page.getByRole('alert').filter({hasText:'Choose Story clarity explicitly'}).waitFor();
+ assert.deepEqual(calls,['knowledge_aware']);
+ await page.getByLabel('Analysis mode',{exact:true}).selectOption('story_only');await page.getByRole('button',{name:'Analyze with AI'}).click();
+ await page.getByText('Story-only analysis — not validated',{exact:false}).waitFor();assert.deepEqual(calls,['knowledge_aware','story_only']);
+});

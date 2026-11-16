@@ -1,5 +1,8 @@
 # QA Agent M3 — Story integration
 
+Current explicit-mode behavior is described in the 2026-11-16 amendment below;
+the original M3 behavior remains applicable to legacy records and callers.
+
 Implemented 2026-11-14 on `dev`, following M1 and M2 (merged in PR #18).
 This is local-development implementation, not shared-database activation approval.
 
@@ -92,3 +95,48 @@ UIs cannot accurately label it. Preserve the mandatory all-knowledge-writer cuto
 in `KNOWLEDGE_APPROVAL_COMPATIBILITY.md`. A single user does not eliminate the old
 binary write hazard. Cutover verification is being performed separately by the
 owner; this task does not certify it or enable shared/production flags.
+
+## Explicit analysis modes and rule-level comparison — 2026-11-16
+
+The UI now defaults to an explicit **Story clarity (story-only)** selection. Users
+may instead choose **Check against product knowledge**, then intentionally submit.
+Selecting a mode, opening a page or refreshing never initiates a metered request.
+
+Explicit requests use `analysis_mode=story_only|knowledge_aware` on the existing
+analysis endpoint. New records include `analysis_scope_version=1`. Story clarity
+sends no knowledge to the model and pins no knowledge identity; only changes to
+the story make that explicit review stale. It never authorizes knowledge-aware
+generation. Old records and omitted-mode API callers retain their existing basis,
+self-validation and staleness rules; no data rewrite or migration is performed.
+
+Explicit knowledge comparisons validate all source references in the project and
+exclude individual rules whose stored source originates from the same story.
+Current claim evidence has one source per rule; approval does not change that
+origin or create independent support. The model receives only eligible claims and
+the pinned approved version ID, not change history or clarification fields that
+could carry excluded claims. Analyses persist included rule IDs and excluded
+rule/source IDs, statements and reasons for display and refresh recovery.
+
+If every rule is excluded or no approved knowledge exists, comparison stops before
+AI usage and asks the user to choose Story clarity explicitly. Missing/foreign
+source records fail closed. Model findings cannot cite excluded or unavailable
+rules. Approvals, immutable knowledge, receipts and project authorization remain
+unchanged.
+
+This is analysis only. Generation retains the existing full-context independent-
+source gate and never treats a partial comparison or a story-only review as
+permission to bypass it. Provisional scenarios, release-aware requirements and
+intentional-change approval remain separate follow-ups.
+
+### Explicit-mode verification
+
+- Backend: 10 story-analysis-mode tests, 65 knowledge/Ask/training regressions,
+  and 10 test-design review tests passed (85 total, synthetic services).
+- Browser: 4 story analysis/count/staleness checks and 9 existing training and
+  story-to-test checks passed (13 total, intercepted auth/API, Edge).
+- Source-only TypeScript, focused ESLint and Git whitespace checks passed.
+- An initial browser attempt hit slow compilation and missing generated modules
+  in the disposable UI copy; it was interrupted. The copy's build cache was
+  cleared, routes warmed, and all checks above passed on the restarted server.
+- No real model, production database, data migration, ingestion or execution
+  activation was performed. Existing backend cutover prerequisites remain intact.
