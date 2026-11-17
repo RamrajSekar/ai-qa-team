@@ -19,10 +19,15 @@ class KnowledgeTestDesign:
         if set(item.rule_references) - rules:
             raise HTTPException(502, "Generated expectations cited an unavailable approved rule.")
 
-    async def scenarios(self, project, user, story, count, complexity, requirements_context_id=None):
+    async def scenarios(self, project, user, story, count, complexity, requirements_context_id=None, approved_story=False):
         require_features("product_knowledge", "story_analysis", "scenario_generation")
         story = await self.knowledge.story(project, story["story_id"])
-        context = await self.knowledge.generation_context(project, story["story_id"], requirements_context_id)
+        if approved_story:
+            if requirements_context_id:raise HTTPException(422,"Choose one approved story context.")
+            from app.services.approved_story_context import ApprovedStoryContext
+            context=await ApprovedStoryContext(self.knowledge.db).prepare(project,story["story_id"])
+        else:
+            context = await self.knowledge.generation_context(project, story["story_id"], requirements_context_id)
         story = context.get("requirements_story", story)
         result = await self.knowledge.ai(AIOperation.SCENARIO_DESIGN, project, user,
             {"story": story, "approved_context": context, "requested_count": count, "complexity": complexity}, ScenarioIntents,
@@ -32,6 +37,8 @@ class KnowledgeTestDesign:
             raise HTTPException(502, "AI returned duplicate scenario intents. No scenarios were saved.")
         for item in items:
             self.references(item, story, context["knowledge"])
+        if approved_story:
+            await ApprovedStoryContext(self.knowledge.db).resolve(project,story["story_id"],context["requirements_context_id"])
         return [item.model_dump() for item in items], context
 
     async def testcases(self, project, user, scenario, count):
@@ -55,4 +62,6 @@ class KnowledgeTestDesign:
             raise HTTPException(502, "AI returned duplicate test cases. No drafts were saved.")
         for item in items:
             self.references(item, story, context["knowledge"])
+        if context.get("design_basis") in ("approved_story_only","approved_story_with_knowledge"):
+            await self.knowledge.generation_context(project,scenario["story_id"],scenario["requirements_context_id"])
         return [{**item.model_dump(), "public_data": {entry.name: entry.value for entry in item.public_data}} for item in items], context

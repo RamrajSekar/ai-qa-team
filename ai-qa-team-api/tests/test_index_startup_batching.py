@@ -37,6 +37,8 @@ class IndexStartupTests(unittest.IsolatedAsyncioTestCase):
         for collection,key in [('projects','project_id'),('stories','story_id'),('scenarios','scenario_id'),('testcases','testcase_id'),('executions','execution_id'),('encrypted_secrets','credential_ref')]:
             self.assertTrue(any(m.get('unique') and dict(m['key'])=={key:1} for m in state['calls'][collection]))
         self.assertGreater(len(state['calls']['ai_usage_records']),1)
+        for collection,key in [('stories',{'project_id':1}),('scenarios',{'project_id':1,'scenario_id':1}),('testcases',{'project_id':1,'testcase_id':1}),('environments',{'project_id':1})]:
+            self.assertTrue(any(dict(m['key'])==key for m in state['calls'][collection]))
 
     async def test_failure_is_not_swallowed_and_other_started_checks_are_awaited(self):
         state=await self.run_indexes(fail=True)

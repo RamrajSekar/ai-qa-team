@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import GenerationRequirements from "@/components/knowledge/GenerationRequirements";
 import { apiFetch } from "@/utils/api";
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 import ScenarioModal from "@/components/scenarios/ScenarioModal";
@@ -14,7 +13,6 @@ export default function CatalogCreation({ kind, projectId, onSaved }: {
   kind: "scenarios" | "testcases"; projectId: string; onSaved: () => Promise<void>;
 }) {
   const { enabled } = useFeatures();
-  const [requirements,setRequirements]=useState<string|null>(null);
   const knowledgeEnabled=kind==="scenarios"&&enabled("product_knowledge","story_analysis");
   const [count, setCount] = useState(kind === "scenarios" ? 3 : 1);
   const [open, setOpen] = useState(false);
@@ -32,7 +30,7 @@ export default function CatalogCreation({ kind, projectId, onSaved }: {
     setBusy(true);
     setError("");
     setSources([]);
-    setSource("");setRequirements(null);
+    setSource("");
     try {
       const path = kind === "scenarios" ? `/stories?project_id=${encodeURIComponent(projectId)}`
         : `/scenarios/project-list?project_id=${encodeURIComponent(projectId)}&skip=${page * 100}&limit=100`;
@@ -60,7 +58,7 @@ export default function CatalogCreation({ kind, projectId, onSaved }: {
     setMessage("");
     try {
       const path = kind === "scenarios"
-        ? `/scenarios/generate-from-story?story_id=${encodeURIComponent(source)}&count=${count}&complexity=basic${knowledgeEnabled&&requirements&&requirements!=="current"?`&requirements_context_id=${encodeURIComponent(requirements)}`:""}`
+        ? `/scenarios/generate-from-story?story_id=${encodeURIComponent(source)}&count=${count}&complexity=basic${knowledgeEnabled?"&approved_story=true":""}`
         : `/testcases/generate?scenario_id=${encodeURIComponent(source)}&project_id=${encodeURIComponent(projectId)}&count=${count}&complexity=basic`;
       const response = await apiFetch(path, { method: "POST" });
       if (!response.ok) throw new Error(typeof response.data?.detail === "string" ? response.data.detail : response.data?.detail?.message || "Generation could not be completed.");
@@ -75,7 +73,7 @@ export default function CatalogCreation({ kind, projectId, onSaved }: {
     <button className="workspace-button workspace-primary" aria-expanded={open} disabled={busy} onClick={() => void loadSources()}>Add or generate {kind === "scenarios" ? "scenario" : "test case"}</button>
     {open && <div className="design-create-body space-y-3">
       <label className="block">{kind === "scenarios" ? "Source story" : "Approved source scenario"}
-        <select aria-label={kind==="scenarios"?"Source story":"Approved source scenario"} className="border rounded p-2 ml-3" value={source} disabled={busy} onChange={event => {setSource(event.target.value);setRequirements(null);}}>
+        <select aria-label={kind==="scenarios"?"Source story":"Approved source scenario"} className="border rounded p-2 ml-3" value={source} disabled={busy} onChange={event => {setSource(event.target.value);}}>
           <option value="">Select a source</option>
           {sources.map(row => <option key={row.id} value={row.id}>{row.id} — {row.title}</option>)}
         </select>
@@ -83,12 +81,12 @@ export default function CatalogCreation({ kind, projectId, onSaved }: {
       {!busy && sources.length === 0 && <p>No eligible sources on this page. Add a story or approve a scenario first.</p>}
       {kind==="scenarios"&&source&&<details><summary>Selected Story</summary><p>{sources.find(row=>row.id===source)?.description}</p><p className="whitespace-pre-wrap">{sources.find(row=>row.id===source)?.acceptance_criteria || "No acceptance criteria provided."}</p><Link className="workspace-button" href={`/projects/${projectId}/stories/${source}#story-analysis`}>Review story</Link></details>}
       <div className="story-generation-bar">
-      {knowledgeEnabled&&source&&<GenerationRequirements key={source} projectId={projectId} storyId={source} selected={requirements} onSelect={setRequirements}/>}
+      {knowledgeEnabled&&source&&<p className="text-sm">Uses the approved story and its reviewed context. Generated drafts require review.</p>}
       <div className="space-y-3">
       <label className="block">Requested count <input aria-label={kind==="scenarios"?"Requested scenarios":"Requested count"} type="number" min={1} max={20} value={count} onChange={event => setCount(Math.max(1, Math.min(20, Number(event.target.value) || 1)))} /></label>
       <div className="catalog-actions">
         <button className="workspace-button" disabled={busy || !source} onClick={() => setEditing(true)}>Add manually</button>
-        <button className="workspace-button workspace-primary" disabled={busy || !source || (knowledgeEnabled&&!requirements) || (kind === "scenarios" && !enabled("story_management"))} onClick={() => void generate()}>
+        <button className="workspace-button workspace-primary" disabled={busy || !source || (kind === "scenarios" && !enabled("story_management"))} onClick={() => void generate()}>
           {busy ? "Working…" : kind === "scenarios" ? "Generate scenarios with AI" : "Generate test case"}
         </button>
         <button className="workspace-button" disabled={busy} onClick={() => setOpen(false)}>Close</button>

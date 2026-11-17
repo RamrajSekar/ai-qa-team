@@ -15,6 +15,23 @@ from app.services.story_knowledge_review import StoryKnowledgeReview
 
 
 class StoryChangeTests(unittest.IsolatedAsyncioTestCase):
+    async def test_generation_reuses_activated_change_and_excludes_self_sourced_rules(self):
+        from app.services.approved_story_context import ApprovedStoryContext
+        row=await self.submit()
+        await self.changes.approve('P1','ST1',row['review_id'],self.user)
+        context=await ApprovedStoryContext(self.db).prepare('P1','ST1')
+        self.assertEqual(context['story_approval']['review_id'],row['review_id'])
+        self.assertEqual(context['knowledge']['claims'],[])
+        self.assertTrue(context['approved_requirement_changes'])
+        self.assertFalse(context['independent_knowledge_validation'])
+        self.usage.execute.assert_not_called()
+
+    async def test_future_story_approval_cannot_generate_current_requirements(self):
+        from app.services.approved_story_context import ApprovedStoryContext
+        row=await self.submit(self.payload(timing='later',target_release='Release 4'))
+        await self.changes.approve('P1','ST1',row['review_id'],self.user)
+        with self.assertRaises(HTTPException):await ApprovedStoryContext(self.db).prepare('P1','ST1')
+
     async def test_story_summary_rechecks_approved_manifest_integrity(self):
         row=await self.submit()
         await self.changes.approve('P1','ST1',row['review_id'],self.user)

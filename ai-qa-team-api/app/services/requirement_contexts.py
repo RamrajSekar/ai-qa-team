@@ -1,6 +1,7 @@
 """Explicit requirements approvals, separate from product knowledge and execution."""
 from datetime import datetime, timezone
 import json
+import asyncio
 from fastapi import HTTPException
 from pymongo.errors import DuplicateKeyError
 from app.services.approved_visual_run import digest
@@ -40,12 +41,12 @@ class RequirementContexts:
         if receipt and receipt["content_digest"]!=row["content_digest"]:raise HTTPException(409,"Requirements approval integrity check failed.")
         return receipt
 
-    async def fresh(self,row,require_review=True):
-        story=await self.knowledge.story(row["project_id"],row["story_id"])
-        knowledge=await self.knowledge.active(row["project_id"])
+    async def fresh(self,row,require_review=True,*,snapshot=None):
+        story=snapshot[0] if snapshot else await self.knowledge.story(row["project_id"],row["story_id"])
+        knowledge=snapshot[1] if snapshot else await self.knowledge.active(row["project_id"])
         if digest(story)!=row["story_digest"] or (row["basis"]=="approved_change" and ((knowledge or {}).get("version_id")!=row["base_knowledge_version_id"] or digest((knowledge or {}).get("claims",[]))!=row["base_knowledge_digest"])):
             raise HTTPException(409,"Story or product knowledge changed. Save and approve a new requirements context.")
-        latest=await self.knowledge.latest_analysis(row["project_id"],row["story_id"])
+        latest=snapshot[2] if snapshot else await self.knowledge.latest_analysis(row["project_id"],row["story_id"])
         story_only_approval=row.get("generation_approval_basis")=="explicit_reviewed_story_requirements" and row["basis"]=="story_only_provisional"
         if not latest or latest["analysis_id"]!=row["analysis_id"] or (latest["stale"] and not story_only_approval):
             raise HTTPException(409,"Analysis changed. Review a new requirements context.")
@@ -54,11 +55,11 @@ class RequirementContexts:
             raise HTTPException(409,"Pinned analysis review changed. Review a new requirements context.")
         return story,knowledge,analysis
 
-    async def view(self,row):
+    async def view(self,row,*,snapshot=None):
         if digest({key:value for key,value in row.items() if key!="content_digest"})!=row["content_digest"]:
             raise HTTPException(409,"Requirements content integrity check failed.")
         receipt=await self.approval(row)
-        try:await self.fresh(row,require_review=bool(receipt));stale=False
+        try:await self.fresh(row,require_review=bool(receipt),snapshot=snapshot);stale=False
         except HTTPException as error:
             if error.status_code!=409:raise
             stale=True
@@ -72,7 +73,7 @@ class RequirementContexts:
             "approver":{key:receipt[key] for key in ("approved_by","approved_by_name","approved_by_role","approved_at")} if receipt else None}
 
     async def listing(self,project,story):
-        self.gate();await self.knowledge.story(project,story)
+        self.gate();story_data=await self.knowledge.story(project,story)
         rows=await self.rows.find({"project_id":project,"story_id":story,"record_type":"context"}).sort("created_at",-1).to_list(50)
         knowledge=await self.knowledge.active(project)
         rules={c["claim_id"]:{"claim_id":c["claim_id"],"statement":c["statement"]} for c in (knowledge or {}).get("claims",[])}
@@ -80,7 +81,14 @@ class RequirementContexts:
             if await self.approval(row):
                 for decision in row.get("effective_decisions",[]):
                     rules.setdefault(decision["requirement_id"],{"claim_id":decision["requirement_id"],"statement":row["target_release"]+": "+decision["expected_result"]})
-        views=[await self.view(row) for row in rows]
+        # Snapshot reuse is scoped to this read only; approval/generation still
+        # reread current authority independently. Never cache between requests.
+        latest=await self.knowledge.latest_analysis(project,story) if rows else None
+        snapshot=(story_data,knowledge,latest)
+        slots=asyncio.Semaphore(8)
+        async def read(row):
+            async with slots:return await self.view(row,snapshot=snapshot)
+        views=await asyncio.gather(*(read(row) for row in rows))
         return {"contexts":[{key:row[key] for key in ("context_id","basis","target_release","status","stale","approver")} for row in views],"rules":list(rules.values())[:200],"current_knowledge_version_id":(knowledge or {}).get("version_id")}
 
     async def impact(self,row):

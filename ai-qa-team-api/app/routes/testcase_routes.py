@@ -370,6 +370,7 @@ async def project_testcases(
 
 
 class CatalogTestCaseEdit(BaseModel):
+    preconditions: list[str] | None = Field(default=None, max_length=100)
     title: str = Field(min_length=1, max_length=500)
     description: str | None = None
     steps: list[TestStep]
@@ -395,6 +396,8 @@ async def edit_catalog_testcase(testcase_id: str, payload: CatalogTestCaseEdit,
                           for index, step in enumerate(payload.steps)],
         "updated_by": current_user["email"], "updated_at": datetime.now(timezone.utc).isoformat(),
     }
+    if payload.preconditions is not None:
+        changes["preconditions"] = [line.strip() for line in payload.preconditions if line.strip()]
     await db["testcases"].update_one(scope, {"$set": changes})
     return TestCaseResponse(**{**existing, **changes})
 
@@ -451,6 +454,7 @@ async def create_catalog_testcase(payload: CatalogTestCaseEdit, project_id: str,
     doc = {"project_id": project_id, "scenario_id": scenario_id,
            "testcase_id": await get_next_sequence("testcase_id", "TC"),
            "title": payload.title.strip(), "description": payload.description,
+           "preconditions": [line.strip() for line in (payload.preconditions or []) if line.strip()],
            "steps": [step.model_dump() for step in payload.steps],
            "natural_steps": [{"action": step.description or step.action, "expected": step.expected} for step in payload.steps],
            "complexity": "basic", "status": "draft", "code": "", "created_by": current_user["email"],

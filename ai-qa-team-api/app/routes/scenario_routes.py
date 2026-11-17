@@ -372,6 +372,7 @@ async def generate_scenarios_from_story(
     count: int = Query(3, ge=1, le=20),
     complexity: str = Query("basic"),
     requirements_context_id: Annotated[str | None, Query(pattern=r"^[0-9a-f]{32}$")] = None,
+    approved_story: Annotated[bool, Query()] = False,
     current_user=Depends(get_current_user),
     _: None = Depends(subscription_required("ai_generation")),
 ):
@@ -412,10 +413,10 @@ async def generate_scenarios_from_story(
         )
 
         context = None
-        if requirements_context_id and not knowledge_mode:
+        if (requirements_context_id or approved_story) and not knowledge_mode:
             raise HTTPException(409,"Requirements contexts require knowledge and analysis features; no legacy fallback.")
         if knowledge_mode:
-            ai_list, context = await KnowledgeTestDesign(db).scenarios(story["project_id"], current_user, story, allowed, complexity, requirements_context_id=requirements_context_id)
+            ai_list, context = await KnowledgeTestDesign(db).scenarios(story["project_id"], current_user, story, allowed, complexity, requirements_context_id=requirements_context_id, approved_story=approved_story)
         else:
             resolved_prompt = await get_active_prompt("LEGACY_STORY_SCENARIOS", database=db)
             prompt = build_scenario_prompt_from_story(agent, story, allowed, complexity, template=resolved_prompt["system_prompt"])

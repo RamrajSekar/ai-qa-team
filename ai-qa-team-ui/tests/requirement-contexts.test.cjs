@@ -12,18 +12,19 @@ async function setup(t,release=true){
   const url=new URL(route.request().url());calls.push(url.searchParams.get('requirements_context_id'));
   return route.fulfill({headers,json:{scenarios:[{scenario_id:'SC1'}],summary:{message:'Release scenario generated.'}}});
  });
- await f.page.goto(base+'/projects/P1/scenarios?story_id=ST1');await f.page.getByLabel('Requirements for generation',{exact:true}).selectOption('knowledge');
+ await f.page.goto(base+'/projects/P1/scenarios?story_id=ST1');await f.page.getByLabel('Source story',{exact:true}).waitFor();
  return {...f,calls};
 }
-test('one generation selector retains approved legacy release selection without duplicate forms',async t=>{
+test('normal generation hides legacy release controls and never replays generation on refresh',async t=>{
  const {page,calls}=await setup(t);
  assert.equal(await page.getByLabel('Generation context',{exact:true}).count(),0);
  assert.equal(await page.getByText('Manage release requirements',{exact:true}).count(),0);
- await page.getByLabel('Target release',{exact:true}).selectOption('b'.repeat(32));
+ assert.equal(await page.getByLabel('Target release',{exact:true}).count(),0);
+ assert.equal(await page.getByLabel('Requirements for generation',{exact:true}).count(),0);
  await page.getByRole('button',{name:'Generate scenarios with AI',exact:true}).click();await page.getByText('Release scenario generated.',{exact:true}).waitFor();
- assert.deepEqual(calls,['b'.repeat(32)]);await page.reload();assert.equal(calls.length,1);
+ assert.deepEqual(calls,[null]);await page.reload();assert.equal(calls.length,1);
 });
 test('no release chooser appears when no approved releases exist',async t=>{
  const {page}=await setup(t,false);assert.equal(await page.getByLabel('Target release',{exact:true}).count(),0);
- assert.equal(await page.getByLabel('Requirements for generation',{exact:true}).locator('option:not([disabled])').count(),2);
+ assert.equal(await page.getByLabel('Requirements for generation',{exact:true}).count(),0);
 });

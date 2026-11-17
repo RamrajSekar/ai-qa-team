@@ -52,7 +52,6 @@ test('existing story analysis, stale findings and scenario count controls', asyn
   await approve.click();
   await page.getByRole('status').filter({ hasText: /^Approved$/ }).waitFor();
   await page.getByRole('link',{name:'Open Scenarios',exact:true}).click();
-  await page.getByLabel('Requirements for generation',{exact:true}).selectOption('knowledge');
   await page.getByLabel('Requested scenarios').fill('4');
   await page.getByRole('button', { name: 'Generate scenarios with AI' }).click();
   await page.getByRole('status').filter({ hasText: '1 of 4 requested scenarios generated' }).waitFor();

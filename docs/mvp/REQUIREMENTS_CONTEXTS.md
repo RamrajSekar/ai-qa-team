@@ -65,3 +65,43 @@ basis; legacy contexts and knowledge-aware generation keep their freshness gates
 The UI offers explicit approval for an unchanged approved story and retains the
 story-only draft label. Selected Story contains the single review link; the catalog
 no longer repeats a top-level Review stories action. No migration is needed.
+
+
+## Approved story generation — 2026-11-17 amendment
+
+Supersedes the normal selector/two-stage generation approval UX above. Scenarios
+uses source story, count and one explicit Generate action. approved_story=true is
+an opt-in API contract; existing clients/context APIs retain their behavior.
+ApprovedStoryContext verifies the current exact story review or the receipt-backed,
+activated combined story change. It writes a deterministic immutable design-context
+snapshot, not another approval. The original approver remains the authority.
+Pending future releases, edited stories, changed analysis identity/content, corrupt
+manifests and changed knowledge heads fail closed. Existing scenario approval and
+test-case design approval remain required; generation does not approve drafts.
+
+Current independent rules/flows may supply prerequisites and context within story
+scope. Same-story rules are excluded. Explicit approved changes are carried as
+human authority, never relabeled independent evidence. Story-only analysis does
+not acquire knowledge validation. Story-only outputs remain labeled. Scenarios
+and cases pin context ID/digest, exact analysis and knowledge identity; testcase
+generation resolves the same context rather than choosing a new one. Context is
+rechecked after model completion before returning drafts. No automatic model retry.
+
+The Add/Edit testcase editor now exposes optional Preconditions, one per line.
+PATCH omission preserves existing conditions; explicit [] clears them. Earlier
+approved design versions and execution results are not edited by catalog changes.
+
+No existing-data migration. New snapshots use the existing requirement_contexts
+collection and existing unique _id. Deploy API support before the UI; older APIs
+cannot resolve these new snapshots. Preserve the M1 knowledge-writer cutover gate.
+No execution/media activation, public publishing or confidential-data qualification.
+
+
+Verification for this amendment: fixture checks cover reviewed/activated authority,
+blocked future activation, changed/corrupt/foreign context, exact case inheritance,
+member generation through the HTTP route, and omitted/edited/cleared Preconditions.
+Browser checks cover one-action admin/member generation without metadata requests,
+Preconditions save/reopen, catalog CRUD/pagination, held summary responses and
+existing story analysis. Initial synthetic subscription setup and editor label
+locators were corrected before rerunning. No live model or Mongo concurrency/load
+qualification was performed; real provider output quality remains unverified.

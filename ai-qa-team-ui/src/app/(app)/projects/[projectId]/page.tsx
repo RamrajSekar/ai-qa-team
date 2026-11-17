@@ -85,8 +85,7 @@ export default function ProjectPage() {
   const projectId = params.projectId as string;
 
   const [loading, setLoading] = useState(true);
-  const [detailsLoading,setDetailsLoading]=useState(true);
-  const [detailsError,setDetailsError]=useState(false);
+  const [detailStates,setDetailStates]=useState({stories:"loading",testcases:"loading",environments:"loading"});
   const [project, setProject] = useState<Project | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [historyError, setHistoryError] = useState(false);
@@ -150,18 +149,21 @@ export default function ProjectPage() {
       });
     }
 
-    setDetailsLoading(true);setDetailsError(false);
+    setDetailStates({stories:"loading",testcases:"loading",environments:"loading"});
+    const summary=async(key:"stories"|"testcases"|"environments",path:string,active:boolean)=>{
+      try{
+        const response=active?await get(path):emptyList;
+        if(!response.ok||!Array.isArray(response.data))throw new Error("SUMMARY_UNAVAILABLE");
+        if(controller.signal.aborted)return;
+        if(key==="stories")setStories(response.data);else if(key==="testcases")setTestcases(response.data);else setEnvironments(response.data);
+        setDetailStates(previous=>({...previous,[key]:"ready"}));
+      }catch{if(!controller.signal.aborted)setDetailStates(previous=>({...previous,[key]:"unavailable"}));}
+    };
     const details=Promise.all([
-      storiesEnabled ? get(`/stories?project_id=${scopedProject}&skip=0&limit=100`) : emptyList,
-      testsEnabled ? get(`/testcases/testcases?project_id=${scopedProject}`) : emptyList,
-      get(`/environments?project_id=${scopedProject}`),
-    ]).then(([s,tcRes,envRes])=>{
-      if(controller.signal.aborted)return;
-      setStories(Array.isArray(s.data)?s.data.filter((item:Story)=>item.project_id===projectId):[]);
-      setTestcases(Array.isArray(tcRes.data)?tcRes.data:[]);
-      setEnvironments(Array.isArray(envRes.data)?envRes.data:[]);
-      if((storiesEnabled&&!s.ok)||(testsEnabled&&!tcRes.ok)||!envRes.ok)setDetailsError(true);
-    }).catch(()=>{if(!controller.signal.aborted)setDetailsError(true);}).finally(()=>{if(!controller.signal.aborted)setDetailsLoading(false);});
+      summary("stories",`/stories?project_id=${scopedProject}&skip=0&limit=100`,storiesEnabled),
+      summary("testcases",`/testcases/testcases?project_id=${scopedProject}`,testsEnabled),
+      summary("environments",`/environments?project_id=${scopedProject}`,true),
+    ]);
     try {
       const p=await get(`/projects/${scopedProject}`);
       if(!p.ok)throw new Error('PROJECT_UNAVAILABLE');
@@ -214,18 +216,18 @@ export default function ProjectPage() {
         </div>}
       </div>
       <div className="workspace-metrics">
-        <KpiCard label="Environments" value={detailsLoading||detailsError?"—":environments.length} />
+        <KpiCard label="Environments" value={detailStates.environments!=="ready"?"—":environments.length} />
         {automationEnabled && <KpiCard label="Recorded executions" value={historyLoading || historyError ? '—' : executions.length} />}
-        {storiesEnabled && <KpiCard label="Stories" value={detailsLoading||detailsError?"—":stories.length} />}
+        {storiesEnabled && <KpiCard label="Stories" value={detailStates.stories!=="ready"?"—":stories.length} />}
         {scenariosEnabled && <KpiCard label="Scenarios" value={scenarioTotal ?? '—'} />}
-        {testsEnabled && <KpiCard label="Testcases" value={detailsLoading||detailsError?"—":testcases.length} />}
+        {testsEnabled && <KpiCard label="Testcases" value={detailStates.testcases!=="ready"?"—":testcases.length} />}
       </div>
       <section className="workspace-panel" aria-labelledby="environment-title">
         <div className="workspace-panel-header">
           <h2 id="environment-title">Environments</h2>
           {canManage && <button className="workspace-button workspace-primary" onClick={() => setOpenEnvironmentModal(true)}><Plus size={15} />Add environment</button>}
         </div>
-        {detailsLoading?<p role="status">Loading environments…</p>:detailsError?<p>Project summaries unavailable. Reload to try again.</p>:environments.length ? <div className="workspace-panel-body">
+        {detailStates.environments==="loading"?<p role="status">Loading environments…</p>:detailStates.environments==="unavailable"?<p>Project summaries unavailable. Reload to try again.</p>:environments.length ? <div className="workspace-panel-body">
           {environments.map((env) => <Link className="workspace-row" key={env.env_id || env.id} href={`/projects/${projectId}/environments`}>
             <div><div className="workspace-row-title">{env.name || env.env_type?.toUpperCase() || "Environment"}</div><div className="workspace-row-subtitle">{env.base_url || env.url || env.env_id}</div></div>
             <span className="workspace-badge">{env.env_type}</span><ArrowUpRight size={16} aria-hidden="true" />
@@ -269,7 +271,7 @@ export default function ProjectPage() {
       {/* SECTIONS */}
       {storiesEnabled && <Section
         title="Recent Stories"
-        emptyText={detailsLoading?"Loading stories…":detailsError?"Story summary unavailable.":"No items yet."}
+        emptyText={detailStates.stories==="loading"?"Loading stories…":detailStates.stories==="unavailable"?"Story summary unavailable.":"No items yet."}
         viewAllHref={`/projects/${projectId}/stories`}
         items={stories}
         maxItems={5}
@@ -300,7 +302,7 @@ export default function ProjectPage() {
 
       {testsEnabled && <Section
         title="Recent Testcases"
-        emptyText={detailsLoading?"Loading test cases…":detailsError?"Test case summary unavailable.":"No items yet."}
+        emptyText={detailStates.testcases==="loading"?"Loading test cases…":detailStates.testcases==="unavailable"?"Test case summary unavailable.":"No items yet."}
         viewAllHref={scenariosEnabled ? `/projects/${projectId}/stories` : undefined}
         viewAllLabel="Generate from a story →"
         items={testcases}

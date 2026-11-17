@@ -27,6 +27,12 @@ async def init_indexes():
     add("project_memberships", "membership_id", unique=True)
     add("project_memberships", [("project_id", 1), ("email", 1)], unique=True)
 
+    # Project catalogs: match bounded list filters and ordering.
+    add("stories", "project_id")
+    add("scenarios", [("project_id", 1), ("scenario_id", 1)])
+    add("testcases", [("project_id", 1), ("testcase_id", 1)])
+    add("environments", "project_id")
+
     # Common filters
     add("scenarios", [("story_id", 1), ("created_by", 1)])
     add("testcases", [("scenario_id", 1), ("created_by", 1)])
