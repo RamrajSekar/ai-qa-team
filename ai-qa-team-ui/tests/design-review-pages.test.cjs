@@ -6,12 +6,13 @@ const {mkdirSync}=require('node:fs');
 const base=process.env.FEATURE_UI_URL||'http://127.0.0.1:3123';let browser;
 before(async()=>{browser=await chromium.launch({headless:true,channel:'msedge'});});
 after(async()=>browser?.close());
-async function fixture(t,{execution=false,manual=false}={}){
+async function fixture(t,{execution=false,manual=false,fullCatalog=false}={}){
  const context=await browser.newContext();t.after(()=>context.close());
  await context.addCookies([{name:'access_token',value:'synthetic-only',url:base}]);
  const story={id:'ST1',story_id:'ST1',project_id:'P1',title:'Save an order',acceptance_criteria:'Order saved appears',created_at:'2026-11-12'};
  const project={project_id:'P1',name:'Design workspace',current_user_role:'ADMIN'};
  const scenarios=[{scenario_id:'SC1',story_id:'ST1',project_id:'P1',title:'Save a valid order',approved:true,steps:[],created_by:'fixture@example.test'},{scenario_id:'SC2',story_id:'ST1',project_id:'P1',title:'Reject empty order',approved:false,steps:[]}];
+ if(fullCatalog){scenarios[0].approved=false;scenarios[1].created_by='fixture@example.test';for(let i=3;i<=51;i++)scenarios.push({...scenarios[0],scenario_id:'SC'+i,title:'Coverage '+i});}
  const cases=[{testcase_id:'TC1',scenario_id:'SC1',project_id:'P1',title:'Save order with required data',status:'draft',steps:[{action:'Click Save order',expected:'Order saved'}],created_by:'fixture@example.test'}];
  const calls=[];let historyFails=false;
  await context.route('http://feature-api.test/**',async route=>{
@@ -25,7 +26,9 @@ async function fixture(t,{execution=false,manual=false}={}){
   if(url.pathname==='/stories/ST1'){
    if(request.method()==='DELETE')return route.fulfill({status:409,headers,json:{detail:'Dependent records protect this story.'}});json=story;
   }
-  if(url.pathname==='/scenarios/project-list'||url.pathname==='/scenarios')json=scenarios;
+  if(url.pathname==='/scenarios/project-list'||url.pathname==='/scenarios')json=scenarios.slice(Number(url.searchParams.get('skip')||0),Number(url.searchParams.get('skip')||0)+Number(url.searchParams.get('limit')||50));
+  if(url.pathname==='/scenarios/SC1'&&request.method()==='PATCH'){Object.assign(scenarios[0],request.postDataJSON());json=scenarios[0];}
+  if(url.pathname==='/scenarios/SC2'&&request.method()==='DELETE'){scenarios.splice(scenarios.findIndex(s=>s.scenario_id==='SC2'),1);json={deleted:true};}
   if(url.pathname==='/testcases/project-list'||url.pathname==='/testcases/testcases')json=cases;
   if(url.pathname==='/environments')json=[{env_id:'E1',project_id:'P1',name:'Synthetic environment',credentials:[]}];
   if(url.pathname==='/execute'){
@@ -71,7 +74,7 @@ test('execution remains gated and enabled view does not start a browser on navig
 });
 
 test('story detail preserves acceptance criteria and coverage actions on mobile',async t=>{
- const{page}=await fixture(t);await page.goto(base+'/projects/P1/stories/ST1');await page.getByRole('heading',{name:'Save an order',exact:true}).waitFor();await page.getByRole('heading',{name:'Acceptance criteria',exact:true}).waitFor();await page.getByRole('button',{name:'Generate scenarios with AI'}).waitFor();await capture(page,'story-detail');await page.setViewportSize({width:390,height:844});await capture(page,'story-detail-mobile');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),JSON.stringify(await page.evaluate(()=>[...document.querySelectorAll('main *')].filter(el=>el.getBoundingClientRect().right>innerWidth+1).slice(0,8).map(el=>({tag:el.tagName,class:el.className})))));
+ const{page}=await fixture(t);await page.goto(base+'/projects/P1/stories/ST1');await page.getByRole('heading',{name:'Save an order',exact:true}).waitFor();await page.getByRole('heading',{name:'Acceptance criteria',exact:true}).waitFor();await page.getByRole('link',{name:'Open Scenarios',exact:true}).waitFor();await capture(page,'story-detail');await page.setViewportSize({width:390,height:844});await capture(page,'story-detail-mobile');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),JSON.stringify(await page.evaluate(()=>[...document.querySelectorAll('main *')].filter(el=>el.getBoundingClientRect().right>innerWidth+1).slice(0,8).map(el=>({tag:el.tagName,class:el.className})))));
 });
 
 test('workspace navigation preserves shared session, project list and flags',async t=>{
@@ -97,4 +100,20 @@ test('test specifications render while optional result metadata is still pending
   await page.getByRole('button',{name:'Save order with required data',exact:true}).waitFor({timeout:5000});
   assert.equal(await page.getByRole('button',{name:'Review test case',exact:true}).count(),1);
  } finally { release(); }
+});
+
+
+test('scenario catalog retains pagination, edit and delete after generation move',async t=>{
+ const {page,calls}=await fixture(t,{fullCatalog:true});await page.goto(base+'/projects/P1/scenarios');
+ await page.getByRole('button',{name:'Save a valid order',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Next',exact:true}).click();await page.getByRole('button',{name:'Coverage 51',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Previous',exact:true}).click();
+ const first=page.getByRole('row').filter({has:page.getByRole('button',{name:'Save a valid order',exact:true})});
+ await first.getByRole('button',{name:'Edit scenario',exact:true}).click();await page.getByLabel('Title',{exact:true}).fill('Updated coverage');
+ await page.getByRole('button',{name:'Save Scenario',exact:true}).click();await page.getByRole('button',{name:'Updated coverage',exact:true}).waitFor();
+ const second=page.getByRole('row').filter({has:page.getByRole('button',{name:'Reject empty order',exact:true})});
+ await second.getByRole('button',{name:'Delete scenario',exact:true}).click();await page.getByRole('button',{name:'Delete record',exact:true}).click();
+ await page.getByRole('button',{name:'Reject empty order',exact:true}).waitFor({state:'hidden'});
+ assert.equal(calls.filter(c=>c.path==='/scenarios/SC1'&&c.method==='PATCH').length,1);
+ assert.equal(calls.filter(c=>c.path==='/scenarios/SC2'&&c.method==='DELETE').length,1);
 });

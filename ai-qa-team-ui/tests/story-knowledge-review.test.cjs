@@ -43,7 +43,7 @@ test('admin compares changes then approves once; refresh does not repeat a write
  assert.equal(calls.filter(c=>c.path.endsWith('/approve')).length,0);
  await page.getByRole('button',{name:'Approve story and update knowledge',exact:true}).click();
  await page.getByRole('region',{name:'Story change summary'}).getByText('Story change approved and knowledge updated.',{exact:true}).waitFor();
- await page.getByRole('status').filter({hasText:/^Story change approved$/}).waitFor();
+ await page.getByRole('status').filter({hasText:/^Approved$/}).waitFor();
  assert.equal(await page.getByRole('status').filter({hasText:/^Stale$/}).count(),0);
  assert.equal((await page.locator('body').innerText()).includes('Â'),false);
  assert.equal(reviews[0].status,'completed');const writes=calls.filter(c=>c.method==='POST').length;

@@ -139,7 +139,7 @@ export default function ProjectTestCatalog({ kind }: { kind: "scenarios" | "test
     <div className="design-page catalog-page">
       <div className="workspace-page-header">
         <div><p className="workspace-eyebrow">Test design</p><h1>{title}</h1><p className="workspace-description">{kind === "scenarios" ? "Review what to verify before designing detailed test cases." : "Review procedures, approve explicit expectations and export test designs."}</p></div>
-        <Link className="workspace-button" href={`${projectPath}/stories`}>Open stories to create or generate</Link>
+        <Link className="workspace-button" href={`${projectPath}/stories`}>{kind==="scenarios"?"Review stories":"Open stories to create or generate"}</Link>
       </div>
       <CatalogCreation key={projectId} kind={kind} projectId={projectId} onSaved={async () => { await load(); }} />
       {!loading && !error && <DesignStats items={[{ label: "On this page", value: count }, { label: kind === "scenarios" ? "Approved coverage" : "With expected results", value: kind === "scenarios" ? scenarios.filter(item => item.approved).length : cases.filter(item => item.assertions?.length || item.steps?.some(step => step.expected?.trim())).length }, { label: "Matching records", value: visibleCount }]} />}

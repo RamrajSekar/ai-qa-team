@@ -50,13 +50,14 @@ test('existing story analysis, stale findings and scenario count controls', asyn
   await approve.waitFor(); assert.equal(await approve.isDisabled(), true);
   await page.getByLabel('Clarification or rationale').fill('After Save is clicked.');
   await approve.click();
-  await page.getByRole('status').filter({ hasText: /^Reviewed$/ }).waitFor();
+  await page.getByRole('status').filter({ hasText: /^Approved$/ }).waitFor();
+  await page.getByRole('link',{name:'Open Scenarios',exact:true}).click();
   await page.getByLabel('Requirements for generation',{exact:true}).selectOption('knowledge');
   await page.getByLabel('Requested scenarios').fill('4');
   await page.getByRole('button', { name: 'Generate scenarios with AI' }).click();
   await page.getByRole('status').filter({ hasText: '1 of 4 requested scenarios generated' }).waitFor();
   assert.equal(requested, '4');
-  await page.goto(base+'/projects/P1/stories');await page.getByRole('link',{name:'Reviewed',exact:true}).waitFor();
-  analysis.stale=true;await page.reload();await page.getByRole('link',{name:'Stale',exact:true}).waitFor();
+  await page.goto(base+'/projects/P1/stories');await page.getByRole('link',{name:'Approved',exact:true}).waitFor();
+  analysis.stale=true;await page.reload();await page.getByRole('link',{name:'Needs refresh',exact:true}).waitFor();
   // QA Agent training browser coverage lives in qa-agent-training.test.cjs.
 });

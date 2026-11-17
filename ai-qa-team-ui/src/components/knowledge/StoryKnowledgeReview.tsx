@@ -64,7 +64,7 @@ export default function StoryKnowledgeReview({ projectId, storyId, analysis, adm
   }
   const pending = data?.reviews.filter(r => r.status !== "completed") || [];
   const lastApproved = data?.reviews.find(r => r.status === "completed");
-  if (!conflicts.length && !pending.length && !error && !(analysis.status==="reviewed"&&!analysis.stale&&proposedFinding)) return null;
+  if (!conflicts.length && !pending.length && !error && !selected && !(analysis.status==="reviewed"&&!analysis.stale&&proposedFinding)) return null;
   return <section aria-label="Story and knowledge review" className="space-y-4 border-t pt-5">
     <div><h3 className="text-lg font-semibold">{conflicts.length ? "Resolve knowledge conflicts" : "Knowledge update"}</h3>
       <p className="text-sm text-slate-600">Decide whether the story changes the product or needs correction. Only a Project Admin can approve knowledge changes.</p></div>

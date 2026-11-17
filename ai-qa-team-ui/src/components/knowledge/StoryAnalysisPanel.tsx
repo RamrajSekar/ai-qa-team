@@ -8,6 +8,8 @@ import StoryKnowledgeReview from "./StoryKnowledgeReview";
 
 interface Analysis {
   analysis_id: string; status: string; stale?: boolean; summary: string; knowledge_version_id: string | null;
+  story_approval?: {state:string;approved_by_name?:string};
+  comparison_state?:string;
   reviewed_by_name?: string;
   analysis_mode?: "story_only" | "knowledge_aware";
   excluded_knowledge_claims?: {claim_id:string;statement:string;source_id:string;reason:string}[];
@@ -50,19 +52,21 @@ export default function StoryAnalysisPanel({ projectId, storyId }: { projectId: 
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Could not analyze or review story."); }
     finally { setBusy(false); }
   }
+  const approvalState=analysis?.story_approval?.state || (storyApproval?"approved":analysis?.status==="reviewed"&&!analysis.stale?"approved":analysis?.stale?"needs_review":"in_review");
+  const reviewer=analysis?.story_approval?.approved_by_name||storyApproval?.name||analysis?.reviewed_by_name||"Reviewer name unavailable";
   return <section id="story-analysis" className="workspace-card p-5 space-y-3" aria-label="Story analysis">
     <h2 className="text-xl font-semibold">Review story clarity</h2>
-    <p>Story clarity finds ambiguity and missing details without using product knowledge. Knowledge comparison uses only independently sourced approved rules. Each analysis uses an AI request; choosing a mode does not start one.</p>
+    <p>Find missing details, ambiguity and knowledge conflicts. Analysis uses one AI request.</p>
     <Link className="underline" href={`/projects/${projectId}/knowledge`}>Teach your QA Agent</Link>
     <label className="block">Analysis mode<select aria-label="Analysis mode" value={mode} disabled={busy||!loaded} onChange={event=>setMode(event.target.value as "story_only"|"knowledge_aware")}><option value="story_only">Story clarity (story-only)</option><option value="knowledge_aware">Check against product knowledge</option></select></label>
     <div><button className="workspace-button" disabled={busy} onClick={() => void perform(false)}>Analyze with AI</button></div>
-    <p role="status"><DesignBadge>{!loaded ? "Loading" : error && !analysis ? "Unavailable" : !analysis ? "Not analyzed" : storyApproval && analysis.stale ? "Story change approved" : analysis.stale ? "Stale" : analysis.status === "reviewed" ? "Reviewed" : "Findings need review"}</DesignBadge></p>
-    {storyApproval&&<p className="text-sm text-emerald-700">Approved by {storyApproval.name}. Your story change approval is retained.</p>}
-    {analysis?.status === "reviewed" && !analysis.stale && <p className="text-sm text-emerald-700">Story review completed · {analysis.reviewed_by_name || "Reviewer name unavailable"}</p>}
+    <p role="status"><DesignBadge>{!loaded?"Loading":error&&!analysis?"Unavailable":approvalState==="approved"?"Approved":approvalState==="needs_review"?"Needs review":"In review"}</DesignBadge></p>
+    {approvalState==="approved"&&<p className="text-sm text-emerald-700">Story review completed · {reviewer}</p>}
     {analysis && <>
-      <p>{analysis.analysis_mode === "story_only" ? "Story-only analysis — not validated against approved product knowledge. Review does not authorize knowledge-aware generation." : "Knowledge-aware analysis"}</p>
-      <p>{analysis.stale ? storyApproval ? "Knowledge comparison needs refresh after the knowledge update. The earlier findings below are historical; this does not revoke your approval." : "Inputs changed. Analyze again and review the new findings." : "Review findings and clarify missing expectations."} {analysis.knowledge_version_id && <Link className="underline" href={`/projects/${projectId}/knowledge#knowledge-version-${analysis.knowledge_version_id}`}>Inspect approved knowledge version</Link>}</p>
-      {!!analysis.excluded_knowledge_claims?.length&&<section aria-label="Excluded knowledge rules"><h3>Rules excluded from this comparison</h3><p>These rules cannot validate their own source story. This comparison does not authorize generation against the full knowledge snapshot.</p><ul>{analysis.excluded_knowledge_claims.map(claim=><li key={claim.claim_id}><strong>{claim.statement}</strong> — {claim.reason}</li>)}</ul></section>}
+      <p className="text-sm">{analysis.comparison_state==="needs_refresh"||(!analysis.comparison_state&&analysis.stale&&analysis.analysis_mode!=="story_only")?"Knowledge comparison: Needs refresh.":analysis.analysis_mode==="story_only"?"Story-only review.":"Knowledge comparison: Current."}</p>
+      {analysis.stale&&<p className="text-sm">{approvalState==="approved"?"Approval is retained. Refresh the comparison before knowledge-aware generation.":"Inputs changed. Review the latest story."}</p>}
+      <details open={!analysis.stale}><summary>{analysis.stale?"Previous findings":"Findings"} ({analysis.findings.length})</summary>
+      {!!analysis.excluded_knowledge_claims?.length&&<section aria-label="Excluded knowledge rules"><h3>Excluded source rules</h3><p>Story-derived rules cannot validate the same story.</p><ul>{analysis.excluded_knowledge_claims.map(claim=><li key={claim.claim_id}><strong>{claim.statement}</strong> — {claim.reason}</li>)}</ul></section>}
       <p>{analysis.summary}</p>
       <label>Finding category<select aria-label="Finding category" value={category} onChange={event => setCategory(event.target.value)}><option value="all">All findings</option>{Object.entries(categories).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       {!analysis.findings.length && <p>No findings proposed. Explicit review is still required.</p>}
@@ -84,6 +88,7 @@ export default function StoryAnalysisPanel({ projectId, storyId }: { projectId: 
       </div>)}
       {canReview && analysis.status !== "reviewed" && !analysis.stale && !analysis.findings.some(item => item.category === "knowledge_conflict") && <button className="workspace-button" disabled={busy || analysis.findings.some(item => item.severity === "blocker" && !resolutions[item.finding_id]?.rationale.trim())}
         onClick={() => void perform(true)}>Approve analysis review (project admin)</button>}
+      </details>
       <StoryKnowledgeReview key={analysis.analysis_id} projectId={projectId} storyId={storyId} analysis={analysis} admin={canReview}
         onStoryApproved={setStoryApproval}
         onComplete={async () => { await load(); window.dispatchEvent(new Event("story-analysis-updated")); }} />

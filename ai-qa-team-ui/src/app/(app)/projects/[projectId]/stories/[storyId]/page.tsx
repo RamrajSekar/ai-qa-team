@@ -15,17 +15,11 @@ import RecordingsTable from "@/components/recorder/RecordingsTable";
 import RecordingViewer from "@/components/recorder/RecordingViewer";
 import RecorderOverlay from "@/components/recorder/RecorderOverlay";
 
-import type { Scenario } from "@/types/scenario";
-import GenerationRequirements from "@/components/knowledge/GenerationRequirements";
 import StoryAnalysisPanel from "@/components/knowledge/StoryAnalysisPanel";
-import ScenarioTable from "@/components/scenarios/ScenarioTable";
-import ScenarioModal from "@/components/scenarios/ScenarioModal";
-import ScenarioViewer from "@/components/scenarios/ScenarioViewer";
 
 export default function StoryDetailsPage() {
   const { enabled } = useFeatures();
   const recorderEnabled = enabled("recorder");
-  const scenariosEnabled = enabled("scenario_generation");
   const params = useParams() as { projectId: string; storyId: string };
   const { projectId, storyId } = params;
 
@@ -38,22 +32,10 @@ export default function StoryDetailsPage() {
   const [viewRecording, setViewRecording] = useState<Recording | null>(null);
   const [openRecorder, setOpenRecorder] = useState(false);
 
-  // Scenarios
-  const [scenarios, setScenarios] = useState<Scenario[]>([]);
-  const [scenarioModalOpen, setScenarioModalOpen] = useState(false);
-  const [editingScenario, setEditingScenario] = useState<Scenario | undefined>();
-  const [viewScenario, setViewScenario] = useState<Scenario | null>(null);
-  const [requirementsContext,setRequirementsContext]=useState<string|null>(null);
-  const [scenarioCount, setScenarioCount] = useState(3);
-  const [generationMessage, setGenerationMessage] = useState("");
-  const [generating, setGenerating] = useState(false);
-  const [scenarioError, setScenarioError] = useState("");
-
   // -----------------------------
   // LOAD STORY
   // -----------------------------
   const loadStory = useCallback(async () => {
-    setRequirementsContext(null);
     setStoryError("");
     try {
       const res = await apiFetch(`/stories/${storyId}?project_id=${projectId}`);
@@ -79,48 +61,6 @@ export default function StoryDetailsPage() {
   }, [recorderEnabled, storyId]);
 
   // -----------------------------
-  // LOAD SCENARIOS
-  // -----------------------------
-  const loadScenarios = useCallback(async () => {
-    if (!scenariosEnabled) return;
-    try {
-      const res = await apiFetch(
-        `/scenarios?story_id=${encodeURIComponent(storyId)}&project_id=${encodeURIComponent(projectId)}`
-      );
-      if (!res.ok || !Array.isArray(res.data)) throw new Error("Could not load scenarios.");
-      setScenarios(res.data);
-      setScenarioError("");
-    } catch (err) {
-      setScenarios([]);
-      setScenarioError(err instanceof Error ? err.message : "Could not load scenarios.");
-    }
-  }, [scenariosEnabled, storyId, projectId]);
-
-  async function generateScenario() {
-    setGenerating(true);
-    setScenarioError("");
-    try {
-      const response = await apiFetch(`/scenarios/generate-from-story?story_id=${encodeURIComponent(storyId)}&count=${scenarioCount}&complexity=basic${requirementsContext&&requirementsContext!=="current"?`&requirements_context_id=${encodeURIComponent(requirementsContext)}`:""}`, {
-        method: "POST",
-      });
-      if (!response.ok) {
-        const detail = response.data?.detail;
-        if (detail?.code === "AUTHENTICATION_ERROR") {
-          throw new Error("The active AI provider rejected its credentials. Ask a project administrator to check Workspace → AI Configuration.");
-        }
-        throw new Error(typeof detail === "string" ? detail : detail?.message || "Could not generate a scenario.");
-      }
-      if (!response.data?.scenarios?.length) throw new Error(response.data?.summary?.message || "No scenarios were generated.");
-      setGenerationMessage(response.data?.summary?.message || `${response.data.scenarios.length} scenarios generated.`);
-      await loadScenarios();
-    } catch (failure) {
-      setScenarioError(failure instanceof Error ? failure.message : "Could not generate a scenario.");
-    } finally {
-      setGenerating(false);
-    }
-  }
-
-  // -----------------------------
   // INITIAL LOAD
   // -----------------------------
   useEffect(() => {
@@ -128,10 +68,10 @@ export default function StoryDetailsPage() {
 
     setLoading(true);
 
-    Promise.all([loadStory(), loadRecordings(), loadScenarios()]).finally(() =>
+    Promise.all([loadStory(), loadRecordings()]).finally(() =>
       setLoading(false)
     );
-  }, [storyId, loadStory, loadRecordings, loadScenarios]);
+  }, [storyId, loadStory, loadRecordings]);
 
   if (loading) return <div className="p-6">Loading story…</div>;
 
@@ -183,54 +123,7 @@ export default function StoryDetailsPage() {
 
       <FeatureGate names={["product_knowledge", "story_analysis"]}><StoryAnalysisPanel key={`${projectId}:${storyId}`} projectId={projectId} storyId={storyId} /></FeatureGate>
 
-      {/* SCENARIOS SECTION */}
-      <FeatureGate names={["scenario_generation"]}><div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div><h2 className="text-xl font-semibold">Scenarios</h2><Link className="text-sm text-violet-700 underline" href={`/projects/${projectId}/scenarios`}>Open Scenarios</Link></div>
-          <button
-            onClick={() => {
-              setEditingScenario(undefined);
-              setScenarioModalOpen(true);
-            }}
-            className="workspace-button"
-          >
-            + Add Scenario
-          </button>
-        </div>
-        <div>
-          <div className="story-generation-bar">
-          <FeatureGate names={["product_knowledge", "story_analysis"]}><GenerationRequirements projectId={projectId} storyId={storyId} selected={requirementsContext} onSelect={setRequirementsContext} onActivated={loadScenarios}/></FeatureGate>
-          <div className="story-generation-submit"><label>Requested scenarios <input aria-label="Requested scenarios" type="number" min={1} max={20} value={scenarioCount} onChange={event => setScenarioCount(Math.max(1, Math.min(20, Number(event.target.value) || 1)))} /></label>
-          <button type="button" className="workspace-button workspace-primary" disabled={generating || (enabled("product_knowledge","story_analysis") && !requirementsContext) || (!story.acceptance_criteria?.trim() && (!requirementsContext || requirementsContext==="current"))}
-            onClick={() => void generateScenario()}>
-            {generating ? "Generating scenarios…" : "Generate scenarios with AI"}
-          </button>
-          </div>
-          </div>
-        </div>
-        <p className="text-sm">Generate scenario drafts for this story, then review them before creating test cases.</p>
-        {!story.acceptance_criteria?.trim() && <p className="text-sm">Add acceptance criteria for current-knowledge generation, or explicitly review and select a release/provisional requirements context.</p>}
-        {generationMessage && <p role="status">{generationMessage}</p>}
-        {scenarioError && <p role="alert" className="text-sm text-red-700">{scenarioError}</p>}
-
-        <ScenarioTable
-          scenarios={scenarios}
-          onView={(s) => setViewScenario(s)}
-          onEdit={(s) => {
-            setEditingScenario(s);
-            setScenarioModalOpen(true);
-          }}
-          onDelete={async (s) => {
-            if (!confirm(`Delete scenario "${s.title}"?`)) return;
-            await apiFetch(`/scenarios/${s.scenario_id}?project_id=${projectId}`, {
-              method: "DELETE",
-            });
-            loadScenarios();
-          }}
-        />
-      </div>
-
-      </FeatureGate>
+      <FeatureGate names={["scenario_generation"]}><section className="workspace-card p-5 flex flex-wrap items-center justify-between gap-3"><div><h2>Scenarios</h2><p>Generate and review scenarios for this story.</p></div><Link className="workspace-button workspace-primary" href={`/projects/${projectId}/scenarios?story_id=${encodeURIComponent(storyId)}`}>Open Scenarios</Link></section></FeatureGate>
 
       {/* RECORDINGS SECTION */}
       <FeatureGate names={["recorder"]}>
@@ -253,31 +146,6 @@ export default function StoryDetailsPage() {
           onClose={() => setViewRecording(null)}
         />
       )}
-
-      {/* VIEW SCENARIO MODAL */}
-      {scenariosEnabled && viewScenario && (
-        <ScenarioViewer
-          key={viewScenario.scenario_id}
-          open={true}
-          scenario={viewScenario}
-          onClose={() => setViewScenario(null)}
-          onApproved={updated => {
-            setViewScenario(updated);
-            setScenarios(items => items.map(item => item.scenario_id === updated.scenario_id ? updated : item));
-          }}
-        />
-      )}
-
-      {/* CREATE / EDIT SCENARIO MODAL */}
-      {scenariosEnabled && scenarioModalOpen && <ScenarioModal
-        key={editingScenario?.scenario_id ?? "new"}
-        open={true}
-        onClose={() => setScenarioModalOpen(false)}
-        onSaved={loadScenarios}
-        projectId={projectId}
-        storyId={storyId}
-        scenario={editingScenario}
-      />}
 
       {/* RECORDER OVERLAY */}
       {recorderEnabled && openRecorder && (

@@ -15,6 +15,14 @@ from app.services.story_knowledge_review import StoryKnowledgeReview
 
 
 class StoryChangeTests(unittest.IsolatedAsyncioTestCase):
+    async def test_story_summary_rechecks_approved_manifest_integrity(self):
+        row=await self.submit()
+        await self.changes.approve('P1','ST1',row['review_id'],self.user)
+        manifest=next(r for r in self.db['requirement_contexts'].docs if r.get('record_type')=='story_knowledge_review')
+        manifest['changes'][0]['after']='Unapproved tampering'
+        with self.assertRaises(HTTPException) as error:await self.service.analysis_summaries('P1',['ST1'])
+        self.assertEqual(error.exception.status_code,409)
+
     async def test_reviewed_missing_detail_can_explicitly_add_knowledge(self):
         from app.models.product_knowledge import ReviewStoryAnalysis
         self.finding.update(category='missing_detail',knowledge_claim_id=None)
@@ -85,10 +93,19 @@ class StoryChangeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.db["executions"].docs, old)
         self.assertTrue(self.db["scenarios"].docs[0]["requirements_review_required"])
         self.assertTrue(self.db["scenarios"].docs[0]["approved"])
+        summary=(await self.service.analysis_summaries('P1',['ST1']))['ST1']
+        self.assertEqual(summary['story_approval']['state'],'approved')
+        self.assertEqual(summary['story_approval']['approved_by_name'],'Alice')
+        self.assertEqual(summary['comparison_state'],'needs_refresh')
+        self.assertEqual(summary['unresolved_blocker_count'],0)
+        detail=(await self.client.get(self.base+'/stories/ST1/analysis')).json()
+        self.assertEqual(detail['story_approval'],summary['story_approval'])
+        self.assertTrue(detail['stale'])  # A retained story approval never validates stale comparison input.
         self.db['stories'].docs[0]['description']='A different story revision'
         later=(await self.changes.listing('P1','ST1'))['reviews'][0]
         self.assertEqual(later['status'],'completed')
         self.assertFalse(later['story_matches'])
+        self.assertEqual((await self.service.analysis_summaries('P1',['ST1']))['ST1']['story_approval']['state'],'needs_review')
         self.usage.execute.assert_not_called()
 
     async def test_future_review_requires_explicit_activation_and_retries_keep_approver(self):

@@ -140,3 +140,24 @@ intentional-change approval remain separate follow-ups.
   cleared, routes warmed, and all checks above passed on the restarted server.
 - No real model, production database, data migration, ingestion or execution
   activation was performed. Existing backend cutover prerequisites remain intact.
+
+### Scenario workspace and status refinement (2026-11-17)
+
+Stories retain clarity review and explicit approval. Generation and manual scenario
+creation use the existing Scenarios catalog, with a story-preserving Open Scenarios
+button. Requirements for generation is the single normal selector. Duplicate context
+and release-authoring forms are removed from this flow; approved legacy releases
+remain selectable when available. Existing context records and APIs are preserved.
+
+List and detail share receipt-verified story approval summaries. Knowledge comparison
+freshness is separate: approving a story does not make an old comparison current.
+Historical findings are collapsed and excluded from current unresolved counts.
+Generation safeguards, source independence, project access and immutable history remain.
+
+Verification: 15 intercepted-API browser checks passed for catalog pagination,
+edit/delete, protected deletion, manual case design, navigation, release selection,
+and admin/member review. Three additional focused browser checks passed for the
+moved generation flow and list/detail status consistency. Thirteen focused backend
+story approval tests passed, including repeated/concurrent approval and corrupt
+manifest rejection; the broader 76-test backend regression set passed earlier.
+No live provider, production database, migration or execution was used.

@@ -359,7 +359,7 @@ class ProductKnowledge:
         await self.db["story_analyses"].insert_one(document)
         return self.public(document)
 
-    async def latest_analysis(self, project, story_id):
+    async def latest_analysis(self, project, story_id, *, include_review_state=False):
         require_features("story_analysis")
         story = await self.story(project, story_id)
         document = await self.db["story_analyses"].find_one({"project_id": project, "story_id": story_id}, sort=[("created_at", -1), ("_id", -1)])
@@ -367,7 +367,13 @@ class ProductKnowledge:
             return None
         knowledge = await self.active(project)
         stale = self.analysis_stale(document, story, knowledge)
-        return {**self.public(document), "stale": stale}
+        result={**self.public(document), "stale": stale}
+        if include_review_state:
+            from app.services.story_knowledge_review import StoryKnowledgeReview
+            approvals=await StoryKnowledgeReview(self.db).review_states(project,[story])
+            result.update(self.review_summary(story,document,knowledge,approvals.get(story_id)))
+            result['stale']=stale
+        return result
 
     async def review_analysis(self, project, actor, story_id, analysis_id, payload, *, actor_name="Project reviewer"):
         require_features("product_knowledge", "story_analysis")
@@ -454,13 +460,27 @@ class ProductKnowledge:
         ]).to_list(100)
         latest = {row["_id"]: row["latest"] for row in rows}
         knowledge = await self.active(project)
+        from app.services.story_knowledge_review import StoryKnowledgeReview
+        approvals=await StoryKnowledgeReview(self.db).review_states(project,stories)
         result = {}
         for story in stories:
             row = latest.get(story["story_id"])
-            snapshot = {key: story.get(key) for key in ("story_id", "title", "description", "acceptance_criteria", "out_of_scope")}
-            stale = row and self.analysis_stale(row, snapshot, knowledge)
-            result[story["story_id"]] = {"state": "not_analyzed" if not row else "stale" if stale else "reviewed" if row["status"] == "reviewed" else "needs_review",
-                "analysis_id": row["analysis_id"] if row else None,
-                "finding_count": len(row["findings"]) if row else 0,
-                "blocker_count": sum(item["severity"] == "blocker" for item in row["findings"]) if row else 0}
+            result[story['story_id']]=self.review_summary(story,row,knowledge,approvals.get(story['story_id']))
         return result
+
+
+    @staticmethod
+    def review_summary(story,row,knowledge,explicit=None):
+        snapshot={key:story.get(key) for key in ('story_id','title','description','acceptance_criteria','out_of_scope')}
+        stale=bool(row and ProductKnowledge.analysis_stale(row,snapshot,knowledge))
+        reviewed_same=bool(row and row['status']=='reviewed' and row['story_digest']==digest(snapshot))
+        approval=explicit if explicit and explicit['state']=='approved' else (
+            {'state':'approved','approved_by':row.get('reviewed_by'),'approved_by_name':row.get('reviewed_by_name','Reviewer name unavailable'),'approved_at':row.get('reviewed_at')}
+            if reviewed_same else explicit or {'state':'needs_review' if row and row['status']=='reviewed' else 'in_review'})
+        resolved={r['finding_id'] for r in (row or {}).get('resolutions',[])}
+        unresolved=[f for f in (row or {}).get('findings',[]) if f['finding_id'] not in resolved] if not stale else []
+        return {'state':'not_analyzed' if not row else 'stale' if stale else 'reviewed' if row['status']=='reviewed' else 'needs_review',
+            'story_approval':approval,'comparison_state':('needs_refresh' if stale else 'current') if row and row.get('analysis_mode','knowledge_aware')=='knowledge_aware' else 'not_compared',
+            'unresolved_finding_count':len(unresolved),'unresolved_blocker_count':sum(f['severity']=='blocker' for f in unresolved),
+            'analysis_id':row['analysis_id'] if row else None,'finding_count':len(row['findings']) if row else 0,
+            'blocker_count':sum(f['severity']=='blocker' for f in row['findings']) if row else 0}

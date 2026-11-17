@@ -181,7 +181,12 @@ async def analysis_summaries(project_id: str, response: Response, story_ids: str
     if not 1 <= len(ids) <= 100 or any(not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", identity) for identity in ids):
         raise HTTPException(422, "Supply up to 100 story IDs.")
     response.headers["Cache-Control"] = "private, no-store"
-    return await service().analysis_summaries(project_id, ids)
+    result=await service().analysis_summaries(project_id, ids)
+    for summary in result.values():
+        approval=summary.get('story_approval',{})
+        if approval.get('approved_by')==actor_id(user) and approval.get('approved_by_name') in (None,'Project reviewer','Reviewer name unavailable'):
+            approval['approved_by_name']=user.get('name') or user.get('full_name') or 'Reviewer name unavailable'
+    return result
 
 
 @router.post("/stories/{story_id}/suggest-knowledge")
@@ -240,7 +245,7 @@ async def analyze(project_id: str, story_id: StoryId,
 @router.get("/stories/{story_id}/analysis", dependencies=[Depends(feature_required("story_analysis"))])
 async def latest_analysis(project_id: str, story_id: StoryId, user=Depends(get_current_user)):
     await require_project_member(project_id, user)
-    result=await service().latest_analysis(project_id, story_id)
+    result=await service().latest_analysis(project_id, story_id,include_review_state=True)
     if result and result.get("status")=="reviewed" and result.get("reviewed_by_name") in (None,"Project reviewer"):
         if result.get("reviewed_by")==actor_id(user):
             result["reviewed_by_name"]=user.get("name") or user.get("full_name") or "Project reviewer"
@@ -249,6 +254,9 @@ async def latest_analysis(project_id: str, story_id: StoryId, user=Depends(get_c
             identity=result["reviewed_by"]
             profile=await db["users"].find_one({"_id":ObjectId(identity) if ObjectId.is_valid(identity) else identity})
             result["reviewed_by_name"]=(profile or {}).get("name") or (profile or {}).get("full_name") or "Reviewer name unavailable"
+    if result:
+        if result.get('story_approval',{}).get('approved_by')==result.get('reviewed_by') and result.get('story_approval',{}).get('approved_by_name') in (None,'Project reviewer','Reviewer name unavailable') and result.get('reviewed_by_name'):
+            result['story_approval']['approved_by_name']=result['reviewed_by_name']
     return result
 
 
