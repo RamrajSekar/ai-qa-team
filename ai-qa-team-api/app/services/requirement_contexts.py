@@ -92,7 +92,7 @@ class RequirementContexts:
                 or (row["base_knowledge_version_id"] and item.get("knowledge_version_id")==row["base_knowledge_version_id"]))]
         return result
 
-    async def create(self,project,story_id,actor,payload):
+    async def create(self,project,story_id,actor,payload,*,reviewed_story_approval=False):
         self.gate();existing=await self.rows.find_one({"_id":payload.request_id})
         request_digest=digest(payload.model_dump())
         if existing:
@@ -105,7 +105,9 @@ class RequirementContexts:
             raise HTTPException(409,"Analyze and review the current story before saving a requirements context.")
         raw_analysis=await self.knowledge.record("story_analyses",project,payload.analysis_id)
         knowledge=await self.knowledge.active(project)
-        if payload.basis=="story_only_provisional" and analysis.get("analysis_mode")!="story_only":
+        if reviewed_story_approval and (payload.basis!="story_only_provisional" or analysis.get("status")!="reviewed"):
+            raise HTTPException(409,"Complete the current story review before approving generation.")
+        if payload.basis=="story_only_provisional" and analysis.get("analysis_mode")!="story_only" and not reviewed_story_approval:
             raise HTTPException(409,"Provisional designs require an explicit reviewed story-only analysis.")
         decisions=[d.model_dump() for d in payload.decisions];findings={f["finding_id"]:f for f in analysis["findings"]}
         selected=[d["finding_id"] for d in decisions if d.get("finding_id")]
@@ -137,12 +139,23 @@ class RequirementContexts:
             "effective_decisions":list(effective.values()),
             "created_by":actor,"created_at":datetime.now(timezone.utc).isoformat(),"request_digest":request_digest}
         row["content_digest"]=digest(row)
+        if reviewed_story_approval:
+            row["generation_approval_basis"]="explicit_reviewed_story_requirements"
+            row["content_digest"]=digest({key:value for key,value in row.items() if key!="content_digest"})
         if len(effective)>100 or len(json.dumps(row).encode())>250000:
             raise HTTPException(413,"Release requirements exceed the review size limit. Preserve history and reduce this context's scope.")
         impact=await self.impact(row)
         try:await self.rows.insert_one(row)
         except DuplicateKeyError:raise HTTPException(409,"Save already exists. Reload to reconcile.") from None
         return {**await self.view(row),"impact":impact}
+
+    async def approve_story_generation(self,project,story,actor,payload):
+        from app.models.requirement_context import RequirementDraft
+        draft=RequirementDraft(request_id=payload.request_id,analysis_id=payload.analysis_id,
+            basis="story_only_provisional",target_release="Story requirements",decisions=[])
+        saved=await self.create(project,story,str(actor.get("_id") or actor.get("email")),draft,reviewed_story_approval=True)
+        await self.fresh(await self.row(project,story,saved["context_id"]))
+        return await self.approve(project,story,saved["context_id"],actor)
 
     async def approve(self,project,story,identity,actor):
         row=await self.row(project,story,identity)

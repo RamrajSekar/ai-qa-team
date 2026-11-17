@@ -6,7 +6,7 @@ const {fixture,base}=require('./qa-agent-fixture.cjs');
 let browser;
 before(async()=>{browser=await chromium.launch({headless:true,channel:'msedge'});});
 after(async()=>browser?.close());
-async function setup(t,role='ADMIN'){
+async function setup(t,role='ADMIN',missingDetail=false){
  const f=await fixture(browser,t,{role});
  const root='/projects/P1/knowledge/stories/ST1'; const reviews=[],calls=[];
  const analysis={analysis_id:'e'.repeat(32),status:'needs_review',analysis_mode:'knowledge_aware',stale:false,
@@ -27,7 +27,9 @@ async function setup(t,role='ADMIN'){
   }
   return route.fulfill({headers,json});
  });
+ if(missingDetail){analysis.status='reviewed';analysis.reviewed_by_name='Alice';analysis.findings[0].category='missing_detail';analysis.resolutions=[{finding_id:'F1',decision:'clarified',rationale:'Navigation is separate.'}];}
  await f.page.goto(base+'/projects/P1/stories/ST1');
+ if(missingDetail)await f.page.getByRole('button',{name:'Approve story and update knowledge',exact:true}).click();
  await f.page.getByLabel('Conflict decision 1',{exact:true}).waitFor();
  return {...f,reviews,calls};
 }
@@ -66,4 +68,14 @@ test('future approval retains an explicit activation step',async t=>{
  await page.getByRole('button',{name:'Activate knowledge update',exact:true}).click();
  await page.getByRole('region',{name:'Story change summary'}).getByText('Story change approved and knowledge updated.',{exact:true}).waitFor();
  assert.equal(reviews[0].status,'completed');
+});
+
+test('reviewed missing detail offers explicit knowledge addition without a conflict',async t=>{
+ const {page,reviews}=await setup(t,'ADMIN',true);
+ await page.getByLabel('New behavior 1',{exact:true}).fill('Navigation requirements are described in separate stories.');
+ await page.getByLabel('Change reason 1',{exact:true}).fill('Confirmed story scope.');
+ await page.getByRole('button',{name:'Review changes',exact:true}).click();
+ assert.equal(reviews[0].decisions[0].action,'add');assert.equal(reviews[0].decisions[0].rule_id,null);
+ await page.getByRole('button',{name:'Approve story and update knowledge',exact:true}).click();
+ await page.getByRole('region',{name:'Story change summary'}).getByText('Story change approved and knowledge updated.',{exact:true}).waitFor();
 });

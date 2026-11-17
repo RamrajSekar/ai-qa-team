@@ -16,7 +16,7 @@ import RecordingViewer from "@/components/recorder/RecordingViewer";
 import RecorderOverlay from "@/components/recorder/RecorderOverlay";
 
 import type { Scenario } from "@/types/scenario";
-import RequirementContextsPanel from "@/components/knowledge/RequirementContextsPanel";
+import GenerationRequirements from "@/components/knowledge/GenerationRequirements";
 import StoryAnalysisPanel from "@/components/knowledge/StoryAnalysisPanel";
 import ScenarioTable from "@/components/scenarios/ScenarioTable";
 import ScenarioModal from "@/components/scenarios/ScenarioModal";
@@ -181,13 +181,14 @@ export default function StoryDetailsPage() {
         </div>
       </div>
 
-      <FeatureGate names={["product_knowledge", "story_analysis"]}><StoryAnalysisPanel projectId={projectId} storyId={storyId} /><details className="workspace-card p-5"><summary className="font-medium cursor-pointer">Advanced generation context</summary><RequirementContextsPanel projectId={projectId} storyId={storyId} selected={requirementsContext} onSelect={setRequirementsContext} onActivated={loadScenarios} /></details></FeatureGate>
+      <FeatureGate names={["product_knowledge", "story_analysis"]}><StoryAnalysisPanel projectId={projectId} storyId={storyId} /></FeatureGate>
 
       {/* SCENARIOS SECTION */}
       <FeatureGate names={["scenario_generation"]}><div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-xl font-semibold">Scenarios</h2>
           <div className="flex flex-wrap gap-2 story-coverage-actions">
+          <FeatureGate names={["product_knowledge", "story_analysis"]}><GenerationRequirements projectId={projectId} storyId={storyId} selected={requirementsContext} onSelect={setRequirementsContext} onActivated={loadScenarios}/></FeatureGate>
           <label>Requested scenarios <input aria-label="Requested scenarios" type="number" min={1} max={20} value={scenarioCount} onChange={event => setScenarioCount(Math.max(1, Math.min(20, Number(event.target.value) || 1)))} /></label>
           <button type="button" className="workspace-button workspace-primary" disabled={generating || (enabled("product_knowledge","story_analysis") && !requirementsContext) || (!story.acceptance_criteria?.trim() && (!requirementsContext || requirementsContext==="current"))}
             onClick={() => void generateScenario()}>

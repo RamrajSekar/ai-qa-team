@@ -212,6 +212,8 @@ test('split AI allowances show separate Managed credits and BYOK requests', asyn
   const managed = section.getByRole('progressbar', { name: 'Managed AI Requests usage', exact: true });
   const byok = section.getByRole('progressbar', { name: 'BYOK AI Requests usage', exact: true });
   await managed.waitFor();
+  await section.getByText('Other AI usage',{exact:true}).click();
+  await byok.waitFor();
   assert.equal(await managed.getAttribute('value'), '1'); assert.equal(await managed.getAttribute('max'), '25');
   assert.equal(await byok.getAttribute('value'), '2'); assert.equal(await byok.getAttribute('max'), '25');
   await section.getByText(/Each AI request uses one unit/).waitFor();

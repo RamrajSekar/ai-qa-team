@@ -7,15 +7,15 @@ interface Finding {
   finding_id: string; category: string; severity: string; description: string;
   criterion_quote?: string; knowledge_claim_id?: string;
 }
-interface Analysis { analysis_id: string; stale?: boolean; findings: Finding[] }
+interface Analysis { analysis_id: string; status?: string; stale?: boolean; findings: Finding[]; resolutions?: {finding_id:string;decision:string;rationale:string}[] }
 interface Decision {
   finding_id: string; decision: "intentional_change" | "correct_story" | "needs_clarification";
-  action: "replace" | "remove"; rule_id: string; expected_result: string; rationale: string;
+  action: "add" | "replace" | "remove"; rule_id: string | null; expected_result: string; rationale: string;
 }
 interface Review {
   review_id: string; analysis_id: string; status: string; stale: boolean; timing: "now" | "later";
   target_release: string; decisions: Decision[];
-  changes: { action: string; before: string; after: string | null; expected_behavior: string; reason: string }[];
+  changes: { action: string; before: string | null; after: string | null; expected_behavior: string; reason: string }[];
   impact: Record<string, { id: string; title: string }[]>;
   approver?: { approved_by_name: string; approved_at: string };
 }
@@ -30,19 +30,22 @@ export default function StoryKnowledgeReview({ projectId, storyId, analysis, adm
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [timing, setTiming] = useState<"now" | "later">("now");
   const [release, setRelease] = useState("");
+  const [adding,setAdding]=useState(false);
   const [selected, setSelected] = useState<Review | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const saveKey = useRef<{body: string; id: string} | null>(null);
   const conflicts = analysis.findings.filter(f => f.category === "knowledge_conflict");
-  const blockers = analysis.findings.filter(f => f.category !== "knowledge_conflict" && f.severity === "blocker");
+  const proposedFinding=analysis.findings.find(f=>f.category!=="knowledge_conflict");
+  const targets=conflicts.length?conflicts:adding&&proposedFinding?[proposedFinding]:[];
+  const blockers = analysis.findings.filter(f => !targets.some(t=>t.finding_id===f.finding_id) && f.severity === "blocker" && !analysis.resolutions?.some(r=>r.finding_id===f.finding_id));
   const load = useCallback(async () => setData(await knowledgeRequest<Listing>(root)), [root]);
   useEffect(() => { void load().catch(e => setError(e instanceof Error ? e.message : "Could not load reviews.")); }, [load, analysis.analysis_id]);
 
   function decision(finding: Finding): Decision {
     return decisions[finding.finding_id] || { finding_id: finding.finding_id, decision: "intentional_change",
-      action: "replace", rule_id: finding.knowledge_claim_id || "", expected_result: finding.criterion_quote || "", rationale: "" };
+      action: conflicts.length ? "replace" : "add", rule_id: conflicts.length ? finding.knowledge_claim_id || "" : null, expected_result: finding.criterion_quote || "", rationale: "" };
   }
   function edit(finding: Finding, change: Partial<Decision>) {
     setDecisions(values => ({ ...values, [finding.finding_id]: { ...decision(finding), ...change } }));
@@ -55,30 +58,31 @@ export default function StoryKnowledgeReview({ projectId, storyId, analysis, adm
   }
   const pending = data?.reviews.filter(r => r.status !== "completed") || [];
   const lastApproved = data?.reviews.find(r => r.status === "completed");
-  if (!conflicts.length && !pending.length && !error) return null;
+  if (!conflicts.length && !pending.length && !error && !(analysis.status==="reviewed"&&!analysis.stale&&proposedFinding)) return null;
   return <section aria-label="Story and knowledge review" className="space-y-4 border-t pt-5">
-    <div><h3 className="text-lg font-semibold">Resolve knowledge conflicts</h3>
+    <div><h3 className="text-lg font-semibold">{conflicts.length ? "Resolve knowledge conflicts" : "Knowledge update"}</h3>
       <p className="text-sm text-slate-600">Decide whether the story changes the product or needs correction. Only a Project Admin can approve knowledge changes.</p></div>
-    {lastApproved?.approver && <p className="text-sm text-emerald-700">Last knowledge change approved by {lastApproved.approver.approved_by_name} · {lastApproved.target_release}</p>}
-    {!!conflicts.length && !analysis.stale && <fieldset disabled={busy} className="space-y-4">
-      {conflicts.map((finding, index) => {
+    {lastApproved?.approver && <p className="text-sm text-emerald-700">Last knowledge change approved by {lastApproved.approver.approved_by_name} Â· {lastApproved.target_release}</p>}
+    {!conflicts.length&&!adding&&analysis.status==="reviewed"&&!analysis.stale&&proposedFinding&&<button className="workspace-button" onClick={()=>setAdding(true)}>{admin?"Approve story and update knowledge":"Propose knowledge update"}</button>}
+    {!!targets.length && !analysis.stale && <fieldset disabled={busy} className="space-y-4">
+      {targets.map((finding, index) => {
         const current = decision(finding);
         const rule = data?.rules.find(r => r.claim_id === finding.knowledge_claim_id);
         return <article key={finding.finding_id} className="rounded-lg border p-4 space-y-3">
           <p className="font-medium">{finding.description}</p>
-          <div className="grid gap-3 md:grid-cols-2">
+          {conflicts.length>0&&<div className="grid gap-3 md:grid-cols-2">
             <div className="rounded bg-slate-50 p-3"><p className="text-xs font-semibold uppercase text-slate-500">Current knowledge</p><p>{rule?.statement || "Load the current rule before review."}</p></div>
             <div className="rounded bg-violet-50 p-3"><p className="text-xs font-semibold uppercase text-violet-700">Story requirement</p><p>{finding.criterion_quote || "See the story requirements above."}</p></div>
-          </div>
+          </div>}
           <label className="block">Decision<select className="border rounded w-full p-2" aria-label={`Conflict decision ${index + 1}`} value={current.decision}
             onChange={e => edit(finding, { decision: e.target.value as Decision["decision"] })}>
             <option value="intentional_change">Intentional product change</option><option value="correct_story">Correct the story</option><option value="needs_clarification">Needs clarification</option>
           </select></label>
           {current.decision === "intentional_change" && <>
-            <label className="block">Knowledge change<select className="border rounded w-full p-2" aria-label={`Knowledge change ${index + 1}`} value={current.action}
+            {conflicts.length>0&&<label className="block">Knowledge change<select className="border rounded w-full p-2" aria-label={`Knowledge change ${index + 1}`} value={current.action}
               onChange={e => edit(finding, { action: e.target.value as Decision["action"] })}>
               <option value="replace">Update this rule</option><option value="remove">Remove this rule</option>
-            </select></label>
+            </select></label>}
             <label className="block">{current.action === "remove" ? "Expected behavior after removal" : "New approved behavior"}
               <textarea className="border rounded w-full p-2" aria-label={`New behavior ${index + 1}`} maxLength={1500} value={current.expected_result}
                 onChange={e => edit(finding, { expected_result: e.target.value })} /></label>
@@ -91,16 +95,16 @@ export default function StoryKnowledgeReview({ projectId, storyId, analysis, adm
         <textarea className="border rounded w-full p-2" aria-label={`Other blocker answer ${index + 1}`} maxLength={2000} value={answers[finding.finding_id] || ""}
           onChange={e => setAnswers(values => ({ ...values, [finding.finding_id]: e.target.value }))} /></label>)}
       <label className="block">When should knowledge change?<select aria-label="Knowledge change timing" className="border rounded p-2 ml-2" value={timing} onChange={e => setTiming(e.target.value as "now" | "later")}>
-        <option value="now">After approval</option><option value="later">Future release — activate later</option>
+        <option value="now">After approval</option><option value="later">Future release â€” activate later</option>
       </select></label>
       {timing === "later" && <label className="block">Target release<input aria-label="Change target release" className="border rounded p-2 ml-2" value={release} maxLength={100} onChange={e => setRelease(e.target.value)} /></label>}
-      <button className="workspace-button workspace-primary" disabled={!data?.knowledge_version_id || conflicts.some(f => {
+      <button className="workspace-button workspace-primary" disabled={!data?.knowledge_version_id || targets.some(f => {
         const d = decision(f); return !d.rationale.trim() || (d.decision === "intentional_change" && !d.expected_result.trim());
       }) || blockers.some(f => !answers[f.finding_id]?.trim()) || (timing === "later" && !release.trim())} onClick={() => void perform(async () => {
         const body = { analysis_id: analysis.analysis_id, parent_version_id: data!.knowledge_version_id, timing, target_release: timing === "later" ? release : "Current",
-          decisions: conflicts.map(f => { const d = decision(f); return { finding_id: f.finding_id, decision: d.decision, rationale: d.rationale,
+          decisions: targets.map(f => { const d = decision(f); return { finding_id: f.finding_id, decision: d.decision, rationale: d.rationale,
             ...(d.decision === "intentional_change" ? { action: d.action, rule_id: d.rule_id, expected_result: d.expected_result } : {}) }; }),
-          resolutions: blockers.map(f => ({ finding_id: f.finding_id, decision: "clarified", rationale: answers[f.finding_id] })) };
+          resolutions: [...(analysis.resolutions||[]).filter(r=>!targets.some(f=>f.finding_id===r.finding_id)),...blockers.map(f => ({ finding_id: f.finding_id, decision: "clarified", rationale: answers[f.finding_id] }))] };
         const serialized = JSON.stringify(body);
         if (saveKey.current?.body !== serialized) saveKey.current = { body: serialized, id: crypto.randomUUID().replaceAll("-", "") };
         setSelected(await knowledgeRequest<Review>(root, { ...body, request_id: saveKey.current.id }));
@@ -108,12 +112,12 @@ export default function StoryKnowledgeReview({ projectId, storyId, analysis, adm
       })}>{admin ? "Review changes" : "Submit for review"}</button>
     </fieldset>}
     {!!pending.length && <div className="space-y-2"><h4 className="font-semibold">Pending reviews ({pending.length})</h4>{pending.map(review =>
-      <div key={review.review_id} className="flex items-center justify-between gap-3 rounded border p-3"><span>{review.target_release} · {review.status === "submitted" ? "Awaiting review" : review.status === "approved_pending" ? "Approved · pending update" : "Finishing update"}{review.stale && review.status !== "reconciling" ? " · Inputs changed" : ""}</span>
+      <div key={review.review_id} className="flex items-center justify-between gap-3 rounded border p-3"><span>{review.target_release} Â· {review.status === "submitted" ? "Awaiting review" : review.status === "approved_pending" ? "Approved Â· pending update" : "Finishing update"}{review.stale && review.status !== "reconciling" ? " Â· Inputs changed" : ""}</span>
         <button className="workspace-button" disabled={busy} onClick={() => setSelected(review)}>Review</button></div>)}</div>}
     {selected && <section aria-label="Story change summary" className="rounded-lg border p-4 space-y-3">
-      <h4 className="font-semibold">Review changes · {selected.target_release}</h4>
-      {selected.changes.map((change, index) => <div key={index} className="border-b pb-3"><p><strong>{change.action === "remove" ? "Remove rule" : "Update rule"}</strong></p>
-        <p className="text-sm text-slate-600">Current: {change.before}</p><p>After: {change.after || "Rule removed"}</p><p className="text-sm">Reason: {change.reason}</p></div>)}
+      <h4 className="font-semibold">Review changes Â· {selected.target_release}</h4>
+      {selected.changes.map((change, index) => <div key={index} className="border-b pb-3"><p><strong>{change.action === "remove" ? "Remove rule" : change.action === "add" ? "Add rule" : "Update rule"}</strong></p>
+        <p className="text-sm text-slate-600">Current: {change.before || "New rule"}</p><p>After: {change.after || "Rule removed"}</p><p className="text-sm">Reason: {change.reason}</p></div>)}
       {selected.decisions.some(d => d.decision !== "intentional_change") && <p>Follow-up is needed. Correct the story or clarify the decisions before approval. Existing knowledge remains unchanged.</p>}
       {selected.decisions.filter(d => d.decision !== "intentional_change").map(d => <p key={d.finding_id}>{d.decision === "correct_story" ? "Correct the story" : "Needs clarification"}: {d.rationale}</p>)}
       <details><summary>Affected scenarios and test cases ({Object.values(selected.impact).reduce((sum, items) => sum + items.length, 0)})</summary>

@@ -51,8 +51,7 @@ test('existing story analysis, stale findings and scenario count controls', asyn
   await page.getByLabel('Clarification or rationale').fill('After Save is clicked.');
   await approve.click();
   await page.getByRole('status').filter({ hasText: /^Reviewed$/ }).waitFor();
-  await page.getByText('Advanced generation context',{exact:true}).click();
-  await page.getByLabel('Generation context',{exact:true}).selectOption('current');
+  await page.getByLabel('Requirements for generation',{exact:true}).selectOption('knowledge');
   await page.getByLabel('Requested scenarios').fill('4');
   await page.getByRole('button', { name: 'Generate scenarios with AI' }).click();
   await page.getByRole('status').filter({ hasText: '1 of 4 requested scenarios generated' }).waitFor();

@@ -1,5 +1,6 @@
 """Reviewed, source-linked knowledge and story context. No media or browser access."""
 import json
+import asyncio
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -74,12 +75,21 @@ class ProductKnowledge:
             current = document
         raise HTTPException(409, "Knowledge history requires explicit checkpoint maintenance.")
 
-    async def overview(self, project):
+    async def overview(self, project, *, current_only=False):
         require_features("product_knowledge")
-        sources = await self.db["product_knowledge_sources"].find({"project_id": project}).sort("created_at", -1).to_list(100)
-        versions = await self.db["product_knowledge_versions"].find({"project_id": project}).sort("created_at", -1).to_list(100)
-        versions = [await self.approved_view(project, version) for version in versions]
-        active = await self.active(project)
+        async def versions_list():
+            if current_only:return []
+            return await self.db["product_knowledge_versions"].find({"project_id": project}).sort("created_at", -1).to_list(100)
+        sources,versions,active=await asyncio.gather(
+            self.db["product_knowledge_sources"].find({"project_id": project}).sort("created_at", -1).to_list(100),
+            versions_list(),self.active(project))
+        slots=asyncio.Semaphore(8)
+        async def approved(version):
+            async with slots:return await self.approved_view(project,version)
+        versions = await asyncio.gather(*(approved(version) for version in versions))
+        if current_only:
+            versions=[active] if active else []
+            sources=[{**source,"text":"","details_loaded":False,"segments":[{**segment,"text":""} for segment in source.get("segments",[])]} for source in sources]
         return {"sources": [self.public(source) for source in sources],
                 "versions": [self.public(version) for version in versions],
                 "active_version_id": active["version_id"] if active else None}
@@ -310,7 +320,7 @@ class ProductKnowledge:
         stale = self.analysis_stale(document, story, knowledge)
         return {**self.public(document), "stale": stale}
 
-    async def review_analysis(self, project, actor, story_id, analysis_id, payload):
+    async def review_analysis(self, project, actor, story_id, analysis_id, payload, *, actor_name="Project reviewer"):
         require_features("product_knowledge", "story_analysis")
         document = await self.record("story_analyses", project, analysis_id)
         current = await self.latest_analysis(project, story_id)
@@ -329,7 +339,7 @@ class ProductKnowledge:
         updated = await self.db["story_analyses"].find_one_and_update(
             {"project_id": project, "_id": analysis_id, "status": "needs_review"},
             {"$set": {"status": "reviewed", "resolutions": [item.model_dump() for item in payload.resolutions],
-                      "reviewed_by": actor, "reviewed_at": datetime.now(timezone.utc).isoformat()}}, return_document=ReturnDocument.AFTER)
+                      "reviewed_by": actor, "reviewed_by_name": actor_name, "reviewed_at": datetime.now(timezone.utc).isoformat()}}, return_document=ReturnDocument.AFTER)
         if not updated:
             raise HTTPException(409, "Analysis review changed. Reload before continuing.")
         return self.public(updated)

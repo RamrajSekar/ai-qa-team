@@ -17,9 +17,12 @@ export default function AccountSettings({ team = false }: { team?: boolean }) {
   const { enabled } = useFeatures();
   const emailEnabled = enabled("account_invitation_email");
   const admin = user?.account_role === "OWNER" || user?.account_role === "ADMIN";
+  const teamAdmin = admin && team;
   const [projects, setProjects] = useState<{project_id: string; name: string}[]>([]);
   const [projectId, setProjectId] = useState("");
   const [billing, setBilling] = useState<{ billing_scope?: string; subscription?: AccountSubscription } | null>(null);
+  const [loading,setLoading]=useState(true);
+  const [billingLoading,setBillingLoading]=useState(!team);
   const [account, setAccount] = useState<Account | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -28,18 +31,26 @@ export default function AccountSettings({ team = false }: { team?: boolean }) {
   const [busy, setBusy] = useState(false); const [error, setError] = useState(""); const [message, setMessage] = useState("");
 
   const request = useCallback(async (path: string, options?: RequestInit) => {
-    const response = await apiFetch(path, { cache: "no-store", ...options });
+    const read=!options?.method||options.method==="GET";
+    const signal=read?AbortSignal.any([...(options?.signal?[options.signal]:[]),AbortSignal.timeout(15000)]):options?.signal;
+    const response = await apiFetch(path, { cache: "no-store", ...options,signal });
     if (!response.ok) throw new Error(typeof response.data?.detail === "string" ? response.data.detail : "Could not complete this account request.");
     return response.data;
   }, []);
   const load = useCallback(async (signal?: AbortSignal) => {
-    const [current, people, pending, managed, subscription] = await Promise.all([
-      request("/account", { signal }), request("/account/members", { signal }), admin && team ? request("/account/invitations", { signal }) : Promise.resolve([]),
-      admin && team ? request("/account/projects", { signal }) : Promise.resolve([]),
-      !team ? request("/account/subscription", { signal }) : Promise.resolve(null),
-    ]);
-    if (!signal?.aborted) { setAccount(current); setName(current.name || ""); setMembers(people); setInvitations(pending); setProjects(managed); setBilling(subscription); }
-  }, [request, admin, team]);
+    setLoading(true);setError("");setBillingLoading(!team);
+    const current=request("/account",{signal}).then(current=>{
+      if(!signal?.aborted){setAccount(current);setName(current.name||"");}
+    }).finally(()=>{if(!signal?.aborted)setLoading(false);});
+    const tasks=[current,
+      team?request("/account/members",{signal}).then(people=>{if(!signal?.aborted)setMembers(people);}):Promise.resolve(),
+      teamAdmin?request("/account/invitations",{signal}).then(items=>{if(!signal?.aborted)setInvitations(items);}):Promise.resolve(),
+      teamAdmin?request("/account/projects",{signal}).then(items=>{if(!signal?.aborted)setProjects(items);}):Promise.resolve(),
+      !team?request("/account/subscription",{signal}).then(value=>{if(!signal?.aborted)setBilling(value);}).finally(()=>{if(!signal?.aborted)setBillingLoading(false);}):Promise.resolve(),
+    ];
+    const results=await Promise.allSettled(tasks);
+    if(!signal?.aborted&&results.some(result=>result.status==="rejected"))setError("Some account details could not load. Try again.");
+  }, [request, teamAdmin, team]);
   useEffect(() => {
     const controller = new AbortController();
     void load(controller.signal).catch(failure => { if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : "Could not load account."); });
@@ -53,17 +64,17 @@ export default function AccountSettings({ team = false }: { team?: boolean }) {
   }
   return <div className="design-page">
     <header><p className="workspace-eyebrow">Customer workspace</p><h1>{team ? "Account team" : "Account"}</h1><p className="workspace-description">One customer account for your team and projects. Project permissions remain separate.</p></header>
-    {error && <p role="alert" className="repository-error">{error}</p>}
+    {error && <div role="alert" className="repository-error">{error}{account&&<button className="workspace-button" disabled={busy||loading} onClick={()=>void action(load)}>Reload account</button>}</div>}
     <nav className="repository-actions" aria-label="Account settings"><Link className="workspace-button" href="/settings/account">Account details</Link><Link className="workspace-button" href="/settings/account/team">Team & project access</Link></nav>
-    {!account ? <button className="workspace-button" disabled={busy} onClick={() => void action(load)}>Reload account</button> : <>
+    {!account && loading ? <p role="status">Loading account…</p> : !account ? <button className="workspace-button" disabled={busy} onClick={() => void action(load)}>Reload account</button> : <>
       {!team && <section className="space-y-4"><h2>Customer details</h2><p className="workspace-metadata">Your account role: {account.current_user_role}</p>
         <label>Customer / account name<input value={name} maxLength={160} disabled={!admin || busy} onChange={event => setName(event.target.value)} /></label>
         {admin && <button className="workspace-button workspace-primary" disabled={busy || name.trim().length < 2} onClick={() => void action(async () => {
           await request("/account", { method: "PATCH", body: JSON.stringify({ name: name.trim() }) }); await load(); setMessage("Account name saved.");
         })}>Save account name</button>}
-        <p className="workspace-description">{billing?.billing_scope === "ACCOUNT" ? "Your subscription and usage are shared across this customer account." : "Account subscription migration is required before shared billing is enabled."}</p>
+        <p className="workspace-description">{billingLoading ? "Loading subscription…" : !billing ? "Subscription unavailable. Reload to try again." : billing.billing_scope === "ACCOUNT" ? "Your subscription and usage are shared across this customer account." : "Account subscription migration is required before shared billing is enabled."}</p>
       </section>}
-      {!team && billing?.subscription && <SubscriptionUsage subscription={billing.subscription} />}
+      {!team && !billingLoading && billing?.subscription && <SubscriptionUsage subscription={billing.subscription} />}
       {team && <section><h2>Account members</h2>{members.map(member => <div className="workspace-row" key={member.email}><div><strong>{member.name || member.email}</strong><p className="workspace-row-subtitle">{member.email}</p></div><span className="workspace-badge">{member.account_role}</span></div>)}</section>}
       {team && admin && <section className="space-y-4"><h2>Invite a new account member</h2><p className="workspace-description">{emailEnabled ? "Send a seven-day invitation by email." : "Create a seven-day invitation link and share it privately. Email delivery can be enabled later."} Existing members are added to projects under Project assignments below.</p>
         <label>New member email<input type="email" value={email} disabled={busy} onChange={event => setEmail(event.target.value)} /></label>
