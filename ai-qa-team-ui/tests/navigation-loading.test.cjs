@@ -23,3 +23,18 @@ test('Overview renders project while summary responses are held',async t=>{
  await f.page.getByRole('link',{name:'QA Agent',exact:true}).click();await f.page.getByRole('heading',{name:'Your QA Agent',exact:true}).waitFor();
  release();assert.equal(f.calls.filter(c=>c.path==='/projects').length,1);
 });
+
+test('QA Agent shows Teach immediately while saved data is held, without enabling submission',async t=>{
+ const f=await fixture(browser,t);let release;
+ const held=new Promise(resolve=>release=resolve);t.after(()=>release());
+ await f.context.route(url=>url.origin==='http://feature-api.test'&&url.pathname==='/projects/P1/knowledge',async route=>{await held;return route.fulfill({headers,json:{sources:[],versions:[],active_version_id:null}});});
+ await f.page.goto(base+'/projects/P1/knowledge');await f.page.getByRole('heading',{name:'Teach Agent',exact:true}).waitFor();
+ await f.page.getByText('Loading saved knowledge and reviews…',{exact:true}).waitFor();
+ await f.page.getByLabel('Training title',{exact:true}).fill('Typed while loading');
+ await f.page.getByLabel('What should your QA Agent know?',{exact:true}).fill('Retain this note.');
+ assert.equal(await f.page.getByRole('button',{name:'Teach agent',exact:true}).isDisabled(),true);
+ release();await f.page.getByRole('button',{name:'Teach agent',exact:true}).waitFor({state:'visible'});
+ await f.page.waitForFunction(()=>!Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Teach agent')?.disabled);
+ assert.equal(await f.page.getByLabel('Training title',{exact:true}).inputValue(),'Typed while loading');
+ assert.equal(f.calls.filter(c=>c.method==='POST').length,0);
+});

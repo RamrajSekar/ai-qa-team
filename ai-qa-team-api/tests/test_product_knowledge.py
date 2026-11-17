@@ -33,6 +33,35 @@ class Collection(BaseCollection):
 
 
 class KnowledgeTests(unittest.IsolatedAsyncioTestCase):
+    async def test_bulk_head_reads_match_canonical_chain_with_constant_round_trips(self):
+        head=await self.approved()
+        for index in range(12):
+            draft=await self.service.create_version('P1','reviewer',KnowledgeDraft(title='Revision',parent_version_id=head['version_id'],claims=[{**self.claim,'statement':f'Reviewed expectation {index}'}]))
+            head=await self.service.approve('P1','reviewer',draft['version_id'])
+        versions=self.db['product_knowledge_versions']
+        versions.docs.append({'_id':'unreachable-legacy-receipt','record_type':'knowledge_approval','scope_project_id':'P1'})
+        with patch.object(versions,'find_one',wraps=versions.find_one) as one,patch.object(versions,'find',wraps=versions.find) as many:
+            actual=await self.service.active('P1')
+            self.assertLessEqual(one.call_count,3)
+            self.assertLessEqual(many.call_count,2)
+            projection=many.call_args.args[1]
+            self.assertNotIn('claims',projection)
+        self.assertEqual(actual,await self.service._active_sequential('P1'))
+        # A broken historical link must not be ignored simply because the head is valid.
+        historical=next(d for d in versions.docs if d.get('version_id') and d['version_id']!=head['version_id'])
+        historical['content_digest']='tampered'
+        with self.assertRaises(HTTPException) as error:await self.service.active('P1')
+        self.assertEqual(error.exception.status_code,409)
+
+    async def test_bulk_head_large_unreachable_history_keeps_legacy_fallback(self):
+        from unittest.mock import AsyncMock
+        head=await self.approved()
+        for index in range(2049):
+            self.db['product_knowledge_versions'].docs.append({'_id':f'unreachable-{index}','record_type':'knowledge_approval','scope_project_id':'P1','approved_version_id':'not-reachable'})
+        with patch.object(self.service,'_active_sequential',new=AsyncMock(return_value=head)) as fallback:
+            self.assertEqual(await self.service.active('P1'),head)
+            fallback.assert_awaited_once_with('P1')
+
     async def test_compact_overview_keeps_current_and_fetchable_evidence_and_history(self):
         old=await self.approved()
         draft=await self.service.create_version('P1','reviewer',KnowledgeDraft(title='Successor',parent_version_id=old['version_id'],claims=[{**self.claim,'statement':'Updated save behavior'}]))

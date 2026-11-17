@@ -70,6 +70,7 @@ class StoryChangeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.service.active("P1"))["version_id"], self.version["version_id"])
         result = await self.changes.approve("P1", "ST1", row["review_id"], {**self.user, "name": "Alice"})
         self.assertEqual(result["status"], "completed")
+        self.assertTrue(result["story_matches"])
         self.assertEqual(result["approver"]["approved_by_name"], "Alice")
         active = await self.service.active("P1")
         rules = {c["claim_id"]: c for c in active["claims"]}
@@ -84,6 +85,10 @@ class StoryChangeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.db["executions"].docs, old)
         self.assertTrue(self.db["scenarios"].docs[0]["requirements_review_required"])
         self.assertTrue(self.db["scenarios"].docs[0]["approved"])
+        self.db['stories'].docs[0]['description']='A different story revision'
+        later=(await self.changes.listing('P1','ST1'))['reviews'][0]
+        self.assertEqual(later['status'],'completed')
+        self.assertFalse(later['story_matches'])
         self.usage.execute.assert_not_called()
 
     async def test_future_review_requires_explicit_activation_and_retries_keep_approver(self):

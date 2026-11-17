@@ -25,3 +25,19 @@ No existing-data migration or new feature activation. Uses existing product_know
 Tests use isolated synthetic Mongo/auth/AI fixtures and intercepted local browser APIs. Real-provider generation and live database failover qualification remain separate. This change does not enable email, ingestion or execution.
 
 Verification: 86 isolated backend tests passed across combined approval, release contexts, story modes, knowledge correctness, test-design review and training. Seven intercepted-API browser checks passed. TypeScript and scoped ESLint passed. No live Mongo/provider test was run.
+
+
+## Approval/status presentation refinement — 2026-11-17
+
+Completed combined approvals now expose whether the saved story digest still
+matches the current story. The detail UI retains Story change approved and the
+reviewer name when the exact story is unchanged, while separately explaining that
+the old knowledge comparison requires refresh. Analysis stale flags/generation
+checks remain unchanged. A later story edit removes the current-match indication;
+the historical approval is not rewritten or revoked. A new current analysis with
+unresolved findings still displays Findings need review, not an approved verdict.
+
+Corrected UTF-8 review labels. Scenario generation uses a responsive control row
+with concise help and an Open Scenarios link. Detailed scenario management remains
+in place for now; migration to the separate Scenarios tab is deferred pending the
+user's next decision. Existing manual Add/Edit/Delete flows are preserved.

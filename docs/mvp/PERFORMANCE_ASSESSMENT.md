@@ -159,3 +159,37 @@ preserved. Production before/after signed-in timing remains a release follow-up;
 these changes do not establish that hosting startup/import costs are eliminated.
 
 Current verification: 77 backend fixture checks and 10 shared API-client/proxy checks passed. Held-response Account/Overview checks and story/training/Account regressions passed. One old browser assertion initially failed because it searched the inactive BYOK balance while collapsed; it was updated to explicitly open Other AI usage and passed. One story-only label assertion had a test-file encoding error; corrected and passed. The first browser run had no test server and failed connection setup; it is not counted as product evidence. TypeScript/scoped lint passed. Production speed after deployment is unmeasured.
+
+
+## QA Agent follow-up — 2026-11-17
+
+User-supplied production Network evidence shows route/RSC fetches of 80–102 ms,
+current knowledge 2.21–2.39 s (1.3 KB), and training reviews 1.26–1.40 s (3.2 KB).
+These are screenshot observations, not independently measured server percentiles.
+A request's Timing breakdown was not supplied, so startup/auth/query portions of
+those durations are not individually established.
+
+Code exposed serial history hydration: active knowledge read the receipt and
+snapshot for every ancestor, and saved training reviews each reread their version
+and receipt. Active knowledge now fetches project-scoped receipts and projected
+snapshot headers, validates the same parent/digest chain, then loads only the
+chosen head body. No head cache or timestamp-based v2 selection. Normal history
+requires three find_one and two find calls independent of history length. A
+scope_project_id/record_type index supports the receipt query. More than 2048
+project receipts uses the original bounded reader for legacy branch compatibility;
+the original chain-length limit still fails closed. Unreachable legacy records
+are ignored as before; invalid reachable links block.
+
+Training listings bulk-load saved versions/receipts within the same request, using
+the same approval digest check as individual reads. No approval or extraction is
+initiated. Teach appears before metadata returns; typing is retained, submission
+and other tabs wait for readiness, and unavailable counts are not shown as zero.
+
+Verification: 97 backend regressions passed; final focused knowledge suite passed
+30 tests after hardening orphan handling. Long-chain equivalence/constant-query,
+corrupt-ancestor, legacy fallback, batched-list receipt integrity, and existing
+simultaneous/repeated approval tests are included. Browser training/approval/loading
+checks passed after correcting one held-response fixture that initially intercepted
+the page document instead of only the API. TypeScript/lint and a visual Scenarios
+control capture were checked. No live database load/failover qualification or
+post-deployment latency improvement is claimed.

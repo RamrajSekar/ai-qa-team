@@ -15,14 +15,16 @@ interface Decision {
 interface Review {
   review_id: string; analysis_id: string; status: string; stale: boolean; timing: "now" | "later";
   target_release: string; decisions: Decision[];
+  story_matches?: boolean;
   changes: { action: string; before: string | null; after: string | null; expected_behavior: string; reason: string }[];
   impact: Record<string, { id: string; title: string }[]>;
   approver?: { approved_by_name: string; approved_at: string };
 }
 interface Listing { knowledge_version_id: string | null; rules: {claim_id: string; statement: string}[]; reviews: Review[] }
 
-export default function StoryKnowledgeReview({ projectId, storyId, analysis, admin, onComplete }: {
+export default function StoryKnowledgeReview({ projectId, storyId, analysis, admin, onComplete, onStoryApproved }: {
   projectId: string; storyId: string; analysis: Analysis; admin: boolean; onComplete: () => Promise<void>;
+  onStoryApproved?:(value:{name:string;reviewId:string}|null)=>void;
 }) {
   const root = `/projects/${encodeURIComponent(projectId)}/knowledge/stories/${encodeURIComponent(storyId)}/change-reviews`;
   const [data, setData] = useState<Listing | null>(null);
@@ -40,7 +42,11 @@ export default function StoryKnowledgeReview({ projectId, storyId, analysis, adm
   const proposedFinding=analysis.findings.find(f=>f.category!=="knowledge_conflict");
   const targets=conflicts.length?conflicts:adding&&proposedFinding?[proposedFinding]:[];
   const blockers = analysis.findings.filter(f => !targets.some(t=>t.finding_id===f.finding_id) && f.severity === "blocker" && !analysis.resolutions?.some(r=>r.finding_id===f.finding_id));
-  const load = useCallback(async () => setData(await knowledgeRequest<Listing>(root)), [root]);
+  const load = useCallback(async () => {
+    const result=await knowledgeRequest<Listing>(root);setData(result);
+    const approved=result.reviews.find(r=>r.status==="completed"&&r.story_matches&&r.approver);
+    onStoryApproved?.(approved?{name:approved.approver!.approved_by_name,reviewId:approved.review_id}:null);
+  }, [root,onStoryApproved]);
   useEffect(() => { void load().catch(e => setError(e instanceof Error ? e.message : "Could not load reviews.")); }, [load, analysis.analysis_id]);
 
   function decision(finding: Finding): Decision {
@@ -62,7 +68,7 @@ export default function StoryKnowledgeReview({ projectId, storyId, analysis, adm
   return <section aria-label="Story and knowledge review" className="space-y-4 border-t pt-5">
     <div><h3 className="text-lg font-semibold">{conflicts.length ? "Resolve knowledge conflicts" : "Knowledge update"}</h3>
       <p className="text-sm text-slate-600">Decide whether the story changes the product or needs correction. Only a Project Admin can approve knowledge changes.</p></div>
-    {lastApproved?.approver && <p className="text-sm text-emerald-700">Last knowledge change approved by {lastApproved.approver.approved_by_name} Â· {lastApproved.target_release}</p>}
+    {lastApproved?.approver && <p className="text-sm text-emerald-700">Last knowledge change approved by {lastApproved.approver.approved_by_name} · {lastApproved.target_release}</p>}
     {!conflicts.length&&!adding&&analysis.status==="reviewed"&&!analysis.stale&&proposedFinding&&<button className="workspace-button" onClick={()=>setAdding(true)}>{admin?"Approve story and update knowledge":"Propose knowledge update"}</button>}
     {!!targets.length && !analysis.stale && <fieldset disabled={busy} className="space-y-4">
       {targets.map((finding, index) => {
@@ -95,7 +101,7 @@ export default function StoryKnowledgeReview({ projectId, storyId, analysis, adm
         <textarea className="border rounded w-full p-2" aria-label={`Other blocker answer ${index + 1}`} maxLength={2000} value={answers[finding.finding_id] || ""}
           onChange={e => setAnswers(values => ({ ...values, [finding.finding_id]: e.target.value }))} /></label>)}
       <label className="block">When should knowledge change?<select aria-label="Knowledge change timing" className="border rounded p-2 ml-2" value={timing} onChange={e => setTiming(e.target.value as "now" | "later")}>
-        <option value="now">After approval</option><option value="later">Future release â€” activate later</option>
+        <option value="now">After approval</option><option value="later">Future release - activate later</option>
       </select></label>
       {timing === "later" && <label className="block">Target release<input aria-label="Change target release" className="border rounded p-2 ml-2" value={release} maxLength={100} onChange={e => setRelease(e.target.value)} /></label>}
       <button className="workspace-button workspace-primary" disabled={!data?.knowledge_version_id || targets.some(f => {
@@ -112,10 +118,10 @@ export default function StoryKnowledgeReview({ projectId, storyId, analysis, adm
       })}>{admin ? "Review changes" : "Submit for review"}</button>
     </fieldset>}
     {!!pending.length && <div className="space-y-2"><h4 className="font-semibold">Pending reviews ({pending.length})</h4>{pending.map(review =>
-      <div key={review.review_id} className="flex items-center justify-between gap-3 rounded border p-3"><span>{review.target_release} Â· {review.status === "submitted" ? "Awaiting review" : review.status === "approved_pending" ? "Approved Â· pending update" : "Finishing update"}{review.stale && review.status !== "reconciling" ? " Â· Inputs changed" : ""}</span>
+      <div key={review.review_id} className="flex items-center justify-between gap-3 rounded border p-3"><span>{review.target_release} · {review.status === "submitted" ? "Awaiting review" : review.status === "approved_pending" ? "Approved · pending update" : "Finishing update"}{review.stale && review.status !== "reconciling" ? " · Inputs changed" : ""}</span>
         <button className="workspace-button" disabled={busy} onClick={() => setSelected(review)}>Review</button></div>)}</div>}
     {selected && <section aria-label="Story change summary" className="rounded-lg border p-4 space-y-3">
-      <h4 className="font-semibold">Review changes Â· {selected.target_release}</h4>
+      <h4 className="font-semibold">Review changes · {selected.target_release}</h4>
       {selected.changes.map((change, index) => <div key={index} className="border-b pb-3"><p><strong>{change.action === "remove" ? "Remove rule" : change.action === "add" ? "Add rule" : "Update rule"}</strong></p>
         <p className="text-sm text-slate-600">Current: {change.before || "New rule"}</p><p>After: {change.after || "Rule removed"}</p><p className="text-sm">Reason: {change.reason}</p></div>)}
       {selected.decisions.some(d => d.decision !== "intentional_change") && <p>Follow-up is needed. Correct the story or clarify the decisions before approval. Existing knowledge remains unchanged.</p>}
@@ -129,7 +135,9 @@ export default function StoryKnowledgeReview({ projectId, storyId, analysis, adm
           onClick={() => void perform(async () => {
             const action = selected.timing === "later" && ["approved_pending", "reconciling"].includes(selected.status) ? "activate" : "approve";
             const saved = await knowledgeRequest<Review>(`${root}/${selected.review_id}/${action}`, {});
-            setSelected(saved); await onComplete();
+            setSelected(saved);
+            if(saved.status==="completed"&&saved.story_matches&&saved.approver)onStoryApproved?.({name:saved.approver.approved_by_name,reviewId:saved.review_id});
+            await onComplete();
             setMessage(saved.status === "approved_pending" ? "Approved for the future release. Current knowledge is unchanged." : "Story change approved and knowledge updated.");
           })}>{selected.status === "reconciling" ? "Finish update" : selected.timing === "later" ? selected.status === "approved_pending" ? "Activate knowledge update" : "Approve for future release" : "Approve story and update knowledge"}</button>}
       </>}

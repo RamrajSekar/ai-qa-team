@@ -72,7 +72,9 @@ class StoryKnowledgeReview:
             "approved_pending" if approval else "submitted")
         fields = ("review_id", "analysis_id", "parent_version_id", "knowledge_version_id", "timing",
             "target_release", "decisions", "changes", "impact", "submitted_by", "created_at")
+        current_story=current[0] if current else await self.knowledge.story(row["project_id"],row["story_id"])
         return {**{key: row[key] for key in fields}, "status": status, "stale": stale,
+            "story_matches":digest(current_story)==row["story_digest"],
             "approver": {key: approval[key] for key in ("approved_by", "approved_by_name", "approved_by_role", "approved_at")} if approval else None}
 
     async def listing(self, project, story):
