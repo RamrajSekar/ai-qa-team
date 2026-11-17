@@ -32,6 +32,8 @@ test('story scenario approval creates a selectable visual-run test case and hide
       if (storiesUnavailable) return route.fulfill({ status: 503, headers, json: { detail: 'Fixture unavailable' } });
       json = [story];
     }
+    if (url.pathname === '/projects') json = [{project_id:'P1',name:'Fixture project',current_user_role:'ADMIN'}];
+    if (url.pathname === '/scenarios/project-list') json = scenarios;
     if (url.pathname === '/scenarios') {
       if (request.method() === 'POST') {
         const body = request.postDataJSON();
@@ -59,13 +61,14 @@ test('story scenario approval creates a selectable visual-run test case and hide
   storiesUnavailable = false;
   await page.getByRole('button', { name: 'Try again' }).click();
   await page.getByRole('link', { name: 'Save draft', exact: true }).click();
-  await page.getByRole('button', { name: 'Add Scenario' }).click();
+  await page.getByRole('link',{name:'Open Scenarios',exact:true}).click();
+  await page.getByRole('button',{name:'Add manually',exact:true}).click();
   await page.getByLabel('Title', { exact: true }).fill('Draft scenario');
   await page.getByRole('button', { name: 'Add step' }).click();
   await page.getByLabel('Action 1').fill('Click Save draft');
   await page.getByLabel('Expected result 1').fill('Draft saved');
   await page.getByRole('button', { name: 'Save Scenario' }).click();
-  await page.getByRole('button', { name: 'View', exact: true }).click();
+  await page.getByRole('button', { name: 'Review scenario', exact: true }).click();
   assert.equal(await page.getByRole('button', { name: 'Generate test case' }).count(), 0);
   await page.getByRole('button', { name: 'Approve scenario' }).click();
   await page.getByRole('button', { name: 'Generate test case' }).click();

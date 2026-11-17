@@ -2,12 +2,12 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {useProjects} from "@/hooks/useProjects";
 import {knowledgeRequest} from "./knowledgeApi";
-import RequirementContextsPanel from "./RequirementContextsPanel";
+import Link from "next/link";
 
 interface Context {context_id:string;basis:string;target_release:string;status:string;stale:boolean;approver?:{approved_by_name:string}}
 interface Analysis {analysis_id:string;status:string;stale?:boolean}
-export default function GenerationRequirements({projectId,storyId,selected,onSelect,onActivated}:{
- projectId:string;storyId:string;selected:string|null;onSelect:(value:string|null)=>void;onActivated:()=>Promise<void>;
+export default function GenerationRequirements({projectId,storyId,selected,onSelect}:{
+ projectId:string;storyId:string;selected:string|null;onSelect:(value:string|null)=>void;
 }){
  const {projects}=useProjects();const admin=projects.find(p=>p.project_id===projectId)?.current_user_role==="ADMIN";
  const root=`/projects/${encodeURIComponent(projectId)}/knowledge/stories/${encodeURIComponent(storyId)}`;
@@ -15,7 +15,7 @@ export default function GenerationRequirements({projectId,storyId,selected,onSel
  const [loaded,setLoaded]=useState(false);
  const [rows,setRows]=useState<Context[]>([]);const [busy,setBusy]=useState(false);const [error,setError]=useState("");
  const [reviewOpen,setReviewOpen]=useState(false);
- const [optionalOpen,setOptionalOpen]=useState(false);
+
  const request=useRef<{analysis:string;id:string}|null>(null);
  const load=useCallback(async()=>{
   const [contexts,review]=await Promise.all([knowledgeRequest<{contexts:Context[]}>(root+"/requirements"),knowledgeRequest<Analysis|null>(root+"/analysis")]);
@@ -35,8 +35,8 @@ export default function GenerationRequirements({projectId,storyId,selected,onSel
   {mode==="story"&&<div className="text-sm space-y-2">
    <p>Story-only drafts require review and are not validated against product knowledge.</p>
    {approved&&selected===approved.context_id?<p className="text-emerald-700">Approved for generation{approved.approver?.approved_by_name?` by ${approved.approver.approved_by_name}`:""}.</p>:<>
-    {!analysis||analysis.stale||analysis.status!=="reviewed"?<p>Complete the current story review above first.</p>:admin?<button type="button" className="workspace-button" disabled={busy} onClick={()=>setReviewOpen(true)}>Review and approve for generation</button>:<p>A Project Admin must approve these story requirements for generation.</p>}
-    {reviewOpen&&analysis&&<section className="border rounded p-3 space-y-2" aria-label="Story generation approval"><p>Approve the story description and acceptance criteria shown above as the basis for provisional scenario drafts. This does not update product knowledge.</p>
+    {!analysis||analysis.stale||analysis.status!=="reviewed"?<p><Link className="workspace-button" href={`/projects/${projectId}/stories/${storyId}#story-analysis`}>Review story</Link></p>:admin?<button type="button" className="workspace-button" disabled={busy} onClick={()=>setReviewOpen(true)}>Review and approve for generation</button>:<p>A Project Admin must approve these story requirements for generation.</p>}
+    {reviewOpen&&analysis&&<section className="border rounded p-3 space-y-2" aria-label="Story generation approval"><p>Approve the selected story as the basis for story-only drafts. Product knowledge stays unchanged.</p>
      <button className="workspace-button workspace-primary" disabled={busy} onClick={async()=>{
       setBusy(true);setError("");try{
        if(request.current?.analysis!==analysis.analysis_id)request.current={analysis:analysis.analysis_id,id:crypto.randomUUID().replaceAll("-","")};
@@ -48,9 +48,7 @@ export default function GenerationRequirements({projectId,storyId,selected,onSel
   </div>}
   {mode==="knowledge"&&<p className="text-sm">Uses the current approved knowledge and reviewed story. Conflicts and source checks still apply.</p>}
   {selectedRow?.basis==="approved_change"&&<p className="text-sm">Selected release: {selectedRow.target_release}</p>}
-  <details onToggle={event=>setOptionalOpen(event.currentTarget.open)}><summary className="cursor-pointer text-sm">Optional release settings</summary>
-   {optionalOpen&&<RequirementContextsPanel projectId={projectId} storyId={storyId} selected={selected} onSelect={value=>{setMode("");onSelect(value);}} onActivated={onActivated}/>}
-  </details>
+  {mode==="knowledge"&&rows.some(row=>row.basis==="approved_change"&&!row.stale&&["approved","active"].includes(row.status))&&<label className="block text-sm">Target release<select aria-label="Target release" value={selected||"current"} onChange={e=>onSelect(e.target.value)}><option value="current">Current knowledge</option>{rows.filter(row=>row.basis==="approved_change"&&!row.stale&&["approved","active"].includes(row.status)).map(row=><option key={row.context_id} value={row.context_id}>{row.target_release}</option>)}</select></label>}
   {error&&<p role="alert">{error}</p>}
  </div>;
 }

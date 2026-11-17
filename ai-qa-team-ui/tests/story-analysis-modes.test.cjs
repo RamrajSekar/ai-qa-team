@@ -11,13 +11,13 @@ test('story-only review without acceptance criteria is labelled and survives ref
  await f.page.getByRole('heading',{name:'Review story clarity'}).waitFor();
  assert.equal(f.calls.filter(c=>c.path.endsWith('/analyze')).length,0);
  await f.page.getByRole('button',{name:'Analyze with AI'}).click();
- await f.page.getByText('Story-only analysis — not validated',{exact:false}).waitFor();
+ await f.page.getByText('Story-only review.',{exact:false}).waitFor();
  assert.equal(await f.page.getByRole('link',{name:'Inspect approved knowledge version'}).count(),0);
  await f.page.getByLabel('Clarification or rationale').fill('Confirm after the user saves.');
  await f.page.getByRole('button',{name:'Approve analysis review (project admin)'}).click();
- await f.page.getByRole('status').filter({hasText:/^Reviewed$/}).waitFor();
+ await f.page.getByRole('status').filter({hasText:/^Approved$/}).waitFor();
  await f.page.reload();
- await f.page.getByRole('status').filter({hasText:/^Reviewed$/}).waitFor();
+ await f.page.getByRole('status').filter({hasText:/^Approved$/}).waitFor();
  assert.equal(f.calls.filter(c=>c.path.endsWith('/analyze')).length,1);
  await f.page.getByText('Reviewed: Confirm after the user saves.',{exact:true}).waitFor();
 });
@@ -41,7 +41,7 @@ test('explicit comparison shows excluded rules and refresh never repeats analysi
  await page.getByRole('region',{name:'Excluded knowledge rules'}).waitFor();await page.getByText('Show Signup.',{exact:true}).waitFor();
  await page.reload();await page.getByRole('region',{name:'Excluded knowledge rules'}).waitFor();assert.deepEqual(modes,['knowledge_aware']);
  await page.getByLabel('Analysis mode',{exact:true}).selectOption('story_only');await page.getByRole('button',{name:'Analyze with AI'}).click();
- await page.getByText('Story-only analysis — not validated',{exact:false}).waitFor();
+ await page.getByText('Story-only review.',{exact:false}).waitFor();
  assert.equal(await page.getByRole('region',{name:'Excluded knowledge rules'}).count(),0);
  assert.deepEqual(modes,['knowledge_aware','story_only']);
 });
@@ -59,5 +59,5 @@ test('no eligible rules offers explicit story clarity without a silent retry',as
  await page.getByRole('button',{name:'Analyze with AI'}).click();await page.getByRole('alert').filter({hasText:'Choose Story clarity explicitly'}).waitFor();
  assert.deepEqual(calls,['knowledge_aware']);
  await page.getByLabel('Analysis mode',{exact:true}).selectOption('story_only');await page.getByRole('button',{name:'Analyze with AI'}).click();
- await page.getByText('Story-only analysis — not validated',{exact:false}).waitFor();assert.deepEqual(calls,['knowledge_aware','story_only']);
+ await page.getByText('Story-only review.',{exact:false}).waitFor();assert.deepEqual(calls,['knowledge_aware','story_only']);
 });

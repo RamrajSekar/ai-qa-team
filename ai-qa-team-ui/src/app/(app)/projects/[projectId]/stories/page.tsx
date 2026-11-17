@@ -7,6 +7,7 @@ import Link from "next/link";
 import { apiFetch } from "@/utils/api";
 import { Plus, Eye, Edit, Video } from "lucide-react";
 import type { Story } from "@/types/story";
+import StoryReviewStatus, {type StoryReviewSummary} from "@/components/story/StoryReviewStatus";
 import StoryModal from "@/components/story/StoryModal";
 import { WorkspaceDialog } from "@/components/ui/workspace-dialog";
 import { DesignStats, DesignToolbar, DesignState, DesignBadge } from "@/components/projects/DesignWorkspace";
@@ -18,9 +19,8 @@ export default function StoriesPage() {
   const { projectId } = params;
 
   const analysisEnabled = enabled("product_knowledge", "story_analysis");
-  const [analyses, setAnalyses] = useState<Record<string, {state: string; finding_count: number; blocker_count: number}> | null>(null);
+  const [analyses, setAnalyses] = useState<Record<string, StoryReviewSummary> | null>(null);
   const [analysisError, setAnalysisError] = useState(false);
-  const analysisLabels: Record<string,string> = {not_analyzed:"Not analyzed",needs_review:"Findings need review",reviewed:"Reviewed",stale:"Stale"};
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -128,7 +128,7 @@ export default function StoriesPage() {
               <th className="p-3 border">Story ID</th>
               <th className="p-3 border">Title</th>
               <th className="p-3 border">Acceptance Criteria</th>
-              <th className="p-3 border">Created At</th>{analysisEnabled && <th className="p-3 border">Story analysis</th>}
+              <th className="p-3 border">Created At</th>{analysisEnabled && <><th className="p-3 border">Story approval</th><th className="p-3 border">Knowledge comparison</th></>}
               <th className="p-3 border w-40 text-center">Actions</th>
             </tr>
           </thead>
@@ -155,7 +155,7 @@ export default function StoriesPage() {
                   {new Date(story.created_at).toLocaleString()}
                 </td>
 
-                {analysisEnabled && <td className="p-3 border"><Link href={`/projects/${encodeURIComponent(projectId)}/stories/${encodeURIComponent(story.story_id)}#story-analysis`} className="design-back-link"><DesignBadge>{analysisError ? "Unavailable" : !analyses ? "Loading" : analysisLabels[analyses[story.story_id]?.state] || "Unavailable"}</DesignBadge></Link>{analyses?.[story.story_id] && <p>{analyses[story.story_id].finding_count} findings · {analyses[story.story_id].blocker_count} blockers</p>}</td>}
+                {analysisEnabled && <StoryReviewStatus projectId={projectId} storyId={story.story_id} summary={analyses?.[story.story_id]} loading={!analyses&&!analysisError} error={analysisError}/>}
                 <td className="p-3 border text-center">
                   <div className="flex items-center justify-center gap-2">
 

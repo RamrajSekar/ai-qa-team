@@ -99,7 +99,7 @@ class KnowledgeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.client.post(path)).json()["approved_by_name"],"Alice Reviewer")
 
     async def asyncSetUp(self):
-        self.db = {key: Collection() for key in ("product_knowledge_sources", "product_knowledge_versions", "story_analyses", "prompt_definitions")}
+        self.db = {key: Collection() for key in ("product_knowledge_sources", "product_knowledge_versions", "story_analyses", "prompt_definitions", "requirement_contexts")}
         self.db["stories"] = Collection({"project_id": "P1", "story_id": "ST1", "title": "Save draft",
                                         "description": "Synthetic", "acceptance_criteria": "Show Draft saved.", "out_of_scope": ""})
         self.usage = SimpleNamespace(execute=AsyncMock())

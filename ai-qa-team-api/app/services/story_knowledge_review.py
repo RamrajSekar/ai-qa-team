@@ -24,6 +24,36 @@ class StoryKnowledgeReview:
     def identity(project, review, kind):
         return uuid5(NAMESPACE_URL, f"story-knowledge:{project}:{review}:{kind}").hex
 
+    async def review_states(self,project,stories):
+        """Shared list/detail approval read; no approval or analysis mutation."""
+        ids=[s['story_id'] for s in stories]
+        rows=await self.rows.find({'project_id':project,'story_id':{'$in':ids},'record_type':'story_knowledge_review'},
+            {'_id':1,'review_id':1,'story_id':1,'story_digest':1,'content_digest':1,'created_at':1}).sort('created_at',-1).to_list(1001)
+        if len(rows)>1000:raise HTTPException(409,'Story approval history exceeds the supported summary size.')
+        keys=['story_change_approval:'+r['review_id'] for r in rows]
+        receipts=await self.rows.find({'project_id':project,'_id':{'$in':keys},'record_type':'story_change_approval'}).to_list(len(keys)) if keys else []
+        approved={r['_id']:r for r in receipts}
+        snapshots={s['story_id']:digest({k:s.get(k) for k in ('story_id','title','description','acceptance_criteria','out_of_scope')}) for s in stories}
+        selected={}
+        for row in rows:
+            receipt=approved.get('story_change_approval:'+row['review_id'])
+            if not receipt:continue
+            if receipt.get('content_digest')!=row['content_digest']:raise HTTPException(409,'Story approval integrity check failed.')
+            previous=selected.get(row['story_id'])
+            if previous is None or (previous['story_digest']!=snapshots[row['story_id']] and row['story_digest']==snapshots[row['story_id']]):selected[row['story_id']]=row
+        full=await self.rows.find({'project_id':project,'record_type':'story_knowledge_review','_id':{'$in':[r['_id'] for r in selected.values()]}}).to_list(len(selected)) if selected else []
+        bodies={r['_id']:r for r in full}
+        result={}
+        for meta in selected.values():
+            row=bodies.get(meta['_id'])
+            receipt=approved['story_change_approval:'+meta['review_id']]
+            if not row or digest({k:v for k,v in row.items() if k!='content_digest'})!=meta['content_digest']:
+                raise HTTPException(409,'Story approval integrity check failed.')
+            matches=row['story_digest']==snapshots[row['story_id']]
+            result[row['story_id']]={'state':'approved' if matches else 'needs_review','approved_by':receipt['approved_by'],'approved_by_name':receipt.get('approved_by_name','Reviewer name unavailable'),
+                'approved_at':receipt['approved_at'],'review_id':row['review_id'],'target_release':row['target_release']}
+        return result
+
     async def row(self, project, story, identity):
         require_features("product_knowledge", "story_analysis")
         row = await self.rows.find_one({"_id": identity, "project_id": project,
