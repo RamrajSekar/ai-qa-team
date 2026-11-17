@@ -81,7 +81,7 @@ export default function CatalogCreation({ kind, projectId, onSaved }: {
         </select>
       </label>
       {!busy && sources.length === 0 && <p>No eligible sources on this page. Add a story or approve a scenario first.</p>}
-      {kind==="scenarios"&&source&&<details><summary>Selected story requirements</summary><p>{sources.find(row=>row.id===source)?.description}</p><p className="whitespace-pre-wrap">{sources.find(row=>row.id===source)?.acceptance_criteria || "No acceptance criteria provided."}</p><Link className="workspace-button" href={`/projects/${projectId}/stories/${source}#story-analysis`}>Review story</Link></details>}
+      {kind==="scenarios"&&source&&<details><summary>Selected Story</summary><p>{sources.find(row=>row.id===source)?.description}</p><p className="whitespace-pre-wrap">{sources.find(row=>row.id===source)?.acceptance_criteria || "No acceptance criteria provided."}</p><Link className="workspace-button" href={`/projects/${projectId}/stories/${source}#story-analysis`}>Review story</Link></details>}
       <div className="story-generation-bar">
       {knowledgeEnabled&&source&&<GenerationRequirements key={source} projectId={projectId} storyId={source} selected={requirements} onSelect={setRequirements}/>}
       <div className="space-y-3">
