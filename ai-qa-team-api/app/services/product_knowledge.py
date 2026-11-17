@@ -49,6 +49,10 @@ class ProductKnowledge:
         receipt = await self.db["product_knowledge_versions"].find_one({
             "_id": self.approval_key(project, document.get("parent_version_id")),
             "scope_project_id": project, "record_type": "knowledge_approval"})
+        return self._with_approval(document,receipt)
+
+    @staticmethod
+    def _with_approval(document,receipt):
         if receipt and receipt["approved_version_id"] == document["version_id"]:
             if receipt["content_digest"] != document["content_digest"]:
                 raise HTTPException(409, "Knowledge approval integrity check failed.")
@@ -57,7 +61,52 @@ class ProductKnowledge:
                     "approved_at": receipt["approved_at"]}
         return document
 
+    async def approved_views(self,project,documents):
+        """Request-local batch hydration; the same digest check as single reads."""
+        if any(d.get("project_id")!=project for d in documents):
+            raise HTTPException(404,"Knowledge version not found in this project.")
+        keys=list({self.approval_key(project,d.get("parent_version_id")) for d in documents if d.get("knowledge_contract_version")==2})
+        receipts=await self.db["product_knowledge_versions"].find({"_id":{"$in":keys},"scope_project_id":project,
+            "record_type":"knowledge_approval"}).to_list(len(keys)) if keys else []
+        by_key={r["_id"]:r for r in receipts}
+        return [self._with_approval(d,by_key.get(self.approval_key(project,d.get("parent_version_id"))))
+            if d.get("knowledge_contract_version")==2 else d for d in documents]
+
     async def active(self, project):
+        versions=self.db["product_knowledge_versions"]
+        # Read only immutable receipt/header metadata in bulk. Never cache a head,
+        # load historical claim bodies, or pick the latest timestamp as a v2 head.
+        legacy,receipts=await asyncio.gather(
+            versions.find_one({"project_id":project,"status":"approved"},sort=[("approved_at",-1),("_id",-1)]),
+            versions.find({"scope_project_id":project,"record_type":"knowledge_approval"}).to_list(2049))
+        if len(receipts)>2048:
+            # Unreachable legacy branches must not change the old traversal limit.
+            return await self._active_sequential(project)
+        by_key={r["_id"]:r for r in receipts}
+        identities=[r["approved_version_id"] for r in receipts if isinstance(r.get("approved_version_id"),str)]
+        headers=await versions.find({"project_id":project,"_id":{"$in":identities}},
+            {"_id":1,"version_id":1,"parent_version_id":1,"content_digest":1,"knowledge_contract_version":1,"status":1}).to_list(2048) if identities else []
+        by_id={v["version_id"]:v for v in headers if v.get("version_id")}
+        parent=legacy["version_id"] if legacy else None
+        last=None
+        for _ in range(2048):
+            receipt=by_key.get(self.approval_key(project,parent))
+            if not receipt:
+                if last is None:return legacy
+                document=await self.record("product_knowledge_versions",project,last)
+                if document.get("parent_version_id")!=by_id[last].get("parent_version_id") or document.get("content_digest")!=by_id[last]["content_digest"] or document["status"]!="approved":
+                    raise HTTPException(409,"Knowledge approval chain requires repair.")
+                return document
+            header=by_id.get(receipt.get("approved_version_id"))
+            if (not header or header.get("parent_version_id")!=parent
+                    or header.get("_id")!=receipt.get("approved_version_id")
+                    or (header.get("knowledge_contract_version")!=2 and header.get("status")!="approved")
+                    or header.get("content_digest")!=receipt["content_digest"]):
+                raise HTTPException(409,"Knowledge approval chain requires repair.")
+            parent=header["version_id"];last=parent
+        raise HTTPException(409,"Knowledge history requires explicit checkpoint maintenance.")
+
+    async def _active_sequential(self, project):
         versions = self.db["product_knowledge_versions"]
         # Legacy approvals remain untouched. New immutable snapshots use receipts,
         # not timestamp ordering or a second mutable approval write.

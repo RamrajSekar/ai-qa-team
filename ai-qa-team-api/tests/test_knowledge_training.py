@@ -10,6 +10,27 @@ from app.models.product_knowledge import KnowledgeDraft
 
 
 class TrainingTests(unittest.IsolatedAsyncioTestCase):
+    async def test_listing_batches_saved_versions_and_keeps_receipt_integrity(self):
+        from app.services.knowledge_training import KnowledgeTraining
+        await self.initial()
+        first=deepcopy(self.db['knowledge_training_reviews'].docs[0])
+        for index in range(5):
+            row={**deepcopy(first),'_id':f'copy-{index}','review_id':f'{100+index:032x}'}
+            self.db['knowledge_training_reviews'].docs.append(row)
+        versions=self.db['product_knowledge_versions']
+        self.usage.execute.reset_mock()
+        with patch.object(versions,'find_one',wraps=versions.find_one) as single,patch.object(versions,'find',wraps=versions.find) as batch:
+            rows=await KnowledgeTraining(self.db,self.service).listing('P1')
+            self.assertEqual(len(rows),6)
+            self.assertTrue(all(r['saved_version']['status']=='approved' for r in rows))
+            self.assertEqual(single.call_count,0)
+            self.assertEqual(batch.call_count,2)
+        self.usage.execute.assert_not_called()
+        receipt=next(r for r in versions.docs if r.get('record_type')=='knowledge_approval')
+        receipt['content_digest']='tampered'
+        from fastapi import HTTPException
+        with self.assertRaises(HTTPException):await KnowledgeTraining(self.db,self.service).listing('P1')
+
     async def asyncSetUp(self):
         await fixtures.KnowledgeTests.asyncSetUp(self)
         self.db["knowledge_training_reviews"] = fixtures.Collection()

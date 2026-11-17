@@ -181,19 +181,12 @@ export default function StoryDetailsPage() {
         </div>
       </div>
 
-      <FeatureGate names={["product_knowledge", "story_analysis"]}><StoryAnalysisPanel projectId={projectId} storyId={storyId} /></FeatureGate>
+      <FeatureGate names={["product_knowledge", "story_analysis"]}><StoryAnalysisPanel key={`${projectId}:${storyId}`} projectId={projectId} storyId={storyId} /></FeatureGate>
 
       {/* SCENARIOS SECTION */}
       <FeatureGate names={["scenario_generation"]}><div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-xl font-semibold">Scenarios</h2>
-          <div className="flex flex-wrap gap-2 story-coverage-actions">
-          <FeatureGate names={["product_knowledge", "story_analysis"]}><GenerationRequirements projectId={projectId} storyId={storyId} selected={requirementsContext} onSelect={setRequirementsContext} onActivated={loadScenarios}/></FeatureGate>
-          <label>Requested scenarios <input aria-label="Requested scenarios" type="number" min={1} max={20} value={scenarioCount} onChange={event => setScenarioCount(Math.max(1, Math.min(20, Number(event.target.value) || 1)))} /></label>
-          <button type="button" className="workspace-button workspace-primary" disabled={generating || (enabled("product_knowledge","story_analysis") && !requirementsContext) || (!story.acceptance_criteria?.trim() && (!requirementsContext || requirementsContext==="current"))}
-            onClick={() => void generateScenario()}>
-            {generating ? "Generating scenarios…" : "Generate scenarios with AI"}
-          </button>
+          <div><h2 className="text-xl font-semibold">Scenarios</h2><Link className="text-sm text-violet-700 underline" href={`/projects/${projectId}/scenarios`}>Open Scenarios</Link></div>
           <button
             onClick={() => {
               setEditingScenario(undefined);
@@ -203,9 +196,19 @@ export default function StoryDetailsPage() {
           >
             + Add Scenario
           </button>
+        </div>
+        <div>
+          <div className="story-generation-bar">
+          <FeatureGate names={["product_knowledge", "story_analysis"]}><GenerationRequirements projectId={projectId} storyId={storyId} selected={requirementsContext} onSelect={setRequirementsContext} onActivated={loadScenarios}/></FeatureGate>
+          <div className="story-generation-submit"><label>Requested scenarios <input aria-label="Requested scenarios" type="number" min={1} max={20} value={scenarioCount} onChange={event => setScenarioCount(Math.max(1, Math.min(20, Number(event.target.value) || 1)))} /></label>
+          <button type="button" className="workspace-button workspace-primary" disabled={generating || (enabled("product_knowledge","story_analysis") && !requirementsContext) || (!story.acceptance_criteria?.trim() && (!requirementsContext || requirementsContext==="current"))}
+            onClick={() => void generateScenario()}>
+            {generating ? "Generating scenarios…" : "Generate scenarios with AI"}
+          </button>
+          </div>
           </div>
         </div>
-        <p className="text-sm">Scenarios describe coverage intent (what to verify). Test cases contain detailed procedures and explicit expected results (how to verify). Requested counts are bounded by plan limits and supported coverage; generation can return fewer distinct scenarios.</p>
+        <p className="text-sm">Generate scenario drafts for this story, then review them before creating test cases.</p>
         {!story.acceptance_criteria?.trim() && <p className="text-sm">Add acceptance criteria for current-knowledge generation, or explicitly review and select a release/provisional requirements context.</p>}
         {generationMessage && <p role="status">{generationMessage}</p>}
         {scenarioError && <p role="alert" className="text-sm text-red-700">{scenarioError}</p>}

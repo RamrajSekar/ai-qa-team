@@ -24,8 +24,11 @@ class Cursor:
 
 
 class Collection(CollectionDouble):
-    def find(self, query):
-        return Cursor([deepcopy(doc) for doc in self.docs if self.matches(doc, query)])
+    def find(self, query, projection=None):
+        rows=[deepcopy(doc) for doc in self.docs if self.matches(doc, query)]
+        if projection:
+            rows=[{key:value for key,value in row.items() if projection.get(key)} for row in rows]
+        return Cursor(rows)
 
 
 class VisualSpecificationTests(unittest.IsolatedAsyncioTestCase):

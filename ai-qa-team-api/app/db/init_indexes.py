@@ -51,6 +51,7 @@ async def init_indexes():
     add("ai_usage_records", [("account_id", 1), ("billing_period_start", 1)])
     add("requirement_contexts", [("project_id", 1), ("story_id", 1), ("record_type", 1), ("created_at", -1)])
 
+    add("product_knowledge_versions", [("scope_project_id", 1), ("record_type", 1)])
     slots = asyncio.Semaphore(4)
     async def create(collection, models):
         async with slots:

@@ -37,7 +37,7 @@ class KnowledgeTraining:
             raise HTTPException(404, "Training review not found.")
         return row
 
-    async def get(self, project, identity, *, _listed_row=None):
+    async def get(self, project, identity, *, _listed_row=None, _listed_versions=None):
         row = _listed_row if _listed_row is not None else await self.row(project, identity)
         if row["extraction_state"] == "running" and row["lease_expires_at"] < now():
             await self.rows.update_one({"_id": row["_id"], "extraction_state": "running", "attempt": row["attempt"]},
@@ -45,11 +45,11 @@ class KnowledgeTraining:
             row = await self.row(project, identity)
         # Recover a lost save acknowledgement using the server-owned draft ID.
         if row["state"] in ("saving", "saved"):
-            version = await self.db["product_knowledge_versions"].find_one({
+            version = _listed_versions.get(row["draft_version_id"]) if _listed_versions is not None else await self.db["product_knowledge_versions"].find_one({
                 "project_id": project, "_id": row["draft_version_id"]})
             if version:
                 row = {**row, "state": "saved", "saved_version": self.knowledge.public(
-                    await self.knowledge.approved_view(project, version))}
+                    version if _listed_versions is not None else await self.knowledge.approved_view(project, version))}
         result = self.public(row)
         if row["removed_claim_ids"] and result.get("saved_version", {}).get("status") != "approved":
             result["removal_impact"] = await self.removal_impact(project, row["removed_claim_ids"], row["base_version_id"])
@@ -71,9 +71,13 @@ class KnowledgeTraining:
     async def listing(self, project):
         require_features("product_knowledge")
         rows = await self.rows.find({"project_id": project}).sort("created_at", -1).to_list(50)
+        identities=list({r["draft_version_id"] for r in rows if r["state"] in ("saving","saved")})
+        documents=await self.db["product_knowledge_versions"].find({"project_id":project,"_id":{"$in":identities}}).to_list(len(identities)) if identities else []
+        approved=await self.knowledge.approved_views(project,documents)
+        by_id={d["version_id"]:d for d in approved}
         slots=asyncio.Semaphore(8)
         async def present(row):
-            async with slots:return await self.get(project,row["review_id"],_listed_row=row)
+            async with slots:return await self.get(project,row["review_id"],_listed_row=row,_listed_versions=by_id)
         return await asyncio.gather(*(present(row) for row in rows))
 
     async def start(self, project, actor, payload):

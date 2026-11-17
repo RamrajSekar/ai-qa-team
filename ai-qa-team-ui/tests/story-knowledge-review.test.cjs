@@ -23,7 +23,7 @@ async function setup(t,role='ADMIN',missingDetail=false){
   }else{
    assert.equal(role,'ADMIN');json=reviews[0];json.approver={approved_by_name:'Alice',approved_at:'2026-11-16'};
    json.status=json.timing==='later'&&path.endsWith('/approve')?'approved_pending':'completed';
-   if(json.status==='completed')analysis.stale=true;
+   if(json.status==='completed'){analysis.stale=true;json.story_matches=true;}
   }
   return route.fulfill({headers,json});
  });
@@ -43,6 +43,9 @@ test('admin compares changes then approves once; refresh does not repeat a write
  assert.equal(calls.filter(c=>c.path.endsWith('/approve')).length,0);
  await page.getByRole('button',{name:'Approve story and update knowledge',exact:true}).click();
  await page.getByRole('region',{name:'Story change summary'}).getByText('Story change approved and knowledge updated.',{exact:true}).waitFor();
+ await page.getByRole('status').filter({hasText:/^Story change approved$/}).waitFor();
+ assert.equal(await page.getByRole('status').filter({hasText:/^Stale$/}).count(),0);
+ assert.equal((await page.locator('body').innerText()).includes('Â'),false);
  assert.equal(reviews[0].status,'completed');const writes=calls.filter(c=>c.method==='POST').length;
  await page.reload();assert.equal(calls.filter(c=>c.method==='POST').length,writes);
 });

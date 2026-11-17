@@ -14,6 +14,7 @@ test('reviewed story shows reviewer and explicitly approves story-only generatio
  let selectedContext;
  await f.context.route(url=>url.pathname==='/scenarios/generate-from-story',route=>{selectedContext=new URL(route.request().url()).searchParams.get('requirements_context_id');return route.fulfill({headers,json:{scenarios:[{scenario_id:'SC1'}],summary:{message:'Story-only drafts generated.'}}});});
  await f.page.goto(base+'/projects/P1/stories/ST1');await f.page.getByText('Story review completed · Alice Reviewer',{exact:true}).waitFor();
+ if(process.env.UI_LAYOUT_EVIDENCE)await f.page.locator('.story-generation-bar').screenshot({path:process.env.UI_LAYOUT_EVIDENCE});
  assert.equal(await f.page.getByText('Record a requirement decision or prepare provisional designs',{exact:true}).count(),0);
  await f.page.getByLabel('Requirements for generation',{exact:true}).selectOption('story');
  await f.page.getByRole('button',{name:'Review and approve for generation',exact:true}).click();
