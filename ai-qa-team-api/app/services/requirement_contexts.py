@@ -46,10 +46,11 @@ class RequirementContexts:
         if digest(story)!=row["story_digest"] or (row["basis"]=="approved_change" and ((knowledge or {}).get("version_id")!=row["base_knowledge_version_id"] or digest((knowledge or {}).get("claims",[]))!=row["base_knowledge_digest"])):
             raise HTTPException(409,"Story or product knowledge changed. Save and approve a new requirements context.")
         latest=await self.knowledge.latest_analysis(row["project_id"],row["story_id"])
-        if not latest or latest["analysis_id"]!=row["analysis_id"] or latest["stale"]:
+        story_only_approval=row.get("generation_approval_basis")=="explicit_reviewed_story_requirements" and row["basis"]=="story_only_provisional"
+        if not latest or latest["analysis_id"]!=row["analysis_id"] or (latest["stale"] and not story_only_approval):
             raise HTTPException(409,"Analysis changed. Review a new requirements context.")
         analysis=await self.knowledge.record("story_analyses",row["project_id"],row["analysis_id"])
-        if analysis.get("story_id")!=row["story_id"] or (require_review and analysis.get("status")!="reviewed") or digest(analysis)!=row["analysis_digest"]:
+        if analysis.get("story_digest")!=digest(story) or analysis.get("story_id")!=row["story_id"] or (require_review and analysis.get("status")!="reviewed") or digest(analysis)!=row["analysis_digest"]:
             raise HTTPException(409,"Pinned analysis review changed. Review a new requirements context.")
         return story,knowledge,analysis
 
@@ -101,9 +102,11 @@ class RequirementContexts:
             return {**await self.view(existing),"impact":await self.impact(existing)}
         story=await self.knowledge.story(project,story_id)
         analysis=await self.knowledge.latest_analysis(project,story_id)
-        if not analysis or analysis["analysis_id"]!=payload.analysis_id or analysis["stale"]:
+        if not analysis or analysis["analysis_id"]!=payload.analysis_id or (analysis["stale"] and not reviewed_story_approval):
             raise HTTPException(409,"Analyze and review the current story before saving a requirements context.")
         raw_analysis=await self.knowledge.record("story_analyses",project,payload.analysis_id)
+        if raw_analysis.get("story_digest")!=digest(story):
+            raise HTTPException(409,"Story changed. Analyze and review the current story before approval.")
         knowledge=await self.knowledge.active(project)
         if reviewed_story_approval and (payload.basis!="story_only_provisional" or analysis.get("status")!="reviewed"):
             raise HTTPException(409,"Complete the current story review before approving generation.")

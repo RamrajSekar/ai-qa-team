@@ -2,10 +2,9 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {useProjects} from "@/hooks/useProjects";
 import {knowledgeRequest} from "./knowledgeApi";
-import Link from "next/link";
 
 interface Context {context_id:string;basis:string;target_release:string;status:string;stale:boolean;approver?:{approved_by_name:string}}
-interface Analysis {analysis_id:string;status:string;stale?:boolean}
+interface Analysis {analysis_id:string;status:string;stale?:boolean;story_approval?:{state:string}}
 export default function GenerationRequirements({projectId,storyId,selected,onSelect}:{
  projectId:string;storyId:string;selected:string|null;onSelect:(value:string|null)=>void;
 }){
@@ -35,7 +34,7 @@ export default function GenerationRequirements({projectId,storyId,selected,onSel
   {mode==="story"&&<div className="text-sm space-y-2">
    <p>Story-only drafts require review and are not validated against product knowledge.</p>
    {approved&&selected===approved.context_id?<p className="text-emerald-700">Approved for generation{approved.approver?.approved_by_name?` by ${approved.approver.approved_by_name}`:""}.</p>:<>
-    {!analysis||analysis.stale||analysis.status!=="reviewed"?<p><Link className="workspace-button" href={`/projects/${projectId}/stories/${storyId}#story-analysis`}>Review story</Link></p>:admin?<button type="button" className="workspace-button" disabled={busy} onClick={()=>setReviewOpen(true)}>Review and approve for generation</button>:<p>A Project Admin must approve these story requirements for generation.</p>}
+    {!analysis||analysis.status!=="reviewed"||(analysis.stale&&analysis.story_approval?.state!=="approved")?<p>Complete the story review under Selected Story before approving generation.</p>:admin?<button type="button" className="workspace-button" disabled={busy} onClick={()=>setReviewOpen(true)}>Review and approve for generation</button>:<p>A Project Admin must approve these story requirements for generation.</p>}
     {reviewOpen&&analysis&&<section className="border rounded p-3 space-y-2" aria-label="Story generation approval"><p>Approve the selected story as the basis for story-only drafts. Product knowledge stays unchanged.</p>
      <button className="workspace-button workspace-primary" disabled={busy} onClick={async()=>{
       setBusy(true);setError("");try{

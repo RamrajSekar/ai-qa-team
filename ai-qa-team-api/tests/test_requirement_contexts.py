@@ -11,6 +11,7 @@ import test_product_knowledge as fixtures
 from app.models.requirement_context import RequirementDraft
 from app.models.product_knowledge import ReviewStoryAnalysis
 from app.services.requirement_contexts import RequirementContexts
+from app.services.product_knowledge import ProductKnowledge
 from app.services.knowledge_test_design import KnowledgeTestDesign
 from app.services.test_design_review import TestDesignReview
 
@@ -55,6 +56,23 @@ class RequirementTests(unittest.IsolatedAsyncioTestCase):
         again=await self.contexts.approve_story_generation('P1','ST1',{**self.user,'name':'Bob'},payload)
         self.assertEqual(again['approver']['approved_by_name'],'Alice')
         self.usage.execute.assert_not_called()
+
+    async def test_story_only_approval_survives_knowledge_refresh_but_not_story_edits(self):
+        from app.models.requirement_context import StoryGenerationApproval
+        for prior in self.db['story_analyses'].docs:prior['created_at']='2000-01-01T00:00:00+00:00'
+        analysis=await self.service.analyze('P1',self.user,'ST1',analysis_mode='knowledge_aware')
+        await self.service.review_analysis('P1','reviewer','ST1',analysis['analysis_id'],ReviewStoryAnalysis(resolutions=[]))
+        changed=deepcopy(await self.service.active('P1'));changed['version_id']='new-knowledge-version'
+        from unittest.mock import AsyncMock
+        with patch.object(ProductKnowledge,'active',new=AsyncMock(return_value=changed)):
+            self.assertTrue((await self.service.latest_analysis('P1','ST1'))['stale'])
+            row=await self.contexts.approve_story_generation('P1','ST1',self.user,StoryGenerationApproval(request_id=uuid4().hex,analysis_id=analysis['analysis_id']))
+            result=await self.contexts.resolve('P1','ST1',row['context_id'])
+            self.assertEqual(result['knowledge']['claims'],[])
+            self.assertFalse(result['independent_knowledge_validation'])
+            self.db['stories'].docs[0]['description']='Changed requirements'
+            with self.assertRaises(HTTPException):await self.contexts.resolve('P1','ST1',row['context_id'])
+            with self.assertRaises(HTTPException):await self.contexts.approve_story_generation('P1','ST1',self.user,StoryGenerationApproval(request_id=uuid4().hex,analysis_id=analysis['analysis_id']))
 
     async def test_generation_approval_http_admin_and_stale_guards(self):
         path=self.base+'/stories/ST1/generation-approval'

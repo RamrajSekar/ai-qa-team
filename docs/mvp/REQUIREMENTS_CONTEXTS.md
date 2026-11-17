@@ -53,3 +53,15 @@ knowledge rule through the combined review. Such proposals cannot replace/remove
 existing rules; conflict changes still require their exact linked rule. This
 addition is human-reviewed requirements authority with same-story provenance,
 not independent evidence or automatic promotion of a finding.
+
+
+### Story-only freshness refinement (2026-11-17)
+
+Explicit story-only generation approval may reuse a reviewed comparison when only
+product knowledge changed. Creation and resolution verify the exact current story
+digest, latest analysis identity, reviewed status and pinned analysis digest. This
+exception applies only to the server-owned explicit_reviewed_story_requirements
+basis; legacy contexts and knowledge-aware generation keep their freshness gates.
+The UI offers explicit approval for an unchanged approved story and retains the
+story-only draft label. Selected Story contains the single review link; the catalog
+no longer repeats a top-level Review stories action. No migration is needed.
