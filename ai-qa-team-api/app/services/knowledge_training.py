@@ -37,8 +37,8 @@ class KnowledgeTraining:
             raise HTTPException(404, "Training review not found.")
         return row
 
-    async def get(self, project, identity):
-        row = await self.row(project, identity)
+    async def get(self, project, identity, *, _listed_row=None):
+        row = _listed_row if _listed_row is not None else await self.row(project, identity)
         if row["extraction_state"] == "running" and row["lease_expires_at"] < now():
             await self.rows.update_one({"_id": row["_id"], "extraction_state": "running", "attempt": row["attempt"]},
                 {"$set": {"extraction_state": "uncertain", "updated_at": now()}})
@@ -71,7 +71,10 @@ class KnowledgeTraining:
     async def listing(self, project):
         require_features("product_knowledge")
         rows = await self.rows.find({"project_id": project}).sort("created_at", -1).to_list(50)
-        return [await self.get(project, row["review_id"]) for row in rows]
+        slots=asyncio.Semaphore(8)
+        async def present(row):
+            async with slots:return await self.get(project,row["review_id"],_listed_row=row)
+        return await asyncio.gather(*(present(row) for row in rows))
 
     async def start(self, project, actor, payload):
         require_features("product_knowledge")

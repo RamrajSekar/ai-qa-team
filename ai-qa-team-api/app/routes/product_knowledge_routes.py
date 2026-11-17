@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from app.db.connection import db
 from app.models.product_knowledge import KnowledgeSourceInput, KnowledgeDraft, ReviewStoryAnalysis
 from app.models.knowledge_training import TrainingStart, TrainingReview, TrainingExtract, TrainingSave, TrainingRebase
-from app.models.requirement_context import RequirementDraft
+from app.models.requirement_context import RequirementDraft, StoryGenerationApproval
 from app.services.requirement_contexts import RequirementContexts
 from app.models.story_knowledge_review import StoryKnowledgeReviewInput
 from app.services.story_knowledge_review import StoryKnowledgeReview
@@ -108,9 +108,9 @@ async def ai_result(awaitable):
 
 
 @router.get("")
-async def overview(project_id: str, user=Depends(get_current_user)):
+async def overview(project_id: str, user=Depends(get_current_user), current_only: bool = Query(default=False)):
     await require_project_member(project_id, user)
-    result = await service().overview(project_id)
+    result = await service().overview(project_id,current_only=current_only)
     # Display-only fallback for older approvals by the signed-in reviewer. Never
     # mutate historical receipts or substitute an untrusted client identity.
     for version in result["versions"]:
@@ -240,14 +240,30 @@ async def analyze(project_id: str, story_id: StoryId,
 @router.get("/stories/{story_id}/analysis", dependencies=[Depends(feature_required("story_analysis"))])
 async def latest_analysis(project_id: str, story_id: StoryId, user=Depends(get_current_user)):
     await require_project_member(project_id, user)
-    return await service().latest_analysis(project_id, story_id)
+    result=await service().latest_analysis(project_id, story_id)
+    if result and result.get("status")=="reviewed" and result.get("reviewed_by_name") in (None,"Project reviewer"):
+        if result.get("reviewed_by")==actor_id(user):
+            result["reviewed_by_name"]=user.get("name") or user.get("full_name") or "Project reviewer"
+        elif result.get("reviewed_by"):
+            from bson import ObjectId
+            identity=result["reviewed_by"]
+            profile=await db["users"].find_one({"_id":ObjectId(identity) if ObjectId.is_valid(identity) else identity})
+            result["reviewed_by_name"]=(profile or {}).get("name") or (profile or {}).get("full_name") or "Reviewer name unavailable"
+    return result
 
 
 @router.post("/stories/{story_id}/analysis/{analysis_id}/review", dependencies=[Depends(feature_required("story_analysis"))])
 async def review_analysis(project_id: str, story_id: StoryId, analysis_id: VersionId,
                           payload: ReviewStoryAnalysis, user=Depends(get_current_user)):
     await require_project_admin(project_id, user)
-    return await service().review_analysis(project_id, actor_id(user), story_id, analysis_id, payload)
+    return await service().review_analysis(project_id, actor_id(user), story_id, analysis_id, payload,
+        actor_name=user.get("name") or user.get("full_name") or "Project reviewer")
+
+
+@router.post("/stories/{story_id}/generation-approval")
+async def approve_story_generation(project_id: str, story_id: StoryId, payload: StoryGenerationApproval, user=Depends(get_current_user)):
+    await require_project_admin(project_id,user)
+    return await RequirementContexts(db).approve_story_generation(project_id,story_id,user,payload)
 
 
 @router.get("/stories/{story_id}/requirements")

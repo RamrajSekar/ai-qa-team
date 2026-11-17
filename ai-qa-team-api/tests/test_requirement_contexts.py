@@ -35,6 +35,38 @@ class MongoCollection(fixtures.Collection):
 
 
 class RequirementTests(unittest.IsolatedAsyncioTestCase):
+    async def test_simple_story_generation_approval_accepts_reviewed_comparison_without_ai(self):
+        from app.models.requirement_context import StoryGenerationApproval
+        # A reviewed comparison can explicitly approve story-only draft generation,
+        # without claiming its product knowledge validated the story.
+        for prior in self.db['story_analyses'].docs:prior['created_at']='2000-01-01T00:00:00+00:00'
+        self.analysis=await self.service.analyze('P1',self.user,'ST1',analysis_mode='knowledge_aware')
+        self.usage.execute.reset_mock()
+        payload=StoryGenerationApproval(request_id=uuid4().hex,analysis_id=self.analysis['analysis_id'])
+        with self.assertRaises(HTTPException):
+            await self.contexts.approve_story_generation('P1','ST1',self.user,payload)
+        await self.service.review_analysis('P1','reviewer','ST1',self.analysis['analysis_id'],ReviewStoryAnalysis(resolutions=[]),actor_name='Alice')
+        row=await self.contexts.approve_story_generation('P1','ST1',{**self.user,'name':'Alice'},payload)
+        self.assertEqual(row['status'],'approved')
+        resolved=await self.contexts.resolve('P1','ST1',row['context_id'])
+        self.assertEqual(resolved['knowledge']['claims'],[])
+        self.assertEqual(resolved['design_basis'],'story_only_provisional')
+        self.assertFalse(resolved['independent_knowledge_validation'])
+        again=await self.contexts.approve_story_generation('P1','ST1',{**self.user,'name':'Bob'},payload)
+        self.assertEqual(again['approver']['approved_by_name'],'Alice')
+        self.usage.execute.assert_not_called()
+
+    async def test_generation_approval_http_admin_and_stale_guards(self):
+        path=self.base+'/stories/ST1/generation-approval'
+        body={'request_id':uuid4().hex,'analysis_id':self.analysis['analysis_id']}
+        self.user['role']='MEMBER'
+        self.assertEqual((await self.client.post(path,json=body)).status_code,403)
+        self.user['role']='ADMIN'
+        self.assertEqual((await self.client.post(path,json={**body,'approved_by':'FORGED'})).status_code,422)
+        self.assertEqual((await self.client.post(path,json=body)).status_code,200)
+        self.db['stories'].docs[0]['description']='New requirements'
+        self.assertEqual((await self.client.post(path,json=body)).status_code,409)
+
     approved=fixtures.KnowledgeTests.approved
     async def asyncSetUp(self):
         await fixtures.KnowledgeTests.asyncSetUp(self)

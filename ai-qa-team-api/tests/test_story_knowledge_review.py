@@ -15,6 +15,23 @@ from app.services.story_knowledge_review import StoryKnowledgeReview
 
 
 class StoryChangeTests(unittest.IsolatedAsyncioTestCase):
+    async def test_reviewed_missing_detail_can_explicitly_add_knowledge(self):
+        from app.models.product_knowledge import ReviewStoryAnalysis
+        self.finding.update(category='missing_detail',knowledge_claim_id=None)
+        self.usage.execute.return_value=SimpleNamespace(text=json.dumps({'summary':'Details','findings':[self.finding]}))
+        self.analysis=await self.service.analyze('P1',self.user,'ST1',analysis_mode='story_only')
+        await self.service.review_analysis('P1','reviewer','ST1',self.analysis['analysis_id'],ReviewStoryAnalysis(resolutions=[{'finding_id':'F1','decision':'clarified','rationale':'Navigation is covered separately.'}]))
+        payload=self.payload().model_dump()
+        payload['decisions'][0].update(action='add',rule_id=None,expected_result='Navigation behavior is specified in separate stories.')
+        self.usage.execute.reset_mock()
+        row=await self.submit(StoryKnowledgeReviewInput.model_validate(payload))
+        await self.changes.approve('P1','ST1',row['review_id'],self.user)
+        active=await self.service.active('P1')
+        self.assertEqual(len(active['claims']),2)
+        self.assertEqual(active['claims'][0]['claim_id'],'K1')
+        self.assertTrue(any(c['statement']=='Navigation behavior is specified in separate stories.' for c in active['claims']))
+        self.usage.execute.assert_not_called()
+
     approved = fixtures.KnowledgeTests.approved
 
     async def asyncSetUp(self):

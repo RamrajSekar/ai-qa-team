@@ -8,6 +8,7 @@ import StoryKnowledgeReview from "./StoryKnowledgeReview";
 
 interface Analysis {
   analysis_id: string; status: string; stale?: boolean; summary: string; knowledge_version_id: string | null;
+  reviewed_by_name?: string;
   analysis_mode?: "story_only" | "knowledge_aware";
   excluded_knowledge_claims?: {claim_id:string;statement:string;source_id:string;reason:string}[];
   findings: { finding_id: string; category: string; severity: string; description: string; question: string;
@@ -31,6 +32,7 @@ export default function StoryAnalysisPanel({ projectId, storyId }: { projectId: 
       setError("");
       const data = await knowledgeRequest<Analysis | null>(base + "/analysis");
       setAnalysis(data);
+      if(data?.analysis_mode)setMode(data.analysis_mode);
       setResolutions(Object.fromEntries((data?.resolutions || []).map(item => [item.finding_id, item])));
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Could not load analysis."); }
     finally { setLoaded(true); }
@@ -51,9 +53,10 @@ export default function StoryAnalysisPanel({ projectId, storyId }: { projectId: 
     <h2 className="text-xl font-semibold">Review story clarity</h2>
     <p>Story clarity finds ambiguity and missing details without using product knowledge. Knowledge comparison uses only independently sourced approved rules. Each analysis uses an AI request; choosing a mode does not start one.</p>
     <Link className="underline" href={`/projects/${projectId}/knowledge`}>Teach your QA Agent</Link>
-    <label className="block">Analysis mode<select aria-label="Analysis mode" value={mode} disabled={busy} onChange={event=>setMode(event.target.value as "story_only"|"knowledge_aware")}><option value="story_only">Story clarity (story-only)</option><option value="knowledge_aware">Check against product knowledge</option></select></label>
+    <label className="block">Analysis mode<select aria-label="Analysis mode" value={mode} disabled={busy||!loaded} onChange={event=>setMode(event.target.value as "story_only"|"knowledge_aware")}><option value="story_only">Story clarity (story-only)</option><option value="knowledge_aware">Check against product knowledge</option></select></label>
     <div><button className="workspace-button" disabled={busy} onClick={() => void perform(false)}>Analyze with AI</button></div>
     <p role="status"><DesignBadge>{!loaded ? "Loading" : error && !analysis ? "Unavailable" : !analysis ? "Not analyzed" : analysis.stale ? "Stale" : analysis.status === "reviewed" ? "Reviewed" : "Findings need review"}</DesignBadge></p>
+    {analysis?.status === "reviewed" && !analysis.stale && <p className="text-sm text-emerald-700">Story review completed · {analysis.reviewed_by_name || "Reviewer name unavailable"}</p>}
     {analysis && <>
       <p>{analysis.analysis_mode === "story_only" ? "Story-only analysis — not validated against approved product knowledge. Review does not authorize knowledge-aware generation." : "Knowledge-aware analysis"}</p>
       <p>{analysis.stale ? "Inputs changed. Analyze again and review the new findings." : "Review findings and clarify missing expectations."} {analysis.knowledge_version_id && <Link className="underline" href={`/projects/${projectId}/knowledge#knowledge-version-${analysis.knowledge_version_id}`}>Inspect approved knowledge version</Link>}</p>

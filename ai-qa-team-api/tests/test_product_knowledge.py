@@ -33,6 +33,30 @@ class Collection(BaseCollection):
 
 
 class KnowledgeTests(unittest.IsolatedAsyncioTestCase):
+    async def test_compact_overview_keeps_current_and_fetchable_evidence_and_history(self):
+        old=await self.approved()
+        draft=await self.service.create_version('P1','reviewer',KnowledgeDraft(title='Successor',parent_version_id=old['version_id'],claims=[{**self.claim,'statement':'Updated save behavior'}]))
+        new=await self.service.approve('P1','reviewer',draft['version_id'])
+        response=await self.client.get(self.base+'?current_only=true')
+        self.assertEqual(response.status_code,200,response.text)
+        compact=response.json()
+        self.assertEqual([v['version_id'] for v in compact['versions']],[new['version_id']])
+        self.assertEqual(compact['sources'][0]['text'],'')
+        self.assertFalse(compact['sources'][0]['details_loaded'])
+        evidence=await self.client.get(self.base+'/sources/'+self.claim['source_id'])
+        self.assertEqual(evidence.json()['text'],'Show Draft saved.')
+        self.assertEqual((await self.client.get(self.base+'/versions/'+old['version_id'])).status_code,200)
+
+    async def test_review_name_is_recorded_immutably(self):
+        analysis=await self.analysis([])
+        self.user['name']='Alice Reviewer'
+        path=self.base+'/stories/ST1/analysis/'+analysis['analysis_id']+'/review'
+        self.assertEqual((await self.client.post(path,json={'resolutions':[]})).status_code,200)
+        self.user['name']='Different Name'
+        await self.client.post(path,json={'resolutions':[]})
+        latest=await self.client.get(self.base+'/stories/ST1/analysis')
+        self.assertEqual(latest.json()['reviewed_by_name'],'Alice Reviewer')
+
     async def test_approval_name_is_server_owned_and_immutable_on_retry(self):
         first = await self.approved()
         draft = await self.service.create_version("P1", "reviewer", KnowledgeDraft(title="Correction",

@@ -39,3 +39,8 @@ class RequirementDraft(Contract):
         if self.basis=="approved_change" and not self.decisions:
             raise ValueError("Record requirement-change decisions")
         return self
+
+
+class StoryGenerationApproval(Contract):
+    request_id: RequestKey
+    analysis_id: RequestKey

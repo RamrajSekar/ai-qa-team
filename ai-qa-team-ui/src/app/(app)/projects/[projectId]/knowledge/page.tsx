@@ -37,7 +37,7 @@ function QAAgentWorkspace({projectId}:{projectId:string}) {
   const [evidence,setEvidence] = useState<Source | null>(null);
   const requestKey = useRef<string | null>(null);
   const load = useCallback(async () => {
-    const [overview, reviews] = await Promise.all([knowledgeRequest<Overview>(base),knowledgeRequest<TrainingSession[]>(base+"/training")]);
+    const [overview, reviews] = await Promise.all([knowledgeRequest<Overview>(base+"?current_only=true"),knowledgeRequest<TrainingSession[]>(base+"/training")]);
     if (overview.active_version_id && !overview.versions.some(item=>item.version_id===overview.active_version_id)) {
       overview.versions.unshift(await knowledgeRequest<KnowledgeVersion>(base+"/versions/"+overview.active_version_id));
     }
@@ -73,7 +73,7 @@ function QAAgentWorkspace({projectId}:{projectId:string}) {
   const pendingSelection=selected && selected.state!=="rejected" && selected.saved_version?.status!=="approved";
   const current=data.versions.find(version=>version.version_id===data.active_version_id);
   async function inspect(id:string) {
-    await act(async()=>setEvidence(data.sources.find(item=>item.source_id===id) || await knowledgeRequest<Source>(base+"/sources/"+id)));
+    await act(async()=>setEvidence(data.sources.find(item=>item.source_id===id && item.details_loaded!==false) || await knowledgeRequest<Source>(base+"/sources/"+id)));
   }
   async function revise(claimId:string,mode:"correction"|"removal") {
     if(mode==="removal"&&!window.confirm("Remove this approved rule? A removal draft will be created. The rule stays approved until a project administrator reviews and approves that removal."))return;

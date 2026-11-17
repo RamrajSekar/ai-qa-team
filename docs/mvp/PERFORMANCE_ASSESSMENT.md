@@ -121,3 +121,41 @@ Do not count that interrupted repeat as an additional pass.
 
 No production configuration changes, migrations, load testing, browser-provider runs,
 AI calls or new product features were performed. Production performance remains open.
+
+
+## 2026-11-17 project/Account follow-up
+
+Read-only Vercel production runtime logs for the current main deployment showed
+`mongo_indexes duration_ms=3147`, `mongo_probe=67`, `redis_probe=10` for one
+/account request. A separate /account/members request also had startup stage logs.
+This establishes a database-startup contributor; it is not authenticated browser
+P95 evidence or proof that it explains every minutes-long delay. The initial
+one-hour log query was rejected by plan retention; a 15-minute query succeeded.
+No production settings, database content or indexes were manually changed.
+
+Changes: retain every index definition and failure gate, batch IndexModel entries
+into one create_indexes command per collection, and cap concurrent startup commands
+at four. Await all work and propagate failures before serving. No startup TTL,
+cache, skipped validation, migration or rollout activation is introduced.
+
+QA Agent can request current_only overview: current approved snapshot and source
+metadata, without serial receipt resolution for historical versions or source text
+in the response. Full evidence is loaded through the existing authorized source
+endpoint on inspection. Historical APIs/default overview remain intact. Legacy
+full overview reads and training review hydration use bounded concurrency (eight),
+and listing reuses rows already read instead of rereading each one sequentially.
+
+Overview renders authorized project details before secondary summaries settle;
+loading/unavailable summaries do not masquerade as zero counts. Account has a real
+loading state, renders account details before the subscription, skips the unused
+member-list request on Account details, and bounds GET waits to 15 seconds. A
+partial failure offers a retry without discarding successful sections. Mutations
+and uncertain consequential submissions are not automatically retried.
+
+Verification includes held-response browser checks for Account and Overview,
+compact evidence/history regression, and bounded index-concurrency/unique-index/
+startup-failure checks. Existing authorization, isolation and receipt history are
+preserved. Production before/after signed-in timing remains a release follow-up;
+these changes do not establish that hosting startup/import costs are eliminated.
+
+Current verification: 77 backend fixture checks and 10 shared API-client/proxy checks passed. Held-response Account/Overview checks and story/training/Account regressions passed. One old browser assertion initially failed because it searched the inactive BYOK balance while collapsed; it was updated to explicitly open Other AI usage and passed. One story-only label assertion had a test-file encoding error; corrected and passed. The first browser run had no test server and failed connection setup; it is not counted as product evidence. TypeScript/scoped lint passed. Production speed after deployment is unmeasured.

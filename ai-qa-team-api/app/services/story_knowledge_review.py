@@ -100,21 +100,25 @@ class StoryKnowledgeReview:
         active = await self.knowledge.active(project)
         analysis = await self.knowledge.latest_analysis(project, story_id)
         if (not active or active["version_id"] != payload.parent_version_id or not analysis
-                or analysis["analysis_id"] != payload.analysis_id or analysis["stale"]
-                or analysis.get("analysis_mode", "knowledge_aware") != "knowledge_aware"):
+                or analysis["analysis_id"] != payload.analysis_id or analysis["stale"]):
             raise HTTPException(409, "Compare the current story with approved knowledge before submitting a change.")
         findings = {f["finding_id"]: f for f in analysis["findings"]}
         decisions = [d.model_dump() for d in payload.decisions]
         selected = [d["finding_id"] for d in decisions]
         conflicts = {key for key, f in findings.items() if f["category"] == "knowledge_conflict"}
-        if not conflicts or len(selected) != len(set(selected)) or set(selected) != conflicts:
-            raise HTTPException(422, "Record one decision for every knowledge conflict.")
+        if (len(selected) != len(set(selected)) or not conflicts.issubset(selected) or set(selected) - findings.keys()
+                or (not conflicts and analysis.get("status") != "reviewed")):
+            raise HTTPException(422, "Review the story and record a decision for every knowledge conflict.")
         rules = {c["claim_id"]: c for c in active["claims"]}
         targeted = []
         for decision in decisions:
             finding = findings[decision["finding_id"]]
             if decision["decision"] == "intentional_change":
                 rule = decision["rule_id"]
+                if decision["finding_id"] not in conflicts:
+                    if decision["action"] != "add" or rule is not None:
+                        raise HTTPException(422,"A reviewed non-conflict finding may propose a new rule only. Use conflict review to change existing rules.")
+                    continue
                 if decision["action"] not in ("replace", "remove") or rule not in rules or rule != finding.get("knowledge_claim_id"):
                     raise HTTPException(422, "Review the exact existing rule linked to each conflict.")
                 targeted.append(rule)
@@ -124,14 +128,14 @@ class StoryKnowledgeReview:
         resolved = {r["finding_id"] for r in resolutions}
         if len(resolved) != len(resolutions) or resolved & conflicts or resolved - findings.keys() or any(not r["rationale"].strip() for r in resolutions):
             raise HTTPException(422, "Review other findings separately with a meaningful explanation.")
-        required = {key for key, f in findings.items() if f["severity"] == "blocker"} - conflicts
+        required = {key for key, f in findings.items() if f["severity"] == "blocker"} - set(selected)
         if not required.issubset(resolved):
             raise HTTPException(422, "Resolve the other blocking findings before submitting approval.")
-        changes = [{"action": d["action"], "rule_id": d["rule_id"], "category": rules[d["rule_id"]]["category"],
-            "before": rules[d["rule_id"]]["statement"],
+        changes = [{"action": d["action"], "rule_id": d["rule_id"] or "K_"+self.identity(project,payload.request_id,str(index)), "category": rules[d["rule_id"]]["category"] if d["rule_id"] else "business_rule",
+            "before": rules[d["rule_id"]]["statement"] if d["rule_id"] else None,
             "after": None if d["action"] == "remove" else d["expected_result"],
             "expected_behavior": d["expected_result"], "reason": d["rationale"]}
-            for d in decisions if d["decision"] == "intentional_change"]
+            for index,d in enumerate(decisions) if d["decision"] == "intentional_change"]
         impact = {}
         for collection, key in (("scenarios", "scenario_id"), ("testcases", "testcase_id")):
             items = await self.db[collection].find({"project_id": project}).to_list(1001)

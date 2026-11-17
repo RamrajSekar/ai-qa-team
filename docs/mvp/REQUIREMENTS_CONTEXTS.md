@@ -29,3 +29,27 @@ The canonical account AI-allowance preflight correction is included: versioned a
 Isolated backend fixtures: 12 requirement-context tests and 10 story-analysis mode tests passed. Earlier slice regression runs: 65 knowledge, 10 test-design review, 4 scenario-count and 13 separate-allowance tests passed. Source TypeScript and scoped ESLint passed. Browser checks use a real local browser with intercepted authentication/API fixtures, not live Mongo or AI. Four browser checks passed: release approval/activation/selection, provisional no-criteria generation, clarification recovery and existing analysis/scenario controls.
 
 No live Mongo concurrency, real provider generation, production deployment or customer execution qualification is claimed. Production knowledge history and databases were not modified.
+
+
+## Simplified generation selection — 2026-11-17
+
+The story page places Requirements for generation beside Generate scenarios, with
+Story requirements and Story + approved knowledge. Release authoring is optional,
+not the normal route. Story requirements uses a deliberate two-stage review and
+approval, then the existing immutable provisional context; it never calls AI or
+approves knowledge. A current reviewed analysis (including a reviewed knowledge
+comparison) can support this explicit restricted generation approval. This is a
+new server-owned approval basis, not a change to legacy provisional context API
+requirements. Unreviewed/stale analyses and member approvals remain blocked.
+Generated scenarios/cases retain story-only basis and their own design reviews;
+knowledge-aware generation and self-source exclusion are unchanged. Selection,
+mount and refresh cannot approve or generate. Existing approved contexts can be
+explicitly reselected without repeating an approval.
+
+Story review completion shows the immutable reviewer name. New reviews persist
+it from authentication; legacy names are resolved for display without rewriting
+history. A reviewed missing-detail finding can explicitly propose an additional
+knowledge rule through the combined review. Such proposals cannot replace/remove
+existing rules; conflict changes still require their exact linked rule. This
+addition is human-reviewed requirements authority with same-story provenance,
+not independent evidence or automatic promotion of a finding.
