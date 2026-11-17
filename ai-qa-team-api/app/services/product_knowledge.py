@@ -402,6 +402,10 @@ class ProductKnowledge:
     async def generation_context(self, project, story_id, requirements_context_id=None):
         require_features("product_knowledge", "story_analysis")
         if requirements_context_id:
+            saved=await self.db["requirement_contexts"].find_one({"_id":requirements_context_id,"project_id":project,"story_id":story_id,"record_type":"approved_story_generation"})
+            if saved:
+                from app.services.approved_story_context import ApprovedStoryContext
+                return await ApprovedStoryContext(self.db).resolve(project,story_id,requirements_context_id)
             from app.services.requirement_contexts import RequirementContexts
             return await RequirementContexts(self.db).resolve(project,story_id,requirements_context_id)
         story = await self.story(project, story_id)

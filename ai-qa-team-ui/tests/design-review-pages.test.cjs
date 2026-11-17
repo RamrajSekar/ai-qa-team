@@ -13,7 +13,7 @@ async function fixture(t,{execution=false,manual=false,fullCatalog=false}={}){
  const project={project_id:'P1',name:'Design workspace',current_user_role:'ADMIN'};
  const scenarios=[{scenario_id:'SC1',story_id:'ST1',project_id:'P1',title:'Save a valid order',approved:true,steps:[],created_by:'fixture@example.test'},{scenario_id:'SC2',story_id:'ST1',project_id:'P1',title:'Reject empty order',approved:false,steps:[]}];
  if(fullCatalog){scenarios[0].approved=false;scenarios[1].created_by='fixture@example.test';for(let i=3;i<=51;i++)scenarios.push({...scenarios[0],scenario_id:'SC'+i,title:'Coverage '+i});}
- const cases=[{testcase_id:'TC1',scenario_id:'SC1',project_id:'P1',title:'Save order with required data',status:'draft',steps:[{action:'Click Save order',expected:'Order saved'}],created_by:'fixture@example.test'}];
+ const cases=[{testcase_id:'TC1',scenario_id:'SC1',project_id:'P1',title:'Save order with required data',status:'draft',preconditions:['Customer is active'],steps:[{action:'Click Save order',expected:'Order saved'}],created_by:'fixture@example.test'}];
  const calls=[];let historyFails=false;
  await context.route('http://feature-api.test/**',async route=>{
   const request=route.request(),url=new URL(request.url());calls.push({path:url.pathname,method:request.method()});
@@ -29,6 +29,7 @@ async function fixture(t,{execution=false,manual=false,fullCatalog=false}={}){
   if(url.pathname==='/scenarios/project-list'||url.pathname==='/scenarios')json=scenarios.slice(Number(url.searchParams.get('skip')||0),Number(url.searchParams.get('skip')||0)+Number(url.searchParams.get('limit')||50));
   if(url.pathname==='/scenarios/SC1'&&request.method()==='PATCH'){Object.assign(scenarios[0],request.postDataJSON());json=scenarios[0];}
   if(url.pathname==='/scenarios/SC2'&&request.method()==='DELETE'){scenarios.splice(scenarios.findIndex(s=>s.scenario_id==='SC2'),1);json={deleted:true};}
+  if(url.pathname==='/testcases/TC1'&&request.method()==='PATCH'){Object.assign(cases[0],request.postDataJSON());json=cases[0];}
   if(url.pathname==='/testcases/project-list'||url.pathname==='/testcases/testcases')json=cases;
   if(url.pathname==='/environments')json=[{env_id:'E1',project_id:'P1',name:'Synthetic environment',credentials:[]}];
   if(url.pathname==='/execute'){
@@ -116,4 +117,17 @@ test('scenario catalog retains pagination, edit and delete after generation move
  await page.getByRole('button',{name:'Reject empty order',exact:true}).waitFor({state:'hidden'});
  assert.equal(calls.filter(c=>c.path==='/scenarios/SC1'&&c.method==='PATCH').length,1);
  assert.equal(calls.filter(c=>c.path==='/scenarios/SC2'&&c.method==='DELETE').length,1);
+});
+
+
+test('test case editor loads and saves Preconditions',async t=>{
+ const {page}=await fixture(t);await page.goto(base+'/projects/P1/testcases');
+ await page.getByRole('button',{name:'Edit test case',exact:true}).click();
+ const field=page.getByLabel('Preconditions (one per line)',{exact:true});
+ assert.equal(await field.inputValue(),'Customer is active');
+ await field.fill('Customer is active\nCart contains an item');
+ await page.getByRole('button',{name:'Save changes',exact:true}).click();
+ await page.getByRole('dialog').waitFor({state:'hidden'});
+ await page.getByRole('button',{name:'Edit test case',exact:true}).click();
+ assert.equal(await field.inputValue(),'Customer is active\nCart contains an item');
 });

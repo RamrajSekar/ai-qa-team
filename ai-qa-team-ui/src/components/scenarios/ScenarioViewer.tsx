@@ -45,7 +45,7 @@ export default function ScenarioViewer({ open, scenario, onClose, onApproved }: 
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
       <div className="bg-white rounded-lg w-full max-w-3xl p-6 shadow-xl relative">
         
-        {scenario.design_basis && <p>Basis: {scenario.design_basis === "story_only_provisional" ? "Provisional story-only — not validated against product knowledge" : "Explicitly approved requirement change"} · Release: {scenario.target_release}</p>}
+        {scenario.design_basis && <p>Basis: {["story_only_provisional","approved_story_only"].includes(scenario.design_basis || "") ? "Provisional story-only — not validated against product knowledge" : scenario.design_basis === "approved_story_with_knowledge" ? "Approved story with independent product knowledge" : "Explicitly approved requirement change"} · Release: {scenario.target_release}</p>}
         <button
           onClick={onClose}
           aria-label="Close scenario"

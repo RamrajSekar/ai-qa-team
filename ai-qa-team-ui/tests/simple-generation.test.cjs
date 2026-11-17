@@ -1,30 +1,23 @@
 const {test,before,after}=require('node:test');const assert=require('node:assert/strict');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE_PATH||'playwright');const {fixture,base}=require('./qa-agent-fixture.cjs');let browser;
 before(async()=>{browser=await chromium.launch({headless:true,channel:'msedge'});});after(async()=>browser?.close());
-test('reviewed story shows reviewer and explicitly approves story-only generation without another analysis',async t=>{
- const f=await fixture(browser,t);const root='/projects/P1/knowledge/stories/ST1',rows=[],writes=[];
+for(const role of ['ADMIN','TESTER'])test(`approved story generates in one action for ${role} without repeated approval or metadata reads`,async t=>{
+ const f=await fixture(browser,t,{role});let generations=0;
  const headers={'access-control-allow-origin':base,'access-control-allow-credentials':'true','access-control-allow-headers':'content-type','access-control-allow-methods':'GET,POST,OPTIONS'};
- const analysis={analysis_id:'a'.repeat(32),analysis_mode:'knowledge_aware',status:'reviewed',reviewed_by_name:'Alice Reviewer',stale:true,story_approval:{state:'approved',approved_by_name:'Alice Reviewer'},summary:'Reviewed scope',knowledge_version_id:'b'.repeat(32),findings:[{finding_id:'F1',category:'missing_detail',severity:'blocker',description:'Navigation is covered separately.',question:'Scope?'}],resolutions:[{finding_id:'F1',decision:'clarified',rationale:'Separate stories cover navigation.'}]};
- await f.context.route(url=>url.pathname===root+'/analysis',route=>route.fulfill({headers,json:analysis}));
- await f.context.route(url=>url.pathname===root+'/requirements',route=>route.fulfill({headers,json:{contexts:rows,rules:[]}}));
- await f.context.route(url=>url.pathname===root+'/generation-approval',route=>{
-  if(route.request().method()==='OPTIONS')return route.fulfill({status:204,headers});
-  writes.push(route.request().postDataJSON());const row={context_id:writes[0].request_id,target_release:'Story requirements',basis:'story_only_provisional',status:'approved',stale:false,approver:{approved_by_name:'Alice Reviewer'}};rows.push(row);return route.fulfill({headers,json:row});
+ await f.context.route(url=>url.pathname==='/scenarios/generate-from-story',route=>{
+  if(route.request().method()==='OPTIONS')return route.fulfill({headers,status:204});
+  generations++;assert.equal(new URL(route.request().url()).searchParams.get('approved_story'),'true');
+  return route.fulfill({headers,json:{scenarios:[{scenario_id:'SC1'}],summary:{message:'Drafts generated from approved story.'}}});
  });
- let selectedContext;
- await f.context.route(url=>url.pathname==='/scenarios/generate-from-story',route=>{selectedContext=new URL(route.request().url()).searchParams.get('requirements_context_id');return route.fulfill({headers,json:{scenarios:[{scenario_id:'SC1'}],summary:{message:'Story-only drafts generated.'}}});});
  await f.page.goto(base+'/projects/P1/scenarios?story_id=ST1');
  await f.page.getByLabel('Source story',{exact:true}).waitFor();
  assert.equal(await f.page.getByLabel('Source story',{exact:true}).inputValue(),'ST1');
- if(process.env.UI_LAYOUT_EVIDENCE)await f.page.locator('.story-generation-bar').screenshot({path:process.env.UI_LAYOUT_EVIDENCE});
- assert.equal(await f.page.getByText('Record a requirement decision or prepare provisional designs',{exact:true}).count(),0);
- await f.page.getByLabel('Requirements for generation',{exact:true}).selectOption('story');
- assert.equal(await f.page.getByRole('link',{name:'Review stories',exact:true}).count(),0);
+ assert.equal(await f.page.getByLabel('Requirements for generation',{exact:true}).count(),0);
+ assert.equal(await f.page.getByRole('button',{name:'Review and approve for generation',exact:true}).count(),0);
  await f.page.getByText('Selected Story',{exact:true}).waitFor();
- await f.page.getByRole('button',{name:'Review and approve for generation',exact:true}).click();
- assert.equal(writes.length,0);await f.page.getByRole('button',{name:'Approve for generation',exact:true}).click();
- await f.page.getByText('Approved for generation by Alice Reviewer.',{exact:true}).waitFor();
- await f.page.getByRole('button',{name:'Generate scenarios with AI',exact:true}).click();await f.page.getByText('Story-only drafts generated.',{exact:true}).waitFor();
- assert.equal(selectedContext,rows[0].context_id);assert.equal(writes.length,1);
- assert.equal(f.calls.filter(c=>c.path.endsWith('/analyze')).length,0);
+ assert.equal(generations,0);
+ const button=f.page.getByRole('button',{name:'Generate scenarios with AI',exact:true});assert.equal(await button.isEnabled(),true);
+ await button.click();await f.page.getByText('Drafts generated from approved story.',{exact:true}).waitFor();
+ assert.equal(generations,1);
+ assert.equal(f.calls.filter(c=>c.path.endsWith('/generation-approval')||c.path.endsWith('/requirements')||c.path.endsWith('/analysis')||c.path.endsWith('/analyze')).length,0);
 });

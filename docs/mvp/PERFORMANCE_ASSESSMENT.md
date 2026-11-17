@@ -193,3 +193,25 @@ checks passed after correcting one held-response fixture that initially intercep
 the page document instead of only the API. TypeScript/lint and a visual Scenarios
 control capture were checked. No live database load/failover qualification or
 post-deployment latency improvement is claimed.
+
+
+## Field-loading follow-up — 2026-11-17
+
+Code-established contributors: Overview coupled three independent summary reads
+in Promise.all before setting any field values; Scenarios mounted two historical
+requirements/analysis reads before enabling generation; project catalog filter/sort
+queries lacked matching indexes. Overview now updates Stories, Testcases and
+Environments independently, with separate unavailable/loading states. Normal
+Scenarios generation no longer reads requirements/history/analysis metadata on
+selection. Added project_id stories/environments and project_id + scenario_id /
+testcase_id indexes, retaining all existing indexes and startup failure gates.
+Legacy requirements listings reuse one request-scoped story/knowledge/analysis
+snapshot and bound concurrent row hydration to eight; mutation/generation reads
+still independently revalidate current authority. No cross-request auth/data cache.
+
+These changes address identified waits/scan risks, not every production latency
+source. Prior cold-start/index/probe evidence and hosting limits above still apply.
+Actual signed-in production before/after timings, query explain plans and database
+load qualification remain unmeasured; no production database/index mutation was
+performed during this investigation. Backend and intercepted-API browser checks
+are reported with this delivery, not substituted for production percentiles.

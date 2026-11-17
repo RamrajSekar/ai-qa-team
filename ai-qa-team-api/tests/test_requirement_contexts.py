@@ -36,6 +36,16 @@ class MongoCollection(fixtures.Collection):
 
 
 class RequirementTests(unittest.IsolatedAsyncioTestCase):
+    async def test_listing_reuses_request_snapshot_and_keeps_integrity_validation(self):
+        from unittest.mock import AsyncMock
+        for _ in range(3):await self.contexts.create('P1','ST1','author',self.payload())
+        with patch.object(self.contexts.knowledge,'active',new=AsyncMock(wraps=self.contexts.knowledge.active)) as active:
+            result=await self.contexts.listing('P1','ST1')
+            self.assertEqual(len(result['contexts']),3)
+            self.assertLessEqual(active.await_count,2)
+        self.db['requirement_contexts'].docs[0]['target_release']='Forged'
+        with self.assertRaises(HTTPException):await self.contexts.listing('P1','ST1')
+
     async def test_simple_story_generation_approval_accepts_reviewed_comparison_without_ai(self):
         from app.models.requirement_context import StoryGenerationApproval
         # A reviewed comparison can explicitly approve story-only draft generation,

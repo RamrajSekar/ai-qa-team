@@ -20,6 +20,8 @@ test('Overview renders project while summary responses are held',async t=>{
  await f.context.route(url=>['/environments','/testcases/testcases'].includes(url.pathname),async route=>{await held;return route.fulfill({headers,json:[]});});
  await f.page.goto(base+'/projects/P1');await f.page.getByRole('heading',{name:'Synthetic project',exact:true}).waitFor();
  await f.page.getByText('Loading environments…',{exact:true}).waitFor();
+ await f.page.getByText('Save draft',{exact:true}).waitFor();
+ assert.equal(await f.page.getByText('Loading stories…',{exact:true}).count(),0);
  await f.page.getByRole('link',{name:'QA Agent',exact:true}).click();await f.page.getByRole('heading',{name:'Your QA Agent',exact:true}).waitFor();
  release();assert.equal(f.calls.filter(c=>c.path==='/projects').length,1);
 });
