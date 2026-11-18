@@ -5,6 +5,7 @@ import { knowledgeRequest } from "./knowledgeApi";
 import { useProjects } from "@/hooks/useProjects";
 import { DesignBadge } from "@/components/projects/DesignWorkspace";
 import StoryKnowledgeReview from "./StoryKnowledgeReview";
+import StoryKnowledgeActions from "./StoryKnowledgeActions";
 import {WorkspaceDialog} from "@/components/ui/workspace-dialog";
 
 interface Analysis {
@@ -118,6 +119,7 @@ export default function StoryAnalysisPanel({ projectId, storyId }: { projectId: 
         onStoryApproved={setStoryApproval}
         onComplete={async () => { await load(); window.dispatchEvent(new Event("story-analysis-updated")); }} />
     </>}
+    {approvalState==="approved"&&<StoryKnowledgeActions projectId={projectId} storyId={storyId} />}
     {error && <p role="alert">{error}</p>}
   </section>;
 }

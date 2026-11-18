@@ -32,15 +32,13 @@ export default function StoryKnowledgeReview({ projectId, storyId, analysis, adm
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [timing, setTiming] = useState<"now" | "later">("now");
   const [release, setRelease] = useState("");
-  const [adding,setAdding]=useState(false);
   const [selected, setSelected] = useState<Review | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const saveKey = useRef<{body: string; id: string} | null>(null);
   const conflicts = analysis.findings.filter(f => f.category === "knowledge_conflict");
-  const proposedFinding=analysis.findings.find(f=>f.category!=="knowledge_conflict");
-  const targets=conflicts.length?conflicts:adding&&proposedFinding?[proposedFinding]:[];
+  const targets=conflicts;
   const blockers = analysis.findings.filter(f => !targets.some(t=>t.finding_id===f.finding_id) && f.severity === "blocker" && !analysis.resolutions?.some(r=>r.finding_id===f.finding_id));
   const load = useCallback(async () => {
     const result=await knowledgeRequest<Listing>(root);setData(result);
@@ -64,12 +62,11 @@ export default function StoryKnowledgeReview({ projectId, storyId, analysis, adm
   }
   const pending = data?.reviews.filter(r => r.status !== "completed") || [];
   const lastApproved = data?.reviews.find(r => r.status === "completed");
-  if (!conflicts.length && !pending.length && !error && !selected && !(analysis.status==="reviewed"&&!analysis.stale&&proposedFinding)) return null;
+  if (!conflicts.length && !pending.length && !error && !selected) return null;
   return <section aria-label="Story and knowledge review" className="space-y-4 border-t pt-5">
     <div><h3 className="text-lg font-semibold">{conflicts.length ? "Resolve knowledge conflicts" : "Knowledge update"}</h3>
       <p className="text-sm text-slate-600">Decide whether the story changes the product or needs correction. Only a Project Admin can approve knowledge changes.</p></div>
     {lastApproved?.approver && <p className="text-sm text-emerald-700">Last knowledge change approved by {lastApproved.approver.approved_by_name} · {lastApproved.target_release}</p>}
-    {!conflicts.length&&!adding&&analysis.status==="reviewed"&&!analysis.stale&&proposedFinding&&<button className="workspace-button" onClick={()=>setAdding(true)}>{admin?(storyApproved?"Add/update knowledge":"Approve story and update knowledge"):"Propose knowledge update"}</button>}
     {!!targets.length && !analysis.stale && <fieldset disabled={busy} className="space-y-4">
       {targets.map((finding, index) => {
         const current = decision(finding);
@@ -87,7 +84,7 @@ export default function StoryKnowledgeReview({ projectId, storyId, analysis, adm
           {current.decision === "intentional_change" && <>
             {conflicts.length>0&&<label className="block">Knowledge change<select className="border rounded w-full p-2" aria-label={`Knowledge change ${index + 1}`} value={current.action}
               onChange={e => edit(finding, { action: e.target.value as Decision["action"] })}>
-              <option value="replace">Update this rule</option><option value="remove">Remove this rule</option>
+              <option value="replace">Update this rule</option>
             </select></label>}
             <label className="block">{current.action === "remove" ? "Expected behavior after removal" : "New approved behavior"}
               <textarea className="border rounded w-full p-2" aria-label={`New behavior ${index + 1}`} maxLength={1500} value={current.expected_result}

@@ -29,8 +29,8 @@ async function setup(t,role='ADMIN',missingDetail=false){
  });
  if(missingDetail){analysis.status='reviewed';analysis.reviewed_by_name='Alice';analysis.findings[0].category='missing_detail';analysis.resolutions=[{finding_id:'F1',decision:'clarified',rationale:'Navigation is separate.'}];}
  await f.page.goto(base+'/projects/P1/stories/ST1');
- if(missingDetail)await f.page.getByRole('button',{name:'Add/update knowledge',exact:true}).click();
- await f.page.getByLabel('Conflict decision 1',{exact:true}).waitFor();
+ if(missingDetail)await f.page.getByRole('button',{name:'Add knowledge',exact:true}).waitFor();
+ else await f.page.getByLabel('Conflict decision 1',{exact:true}).waitFor();
  return {...f,reviews,calls};
 }
 test('admin compares changes then approves once; refresh does not repeat a write',async t=>{
@@ -73,12 +73,10 @@ test('future approval retains an explicit activation step',async t=>{
  assert.equal(reviews[0].status,'completed');
 });
 
-test('reviewed missing detail offers explicit knowledge addition without a conflict',async t=>{
+test('approved story uses direct Add and Update knowledge without the old decision form',async t=>{
  const {page,reviews}=await setup(t,'ADMIN',true);
- await page.getByLabel('New behavior 1',{exact:true}).fill('Navigation requirements are described in separate stories.');
- await page.getByLabel('Change reason 1',{exact:true}).fill('Confirmed story scope.');
- await page.getByRole('button',{name:'Review changes',exact:true}).click();
- assert.equal(reviews[0].decisions[0].action,'add');assert.equal(reviews[0].decisions[0].rule_id,null);
- await page.getByRole('button',{name:'Approve knowledge changes',exact:true}).click();
- await page.getByRole('region',{name:'Story change summary'}).getByText('Story change approved and knowledge updated.',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Add knowledge',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Update knowledge',exact:true}).waitFor();
+ assert.equal(await page.getByLabel('Conflict decision 1',{exact:true}).count(),0);
+ assert.equal(reviews.length,0);
 });

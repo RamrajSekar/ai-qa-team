@@ -278,6 +278,14 @@ class ProductKnowledge:
             fields["removal_reasons"] = document["removal_reasons"]
         if digest(fields) != document["content_digest"]:
             raise HTTPException(409, "Knowledge draft integrity check failed.")
+        # Only newly added/replaced sources are checked: retained historical rules
+        # do not become invalid merely because their original story later evolves.
+        changed_sources={change["after"]["source_id"] for change in document.get("changes",[]) if change.get("after")}
+        for source_id in changed_sources:
+            source=await self.record("product_knowledge_sources",project,source_id)
+            if source.get("origin",{}).get("approved_story_copy"):
+                from app.services.story_knowledge_proposals import StoryKnowledgeProposals
+                await StoryKnowledgeProposals(self.db).ensure_fresh(project,source["origin"])
         receipt = {"_id": self.approval_key(project, parent), "record_type": "knowledge_approval",
                    "scope_project_id": project, "parent_version_id": parent, "approved_version_id": version_id,
                    "content_digest": document["content_digest"], "approved_by": actor,
