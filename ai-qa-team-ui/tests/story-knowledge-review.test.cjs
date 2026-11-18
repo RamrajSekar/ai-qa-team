@@ -29,7 +29,7 @@ async function setup(t,role='ADMIN',missingDetail=false){
  });
  if(missingDetail){analysis.status='reviewed';analysis.reviewed_by_name='Alice';analysis.findings[0].category='missing_detail';analysis.resolutions=[{finding_id:'F1',decision:'clarified',rationale:'Navigation is separate.'}];}
  await f.page.goto(base+'/projects/P1/stories/ST1');
- if(missingDetail)await f.page.getByRole('button',{name:'Approve story and update knowledge',exact:true}).click();
+ if(missingDetail)await f.page.getByRole('button',{name:'Add/update knowledge',exact:true}).click();
  await f.page.getByLabel('Conflict decision 1',{exact:true}).waitFor();
  return {...f,reviews,calls};
 }
@@ -79,6 +79,6 @@ test('reviewed missing detail offers explicit knowledge addition without a confl
  await page.getByLabel('Change reason 1',{exact:true}).fill('Confirmed story scope.');
  await page.getByRole('button',{name:'Review changes',exact:true}).click();
  assert.equal(reviews[0].decisions[0].action,'add');assert.equal(reviews[0].decisions[0].rule_id,null);
- await page.getByRole('button',{name:'Approve story and update knowledge',exact:true}).click();
+ await page.getByRole('button',{name:'Approve knowledge changes',exact:true}).click();
  await page.getByRole('region',{name:'Story change summary'}).getByText('Story change approved and knowledge updated.',{exact:true}).waitFor();
 });

@@ -195,3 +195,35 @@ attempt had no running isolated server; the successful rerun used the restarted
 server. Story Clarity uses a generic unsupported AI reference error; knowledge
 comparison reports unavailable knowledge references specifically. Existing data,
 knowledge isolation, metering and approval safeguards remain unchanged.
+
+
+## Manual story review — 2026-11-18
+
+Project ADMIN can explicitly Approve manually after reviewing the displayed exact
+story and confirming it is clear enough for test design; a note is optional.
+An immutable manual_story_approval receipt in requirement_contexts pins the story
+and latest analysis snapshot, authenticated reviewer/name/project role/time and
+project_admin_manual_story_review_v1 policy. Deterministic _id elects one reviewer
+for repeated/concurrent submissions. Input changes fail closed; no record is
+rewritten. Existing unresolved material findings/conflicts for the current story
+revision block this path, including earlier findings hidden by newer analyses.
+
+Manual approval never creates an analysis, approves knowledge or spends AI usage.
+Status is Approved · Manual review; absent analysis remains Not analyzed. Approved
+story design contexts can use this authority with no knowledge claims or analysis
+identity. Scenarios and cases remain story-only drafts requiring their own review.
+New findings/story changes require review again; legacy knowledge-aware paths keep
+their existing checks. No migration, execution/media activation or startup backfill.
+
+For stories already approved, the knowledge proposal entry is Add/update knowledge
+and final approval is Approve knowledge changes. Those actions still use the
+existing proposal/impact review and immutable knowledge successor approval path.
+
+Verification: isolated tests cover no-analysis approval/generation, unchanged AI and
+knowledge records, exact snapshot invalidation, repeated/concurrent attribution,
+role/project/forged-identity/integrity guards and historical unresolved conflicts.
+Existing context, knowledge, combined-change and analysis-mode regression suites
+passed. Ten intercepted-API browser checks passed, including explicit confirmation,
+member restrictions, refresh recovery and the renamed knowledge actions.
+TypeScript/scoped ESLint and whitespace checks passed. No live provider, shared
+Mongo database, ingestion or execution was used for verification.

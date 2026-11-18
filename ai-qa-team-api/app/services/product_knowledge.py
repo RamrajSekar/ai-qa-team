@@ -411,7 +411,10 @@ class ProductKnowledge:
         if include_review_state:
             from app.services.story_knowledge_review import StoryKnowledgeReview
             approvals=await StoryKnowledgeReview(self.db).review_states(project,[story])
-            result.update(self.review_summary(story,document,knowledge,approvals.get(story_id)))
+            from app.services.manual_story_review import ManualStoryReview
+            manual=await ManualStoryReview(self.db).current(project,story,document)
+            explicit=approvals.get(story_id)
+            result.update(self.review_summary(story,document,knowledge,explicit if explicit and explicit['state']=='approved' else manual or explicit))
             result['stale']=stale
         return result
 
@@ -506,10 +509,13 @@ class ProductKnowledge:
         knowledge = await self.active(project)
         from app.services.story_knowledge_review import StoryKnowledgeReview
         approvals=await StoryKnowledgeReview(self.db).review_states(project,stories)
+        from app.services.manual_story_review import ManualStoryReview
+        manual=await ManualStoryReview(self.db).summaries(project,stories,latest)
         result = {}
         for story in stories:
             row = latest.get(story["story_id"])
-            result[story['story_id']]=self.review_summary(story,row,knowledge,approvals.get(story['story_id']))
+            explicit=approvals.get(story['story_id'])
+            result[story['story_id']]=self.review_summary(story,row,knowledge,explicit if explicit and explicit['state']=='approved' else manual.get(story['story_id']) or explicit)
         return result
 
 

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, Re
 from fastapi.responses import FileResponse
 
 from app.db.connection import db
-from app.models.product_knowledge import KnowledgeSourceInput, KnowledgeDraft, ReviewStoryAnalysis
+from app.models.product_knowledge import KnowledgeSourceInput, KnowledgeDraft, ReviewStoryAnalysis, ManualStoryApproval
 from app.models.knowledge_training import TrainingStart, TrainingReview, TrainingExtract, TrainingSave, TrainingRebase
 from app.models.requirement_context import RequirementDraft, StoryGenerationApproval
 from app.services.requirement_contexts import RequirementContexts
@@ -266,6 +266,20 @@ async def review_analysis(project_id: str, story_id: StoryId, analysis_id: Versi
     await require_project_admin(project_id, user)
     return await service().review_analysis(project_id, actor_id(user), story_id, analysis_id, payload,
         actor_name=user.get("name") or user.get("full_name") or "Project reviewer")
+
+
+@router.get("/stories/{story_id}/manual-approval", dependencies=[Depends(feature_required("story_analysis"))])
+async def manual_story_readiness(project_id: str, story_id: StoryId, user=Depends(get_current_user)):
+    await require_project_member(project_id,user)
+    from app.services.manual_story_review import ManualStoryReview
+    return await ManualStoryReview(db).readiness(project_id,story_id)
+
+
+@router.post("/stories/{story_id}/manual-approval", dependencies=[Depends(feature_required("story_analysis"))])
+async def approve_story_manually(project_id: str, story_id: StoryId, payload: ManualStoryApproval, user=Depends(get_current_user)):
+    _,membership=await require_project_admin(project_id,user)
+    from app.services.manual_story_review import ManualStoryReview
+    return await ManualStoryReview(db).approve(project_id,story_id,user,membership["role"],payload)
 
 
 @router.post("/stories/{story_id}/generation-approval")
