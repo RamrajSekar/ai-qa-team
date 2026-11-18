@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { apiFetch } from "@/utils/api";
@@ -109,6 +109,26 @@ export default function ProjectTestCatalog({ kind }: { kind: "scenarios" | "test
     void load(controller.signal);
     return () => controller.abort();
   }, [load]);
+
+  const openedReview=useRef("");
+  useEffect(()=>{
+    if(loading)return;
+    const identity=new URL(window.location.href).searchParams.get("review");
+    if(!identity||!/^[-A-Za-z0-9_]{1,80}$/.test(identity))return;
+    const key=`${projectId}:${kind}:${identity}`;
+    if(openedReview.current===key)return;
+    openedReview.current=key;
+    const controller=new AbortController();
+    const local=kind==="scenarios"?scenarios.find(item=>item.scenario_id===identity):cases.find(item=>item.testcase_id===identity);
+    void (async()=>{
+      try{
+        const response=local?{ok:true,data:local}:await apiFetch(kind==="scenarios"?`/scenarios/${encodeURIComponent(identity)}?project_id=${encodeURIComponent(projectId)}`:`/testcases/testcases/${encodeURIComponent(identity)}`,{signal:controller.signal});
+        if(!response.ok||response.data?.project_id!==projectId)throw new Error("Review item is unavailable in this project.");
+        if(!controller.signal.aborted){if(kind==="scenarios")setSelected(response.data);else setReviewCase(response.data);}
+      }catch{if(!controller.signal.aborted)setActionError("Review item is unavailable in this project.");}
+    })();
+    return()=>controller.abort();
+  },[loading,projectId,kind,scenarios,cases]);
 
   async function removeRecord(id: string) {
     setDeleting(true);

@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MoreHorizontal, Plus, ArrowUpRight, History, Globe } from 'lucide-react';
 import EnvironmentModal from '@/components/environment/EnvironmentModal';
+import PendingReviews from '@/components/projects/PendingReviews';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { apiFetch } from '@/utils/api';
 import EditProjectModal from '@/components/projects/EditProjectModal';
@@ -267,6 +268,8 @@ export default function ProjectPage() {
         projectName={project.name}
         onDeleted={() => router.push('/projects')}
       />}
+
+      <PendingReviews key={projectId} projectId={projectId} />
 
       {/* SECTIONS */}
       {storiesEnabled && <Section

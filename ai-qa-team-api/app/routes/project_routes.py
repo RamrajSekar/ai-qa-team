@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from app.db.connection import db
 from bson.objectid import ObjectId
 from datetime import datetime, timezone
@@ -257,3 +257,11 @@ async def delete_project(
     )
 
     return {"message": "Project deleted successfully"}
+
+
+@router.get("/{project_id}/pending-reviews")
+async def pending_project_reviews(project_id: str, response: Response, page: int = Query(0, ge=0, le=10000), limit: int = Query(20, ge=1, le=50), current_user=Depends(get_current_user)):
+    project,_=await require_project_member(project_id,current_user)
+    response.headers["Cache-Control"]="private, no-store"
+    from app.services.pending_project_reviews import PendingProjectReviews
+    return await PendingProjectReviews(db).listing(project_id,page,limit,project_record=project)
