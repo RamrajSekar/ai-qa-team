@@ -90,3 +90,9 @@ class FindingResolution(Contract):
 
 class ReviewStoryAnalysis(Contract):
     resolutions: list[FindingResolution] = Field(max_length=40)
+
+
+class ManualStoryApproval(Contract):
+    snapshot_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    confirmed: Literal[True]
+    note: str = Field(default="", max_length=2000)

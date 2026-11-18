@@ -17,6 +17,20 @@ class ApprovedStoryContext:
         from app.services.story_knowledge_review import StoryKnowledgeReview
         story = await self.knowledge.story(project, story_id)
         analysis = await self.knowledge.latest_analysis(project, story_id)
+        from app.services.manual_story_review import ManualStoryReview
+        manual=await ManualStoryReview(self.db).current(project,story,
+            await self.db["story_analyses"].find_one({"project_id":project,"story_id":story_id},sort=[("created_at",-1),("_id",-1)]))
+        if manual:
+            context={"knowledge":{"version_id":None,"claims":[],"content_digest":digest([])},
+                "analysis":{"analysis_id":None,"analysis_mode":"manual_review","status":"not_analyzed"},
+                "requirements_story":{**story,"acceptance_criteria":story.get("acceptance_criteria") or story.get("description") or ""},
+                "design_basis":"approved_story_only","criteria_basis":"manually_reviewed_story_requirements",
+                "target_release":"Current","approved_requirement_changes":[],"story_approval":{"kind":"manual_review",**manual},
+                "independent_knowledge_validation":False,"excluded_knowledge_rules":[],
+                "requirements_policy":"Generate story-only drafts within the manually approved story and scenario scope. No AI analysis or independent product knowledge validation was performed. Do not invent missing facts, rules or flows. Drafts require explicit human review."}
+            fingerprint=digest(context)
+            identity=uuid5(NAMESPACE_URL,f"approved-story:{project}:{story_id}:{fingerprint}").hex
+            return identity,fingerprint,context
         knowledge = await self.knowledge.active(project)
         if not analysis:
             raise HTTPException(409, "Review and approve the story before generating scenarios.")

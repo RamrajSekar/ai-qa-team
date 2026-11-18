@@ -22,8 +22,8 @@ interface Review {
 }
 interface Listing { knowledge_version_id: string | null; rules: {claim_id: string; statement: string}[]; reviews: Review[] }
 
-export default function StoryKnowledgeReview({ projectId, storyId, analysis, admin, onComplete, onStoryApproved }: {
-  projectId: string; storyId: string; analysis: Analysis; admin: boolean; onComplete: () => Promise<void>;
+export default function StoryKnowledgeReview({ projectId, storyId, analysis, admin, storyApproved=false, onComplete, onStoryApproved }: {
+  projectId: string; storyId: string; analysis: Analysis; admin: boolean; storyApproved?:boolean; onComplete: () => Promise<void>;
   onStoryApproved?:(value:{name:string;reviewId:string}|null)=>void;
 }) {
   const root = `/projects/${encodeURIComponent(projectId)}/knowledge/stories/${encodeURIComponent(storyId)}/change-reviews`;
@@ -69,7 +69,7 @@ export default function StoryKnowledgeReview({ projectId, storyId, analysis, adm
     <div><h3 className="text-lg font-semibold">{conflicts.length ? "Resolve knowledge conflicts" : "Knowledge update"}</h3>
       <p className="text-sm text-slate-600">Decide whether the story changes the product or needs correction. Only a Project Admin can approve knowledge changes.</p></div>
     {lastApproved?.approver && <p className="text-sm text-emerald-700">Last knowledge change approved by {lastApproved.approver.approved_by_name} · {lastApproved.target_release}</p>}
-    {!conflicts.length&&!adding&&analysis.status==="reviewed"&&!analysis.stale&&proposedFinding&&<button className="workspace-button" onClick={()=>setAdding(true)}>{admin?"Approve story and update knowledge":"Propose knowledge update"}</button>}
+    {!conflicts.length&&!adding&&analysis.status==="reviewed"&&!analysis.stale&&proposedFinding&&<button className="workspace-button" onClick={()=>setAdding(true)}>{admin?(storyApproved?"Add/update knowledge":"Approve story and update knowledge"):"Propose knowledge update"}</button>}
     {!!targets.length && !analysis.stale && <fieldset disabled={busy} className="space-y-4">
       {targets.map((finding, index) => {
         const current = decision(finding);
@@ -139,7 +139,7 @@ export default function StoryKnowledgeReview({ projectId, storyId, analysis, adm
             if(saved.status==="completed"&&saved.story_matches&&saved.approver)onStoryApproved?.({name:saved.approver.approved_by_name,reviewId:saved.review_id});
             await onComplete();
             setMessage(saved.status === "approved_pending" ? "Approved for the future release. Current knowledge is unchanged." : "Story change approved and knowledge updated.");
-          })}>{selected.status === "reconciling" ? "Finish update" : selected.timing === "later" ? selected.status === "approved_pending" ? "Activate knowledge update" : "Approve for future release" : "Approve story and update knowledge"}</button>}
+          })}>{selected.status === "reconciling" ? "Finish update" : selected.timing === "later" ? selected.status === "approved_pending" ? "Activate knowledge update" : "Approve for future release" : storyApproved?"Approve knowledge changes":"Approve story and update knowledge"}</button>}
       </>}
     </section>}
     {error && <p role="alert">{error}</p>}{message && <p role="status">{message}</p>}
