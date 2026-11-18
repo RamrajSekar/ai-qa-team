@@ -14,7 +14,7 @@ interface Analysis {
   analysis_mode?: "story_only" | "knowledge_aware";
   excluded_knowledge_claims?: {claim_id:string;statement:string;source_id:string;reason:string}[];
   findings: { finding_id: string; category: string; severity: string; description: string; question: string;
-    criterion_quote?: string; knowledge_claim_id?: string }[];
+    criterion_quote?: string; story_quote?: string; story_field?: string; knowledge_claim_id?: string }[];
   resolutions?: { finding_id: string; decision: "clarified" | "dismissed"; rationale: string }[];
 }
 export default function StoryAnalysisPanel({ projectId, storyId }: { projectId: string; storyId: string }) {
@@ -73,6 +73,7 @@ export default function StoryAnalysisPanel({ projectId, storyId }: { projectId: 
       {analysis.findings.filter(finding => (analysis.stale || finding.category !== "knowledge_conflict") && (category === "all" || finding.category === category)).map(finding => <div className="border rounded p-3 space-y-2" key={finding.finding_id}>
         <p><strong>{finding.severity === "blocker" ? "Blocker" : "Warning"} · {categories[finding.category] || finding.category}</strong>: {finding.description}</p><p>{finding.question}</p>
         {finding.criterion_quote && <blockquote>Acceptance criterion: {finding.criterion_quote}</blockquote>}
+        {finding.story_quote && <blockquote>Story {finding.story_field?.replaceAll("_"," ") || "excerpt"}: {finding.story_quote}</blockquote>}
         {finding.knowledge_claim_id && analysis.knowledge_version_id && <Link className="underline" href={`/projects/${projectId}/knowledge#claim-${analysis.knowledge_version_id}-${finding.knowledge_claim_id}`}>Inspect linked knowledge rule</Link>}
         {canReview && analysis.status !== "reviewed" && !analysis.stale && !analysis.findings.some(item => item.category === "knowledge_conflict") && <>
           <label className="block">Decision <select value={resolutions[finding.finding_id]?.decision || "clarified"}

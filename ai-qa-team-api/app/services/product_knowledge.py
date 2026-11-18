@@ -1,5 +1,6 @@
 """Reviewed, source-linked knowledge and story context. No media or browser access."""
 import json
+import re
 import asyncio
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -311,6 +312,46 @@ class ProductKnowledge:
                 or document.get("knowledge_version_id") != (knowledge["version_id"] if knowledge else None)
                 or (document.get("analysis_mode", "knowledge_aware") == "knowledge_aware" and not knowledge))
 
+    @staticmethod
+    def source_excerpt(quote, source):
+        """Match literal source text, tolerating only whitespace layout changes."""
+        if not quote or not quote.strip():return None
+        pattern=r"\s+".join(re.escape(token) for token in quote.split())
+        match=re.search(pattern,source or "")
+        return match.group(0) if match and len(match.group(0))<=1200 else None
+
+    @classmethod
+    def validate_finding_evidence(cls,finding,story,allowed_claims,mode):
+        def invalid(message):
+            detail="Story Clarity received an unsupported AI reference. No analysis was saved." if mode=="story_only" else message
+            return HTTPException(502,detail)
+        if finding.knowledge_claim_id and finding.knowledge_claim_id not in allowed_claims:
+            raise invalid("AI returned an unsupported knowledge reference. No analysis was saved.")
+        if finding.category=="knowledge_conflict" and (mode=="story_only" or not finding.knowledge_claim_id):
+            raise invalid("AI returned a knowledge conflict without an approved source. No analysis was saved.")
+        if finding.story_quote or finding.story_field:
+            text=cls.source_excerpt(finding.story_quote,story.get(finding.story_field)) if finding.story_field else None
+            if not text:raise invalid("AI returned a story excerpt that does not match the supplied story. No analysis was saved.")
+            finding.story_quote=text
+        quote=finding.criterion_quote
+        if not quote or not quote.strip():
+            finding.criterion_quote=None
+            return
+        text=cls.source_excerpt(quote,story.get("acceptance_criteria"))
+        if text:
+            finding.criterion_quote=text
+            return
+        # Older prompts may place a valid description quote in criterion_quote.
+        # Reclassify its source explicitly; never label it as acceptance criteria.
+        for field in ("description","title","out_of_scope"):
+            text=cls.source_excerpt(quote,story.get(field))
+            if text:
+                if finding.story_quote and (finding.story_field!=field or finding.story_quote!=text):
+                    raise invalid("AI returned conflicting story excerpts. No analysis was saved.")
+                finding.criterion_quote=None;finding.story_quote=text;finding.story_field=field
+                return
+        raise invalid("AI returned a quote that does not match the supplied story. No analysis was saved.")
+
     async def analyze(self, project, user, story_id, analysis_mode=None):
         require_features("product_knowledge", "story_analysis")
         story = await self.story(project, story_id)
@@ -335,18 +376,17 @@ class ProductKnowledge:
              "analysis_constraints": "Analyze supplied story requirements even without acceptance criteria. "
                  "Missing acceptance criteria are a finding, not invented expectations. "
                  "Without knowledge, do not claim knowledge validation or report knowledge conflicts. "
-                 "criterion_quote must quote acceptance criteria only; omit it when absent."},
+                 "criterion_quote must quote acceptance criteria only; use null when not applicable. "
+                 "For description/title/out_of_scope evidence, use story_quote with the matching story_field. "
+                 "Copy exact source wording, punctuation and capitalization; preserve line breaks where possible. "
+                 "In story_only mode, knowledge_claim_id must be null and knowledge_conflict is prohibited. "
+                 "Do not invent source IDs or use placeholder IDs."},
             StoryAnalysisResult, "story_analysis_v1", max_retries=0)
         allowed_claims = {claim["claim_id"] for claim in knowledge["claims"]} if knowledge else set()
         if len({finding.finding_id for finding in result.findings}) != len(result.findings):
             raise HTTPException(502, "AI findings had duplicate identifiers.")
         for finding in result.findings:
-            if ((finding.criterion_quote and finding.criterion_quote not in (story["acceptance_criteria"] or ""))
-                    or (finding.knowledge_claim_id and finding.knowledge_claim_id not in allowed_claims)
-                    or (not knowledge and finding.category == "knowledge_conflict")
-                    or (analysis_mode == "knowledge_aware" and finding.category == "knowledge_conflict"
-                        and not finding.knowledge_claim_id)):
-                raise HTTPException(502, "AI findings cited unavailable criteria or knowledge.")
+            self.validate_finding_evidence(finding,story,allowed_claims,mode)
         identity = uuid4().hex
         document = {**result.model_dump(), "_id": identity, "analysis_id": identity, "project_id": project,
                     "story_id": story_id, "story_digest": digest(story), "analysis_mode": mode,

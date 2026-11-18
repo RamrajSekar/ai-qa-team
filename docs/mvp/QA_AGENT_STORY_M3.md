@@ -161,3 +161,37 @@ moved generation flow and list/detail status consistency. Thirteen focused backe
 story approval tests passed, including repeated/concurrent approval and corrupt
 manifest rejection; the broader 76-test backend regression set passed earlier.
 No live provider, production database, migration or execution was used.
+
+
+## Story citation compatibility — 2026-11-18
+
+Finding evidence accepts whitespace-only layout differences and stores the exact
+matched source excerpt. Wording, punctuation, case and business values are not
+normalized. A valid description/title/out-of-scope quote returned in the legacy
+criterion_quote field is moved to optional story_quote/story_field and displayed
+with its actual source, never as acceptance criteria. Native story_quote citations
+are validated against their explicitly named field. Blank criterion quotes become
+null; invented/mismatched excerpts still reject the entire result before storage.
+
+Both analysis modes use the same evidence validation. Story-only rejects all
+knowledge references/conflicts; knowledge comparison permits only included source
+IDs and requires a linked rule for conflicts. Excluded same-story rules remain
+unavailable. Server-owned prompt constraints specify nulls and source fields, even
+when a platform-saved prompt overrides the fallback. No automatic retry or extra
+metered request is introduced; no past record/approval is rewritten or migrated.
+
+The exact rejected provider payload from the user report was not retained, so the
+specific triggering field remains unconfirmed. Regression fixtures reproduce the
+reported Contact record-type requirements with line-break differences, description
+citations, legitimate independent rules, and rejected invented/excluded references.
+No production database or live provider was used for these checks.
+
+
+Validation: 45 backend fixture checks passed (15 analysis-mode/evidence checks and
+30 knowledge regressions); four intercepted-API browser checks passed for both
+modes, no silent fallback/retry, refresh recovery and distinct story evidence labels.
+TypeScript, scoped ESLint and Git whitespace checks passed. The first browser
+attempt had no running isolated server; the successful rerun used the restarted
+server. Story Clarity uses a generic unsupported AI reference error; knowledge
+comparison reports unavailable knowledge references specifically. Existing data,
+knowledge isolation, metering and approval safeguards remain unchanged.
