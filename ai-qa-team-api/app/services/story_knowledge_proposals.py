@@ -53,7 +53,11 @@ class StoryKnowledgeProposals:
             ("Out of scope", story["out_of_scope"]), ("Reviewed clarifications", "\n\n".join(clarifications)),
             ("Approved changes", "\n\n".join(c["expected_behavior"] for c in changes))) if value)
         primary = [c["expected_behavior"] for c in changes] if changes else [story["acceptance_criteria"] if (story["acceptance_criteria"] or "").strip() else story["description"]]
-        fragments = [*primary, *clarifications]
+        requirements = [*primary, *clarifications]
+        # Description may contain business intent absent from acceptance criteria.
+        # Keep it in Add drafts; focused corrections use the primary requirements.
+        fragments = {"add": ([story["description"]] if not changes and (story["description"] or "").strip() else []) + requirements,
+                     "update": requirements}
         fingerprint = digest({"story": story, "authority": authority, "text": text})
         return story, text, fragments, fingerprint
 
@@ -83,6 +87,7 @@ class StoryKnowledgeProposals:
 
     async def start(self, project, story_id, actor, payload):
         story, text, fragments, fingerprint = await self.approved_source(project, story_id)
+        fragments=fragments[payload.change_type]
         identity = self.identity(project, digest([story_id, fingerprint, payload.change_type, payload.claim_id]))
         existing = await self.training.rows.find_one({"_id": self.training.key(project, identity), "project_id": project})
         if existing:

@@ -32,7 +32,8 @@ class StoryProposalTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first['review_id'],second['review_id'])
         self.assertEqual(first['extraction_state'],'completed');self.assertEqual(first['clarification_questions'],[])
         self.assertTrue(all(p['decision']=='pending' for p in first['proposals']))
-        self.assertEqual(first['proposals'][0]['claim']['statement'],'Show Draft saved.')
+        self.assertIn('Show Draft saved.',[p['claim']['statement'] for p in first['proposals']])
+        self.assertIn(self.db['stories'].docs[0]['description'],[p['claim']['statement'] for p in first['proposals']])
         self.assertEqual(len(self.db['knowledge_training_reviews'].docs),1)
         self.assertEqual(sum(s.get('origin',{}).get('approved_story_copy',False) for s in self.db['product_knowledge_sources'].docs),1)
         self.assertEqual(await self.service.active('P1'),before)
@@ -97,7 +98,7 @@ class StoryProposalTests(unittest.IsolatedAsyncioTestCase):
     async def test_long_addition_keeps_literal_excerpts_without_silent_truncation(self):
         from app.services.approved_visual_run import digest
         text=('Approved requirement text with exact punctuation. '*60).strip()
-        self.db['stories'].docs[0]['acceptance_criteria']=text
+        self.db['stories'].docs[0].update(acceptance_criteria=text,description=None)
         raw=self.db['story_analyses'].docs[-1]
         raw['story_digest']=digest(await self.service.story('P1','ST1'))
         row=await self.start()

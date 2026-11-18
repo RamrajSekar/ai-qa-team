@@ -234,8 +234,8 @@ Mongo database, ingestion or execution was used for verification.
 Approved stories (manual or AI-assisted) show Add knowledge and Update knowledge.
 Add needs no further form: it faithfully copies approved requirements and reviewed
 clarifications into completed-but-undecided QA Agent training review cards, without
-AI, extraction, auto-confirmation or knowledge publication. Title/description/scope
-remain inspectable source context; standalone headings are not invented rules.
+AI, extraction, auto-confirmation or knowledge publication. Description and acceptance criteria become review proposals; title and scope
+remain inspectable source context. Standalone headings are not invented rules.
 Update selects one exact current approved rule and seeds its replacement from the
 story into the same review pipeline. Removal remains in QA Agent; the story's new
 proposal API accepts only add/update. Existing conflict decisions and historical
