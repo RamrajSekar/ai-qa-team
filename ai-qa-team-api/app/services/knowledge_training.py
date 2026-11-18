@@ -277,6 +277,9 @@ class KnowledgeTraining:
             raise HTTPException(409, "Answer the proposal clarification before confirming this change.")
         if not any(item["decision"] == "confirmed" for item in row["proposals"]) and not row["removed_claim_ids"]:
             raise HTTPException(409, "No accepted knowledge change to save. Rejected proposals leave approved knowledge untouched.")
+        if row.get("source_origin",{}).get("approved_story_copy"):
+            from app.services.story_knowledge_proposals import StoryKnowledgeProposals
+            await StoryKnowledgeProposals(self.db).ensure_fresh(project,row["source_origin"])
         base = await self.knowledge.active(project)
         if (base["version_id"] if base else None) != row["base_version_id"]:
             raise HTTPException(409, "Approved knowledge changed. Keep this review and start a new review against current knowledge.")

@@ -49,3 +49,17 @@ class TrainingSave(Contract):
 
 class TrainingRebase(TrainingSave):
     request_id: RequestKey
+
+
+class StoryKnowledgeProposal(Contract):
+    change_type: Literal["add", "update"]
+    claim_id: Identifier | None = None
+    base_version_id: RequestKey | None = None
+
+    @model_validator(mode="after")
+    def target(self):
+        if self.change_type == "add" and (self.claim_id or self.base_version_id):
+            raise ValueError("Add knowledge cannot select an existing rule")
+        if self.change_type == "update" and (not self.claim_id or not self.base_version_id):
+            raise ValueError("Select a current approved rule for update")
+        return self

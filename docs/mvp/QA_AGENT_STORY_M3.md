@@ -227,3 +227,45 @@ passed. Ten intercepted-API browser checks passed, including explicit confirmati
 member restrictions, refresh recovery and the renamed knowledge actions.
 TypeScript/scoped ESLint and whitespace checks passed. No live provider, shared
 Mongo database, ingestion or execution was used for verification.
+
+
+## Approved story knowledge proposals — 2026-11-18
+
+Approved stories (manual or AI-assisted) show Add knowledge and Update knowledge.
+Add needs no further form: it faithfully copies approved requirements and reviewed
+clarifications into completed-but-undecided QA Agent training review cards, without
+AI, extraction, auto-confirmation or knowledge publication. Title/description/scope
+remain inspectable source context; standalone headings are not invented rules.
+Update selects one exact current approved rule and seeds its replacement from the
+story into the same review pipeline. Removal remains in QA Agent; the story's new
+proposal API accepts only add/update. Existing conflict decisions and historical
+change-review APIs remain compatible; old submitted reviews remain inspectable.
+
+Server-owned deterministic source/review/draft identities prevent repeated or
+concurrent clicks duplicating drafts. Same approved source and target reopen the
+existing review, including completed approvals; discarded requests are not silently
+resurrected. Story changes create a new source identity. Base-version conflicts use
+the existing explicit rebase review. Source/approval fingerprints are rechecked at
+draft save and before new publication, including direct version-approval callers.
+Retained historical rules do not block unrelated later knowledge changes. No old
+approval, M1 receipt or execution reference is rewritten.
+
+Story-origin evidence is retained and excluded from validation of its own source
+story. Add proposals preserve source text across bounded excerpts; source text is
+limited to 60000 characters, at most 60 cards. An update must fit the existing
+single-rule/source-quote bounds (1200 characters); larger corrections remain in
+QA Agent with explicitly focused evidence rather than silently truncated rules.
+Both flows require ordinary confirm/review/save and project ADMIN approval before
+an approved successor is published; unaffected rules are retained automatically.
+No model call, migration, new flag, media ingestion or execution activation.
+
+
+Verification for approved-story proposals: 76 backend fixture checks passed
+(8 proposal, 18 training, 30 knowledge, 15 combined-review and 5 Overview queue).
+Ten intercepted-API browser checks passed, covering Add/Update from manual and
+AI-assisted approval, QA Agent review routing, unchanged conflict review and manual
+approval. TypeScript/scoped ESLint and whitespace checks passed. Long repeated
+source text exposed per-chunk deduplication loss in a fixture; deduplication now
+applies only to identical whole fragments and the lossless excerpt check passed.
+No live model, shared database, media ingestion or execution was used. Existing
+knowledge-writer cutover prerequisites remain; no existing-data migration.
