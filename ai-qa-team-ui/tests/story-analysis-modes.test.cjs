@@ -61,3 +61,15 @@ test('no eligible rules offers explicit story clarity without a silent retry',as
  await page.getByLabel('Analysis mode',{exact:true}).selectOption('story_only');await page.getByRole('button',{name:'Analyze with AI'}).click();
  await page.getByText('Story-only review.',{exact:false}).waitFor();assert.deepEqual(calls,['knowledge_aware','story_only']);
 });
+
+
+test('story description evidence is labelled separately from acceptance criteria',async t=>{
+ const browser=await chromium.launch({headless:true,channel:'msedge'});t.after(()=>browser.close());
+ const {page,context}=await fixture(browser,t);
+ const headers={'access-control-allow-origin':base,'access-control-allow-credentials':'true'};
+ const analysis={analysis_id:'a'.repeat(32),status:'needs_review',stale:false,summary:'Clarify record types',analysis_mode:'story_only',knowledge_version_id:null,findings:[{finding_id:'F1',category:'ambiguity',severity:'warning',description:'Default type is missing',question:'Which type is the default?',criterion_quote:null,story_quote:'Employee, Guest, Agent',story_field:'description'}]};
+ await context.route(url=>url.origin==='http://feature-api.test'&&url.pathname.endsWith('/stories/ST1/analysis'),route=>route.fulfill({headers,json:analysis}));
+ await page.goto(base+'/projects/P1/stories/ST1');
+ await page.getByText('Story description: Employee, Guest, Agent',{exact:true}).waitFor();
+ assert.equal(await page.getByText('Acceptance criterion: Employee, Guest, Agent',{exact:true}).count(),0);
+});

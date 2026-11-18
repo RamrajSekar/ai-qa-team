@@ -13,6 +13,61 @@ class StoryAnalysisModes(unittest.IsolatedAsyncioTestCase):
     approved = fixtures.KnowledgeTests.approved
     analysis = fixtures.KnowledgeTests.analysis
 
+    async def test_validation_errors_are_specific_to_analysis_mode(self):
+        finding={'finding_id':'F1','category':'ambiguity','severity':'warning','description':'Detail','question':'Clarify?','knowledge_claim_id':'K_missing'}
+        with self.assertRaises(HTTPException) as story_error:await self.explicit('story_only',[finding])
+        self.assertEqual(story_error.exception.detail,'Story Clarity received an unsupported AI reference. No analysis was saved.')
+        await self.approved()
+        with self.assertRaises(HTTPException) as comparison_error:await self.explicit('knowledge_aware',[finding])
+        self.assertEqual(comparison_error.exception.detail,'AI returned an unsupported knowledge reference. No analysis was saved.')
+        self.assertEqual(self.db['story_analyses'].docs,[])
+
+    async def test_contact_record_type_story_accepts_whitespace_only_quote_changes(self):
+        story=self.db['stories'].docs[0]
+        story.update(title='Create a record types in Contact Object',description='As a user while creating a contact display record types Employee, Guest, Agent',acceptance_criteria='This is applicable for any user profile\nFor Record Type as Agent - Display Add Agency Button\nFor Record Type as Guest & Employee - Do not display Add Agency Button')
+        quote='This is applicable for any user profile For Record Type as Agent - Display Add Agency Button'
+        finding={'finding_id':'F1','category':'missing_detail','severity':'warning','description':'Button behavior needs detail','question':'What happens after Add Agency?','criterion_quote':quote}
+        result=await self.explicit('story_only',[finding])
+        self.assertEqual(result['findings'][0]['criterion_quote'],'This is applicable for any user profile\nFor Record Type as Agent - Display Add Agency Button')
+        self.assertIsNone(result['findings'][0]['story_quote'])
+        self.assertIsNone(result['knowledge_version_id'])
+        self.assertEqual(self.usage.execute.await_count,1)
+        self.assertEqual(self.usage.execute.call_args.args[3].max_retries,0)
+
+    async def test_knowledge_comparison_accepts_source_layout_changes_but_rejects_unknown_claims(self):
+        await self.mixed()
+        self.db['stories'].docs[0]['acceptance_criteria']='Agent can add Agency.\nGuest cannot add Agency.'
+        finding={'finding_id':'F1','category':'knowledge_conflict','severity':'blocker','description':'Check rule conflict','question':'Is this intentional?','criterion_quote':'Agent can add Agency. Guest cannot add Agency.','knowledge_claim_id':'K1'}
+        result=await self.explicit('knowledge_aware',[finding])
+        self.assertEqual(result['findings'][0]['criterion_quote'],self.db['stories'].docs[0]['acceptance_criteria'])
+        self.assertEqual(result['findings'][0]['knowledge_claim_id'],'K1')
+        self.assertEqual(result['included_knowledge_claim_ids'],['K1'])
+        before=len(self.db['story_analyses'].docs)
+        for identity in ('K2','K_missing',None):
+            finding['knowledge_claim_id']=identity
+            with self.assertRaises(HTTPException):await self.explicit('knowledge_aware',[finding])
+        self.assertEqual(len(self.db['story_analyses'].docs),before)
+
+    async def test_description_quote_is_reclassified_with_source_not_claimed_as_criteria(self):
+        self.db['stories'].docs[0].update(description='Show Employee, Guest, Agent record types.',acceptance_criteria=None)
+        finding={'finding_id':'F1','category':'ambiguity','severity':'warning','description':'Scope needs detail','question':'What is the default type?','criterion_quote':'Employee, Guest, Agent'}
+        result=await self.explicit('story_only',[finding])
+        self.assertIsNone(result['findings'][0]['criterion_quote'])
+        self.assertEqual(result['findings'][0]['story_field'],'description')
+        self.assertEqual(result['findings'][0]['story_quote'],'Employee, Guest, Agent')
+        stored=await self.service.latest_analysis('P1','ST1')
+        self.assertEqual(stored['findings'],result['findings'])
+
+    async def test_quote_matching_does_not_change_values_punctuation_or_invent_sources(self):
+        self.db['stories'].docs[0].update(description='Guest & Employee cannot add Agency.',acceptance_criteria='Agent can add Agency.')
+        for quote in ('Guest and Employee cannot add Agency.','Agent cannot add Agency.','agent can add Agency.','Agent can add Agency!'):
+            finding={'finding_id':'F1','category':'ambiguity','severity':'warning','description':'Detail','question':'Clarify?','criterion_quote':quote}
+            with self.assertRaises(HTTPException):await self.explicit('story_only',[finding])
+        self.assertEqual(self.db['story_analyses'].docs,[])
+        finding.update(criterion_quote=None,story_quote='Agent can add Agency.',story_field='description')
+        with self.assertRaises(HTTPException):await self.explicit('story_only',[finding])
+        self.assertEqual(self.db['story_analyses'].docs,[])
+
     async def test_story_only_without_criteria_review_cannot_enable_generation(self):
         self.db["stories"].docs[0]["acceptance_criteria"] = None
         result = await self.analysis()

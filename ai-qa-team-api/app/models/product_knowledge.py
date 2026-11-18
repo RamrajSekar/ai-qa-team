@@ -72,6 +72,8 @@ class StoryFinding(Contract):
     description: str = Field(min_length=1, max_length=1500)
     question: str = Field(min_length=1, max_length=1000)
     criterion_quote: str | None = Field(default=None, max_length=1200)
+    story_quote: str | None = Field(default=None, max_length=1200)
+    story_field: Literal["title", "description", "out_of_scope"] | None = None
     knowledge_claim_id: Identifier | None = None
 
 
