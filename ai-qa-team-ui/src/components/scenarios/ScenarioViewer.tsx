@@ -1,5 +1,6 @@
 "use client";
 
+import ComplexitySelect, { type GenerationComplexity } from "../projects/ComplexitySelect";
 import { X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -16,6 +17,7 @@ interface Props {
 
 export default function ScenarioViewer({ open, scenario, onClose, onApproved }: Props) {
   const { enabled } = useFeatures();
+  const [complexity, setComplexity] = useState<GenerationComplexity>("basic");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [generatedIds, setGeneratedIds] = useState<string[]>([]);
@@ -109,13 +111,14 @@ export default function ScenarioViewer({ open, scenario, onClose, onApproved }: 
           Generated {generatedIds.join(", ")}.{" "}
           <Link className="underline" href={`/projects/${projectId}/testcases`}>Open Test Cases</Link>
         </p>}
+        {canGenerate && <div className="mt-4"><ComplexitySelect value={complexity} onChange={setComplexity} disabled={busy || generatedIds.length > 0} /></div>}
         <div className="flex flex-wrap justify-end gap-2 mt-6">
           {!scenario.approved && <button type="button" className="workspace-button" disabled={busy || (!hasIntent && !scenario.steps.length)}
             onClick={() => void perform(`/scenarios/${scenarioId}/approve`, "PUT", data => onApproved(data as Scenario))}>
             Approve scenario
           </button>}
           {canGenerate && <button type="button" className="workspace-button workspace-primary" disabled={busy || generatedIds.length > 0}
-            onClick={() => void perform(`/testcases/generate?scenario_id=${scenarioId}&project_id=${projectId}&count=1&complexity=basic`, "POST", data => {
+            onClick={() => void perform(`/testcases/generate?scenario_id=${scenarioId}&project_id=${projectId}&count=1&complexity=${complexity}`, "POST", data => {
               if (!Array.isArray(data) || !data.length) throw new Error("No test cases were returned.");
               setGeneratedIds(data.map(item => item.testcase_id));
             })}>Generate test case</button>}

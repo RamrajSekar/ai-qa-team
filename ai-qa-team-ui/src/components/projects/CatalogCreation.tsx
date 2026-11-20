@@ -6,6 +6,7 @@ import { apiFetch } from "@/utils/api";
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 import ScenarioModal from "@/components/scenarios/ScenarioModal";
 import TestCaseEditor from "./TestCaseEditor";
+import ComplexitySelect, { type GenerationComplexity } from "./ComplexitySelect";
 
 interface Source { id: string; title: string; description?:string; acceptance_criteria?:string }
 
@@ -15,6 +16,7 @@ export default function CatalogCreation({ kind, projectId, onSaved }: {
   const { enabled } = useFeatures();
   const knowledgeEnabled=kind==="scenarios"&&enabled("product_knowledge","story_analysis");
   const [count, setCount] = useState(kind === "scenarios" ? 3 : 1);
+  const [complexity, setComplexity] = useState<GenerationComplexity>("basic");
   const [open, setOpen] = useState(false);
   const [sources, setSources] = useState<Source[]>([]);
   const [source, setSource] = useState("");
@@ -58,8 +60,8 @@ export default function CatalogCreation({ kind, projectId, onSaved }: {
     setMessage("");
     try {
       const path = kind === "scenarios"
-        ? `/scenarios/generate-from-story?story_id=${encodeURIComponent(source)}&count=${count}&complexity=basic${knowledgeEnabled?"&approved_story=true":""}`
-        : `/testcases/generate?scenario_id=${encodeURIComponent(source)}&project_id=${encodeURIComponent(projectId)}&count=${count}&complexity=basic`;
+        ? `/scenarios/generate-from-story?story_id=${encodeURIComponent(source)}&count=${count}&complexity=${complexity}${knowledgeEnabled?"&approved_story=true":""}`
+        : `/testcases/generate?scenario_id=${encodeURIComponent(source)}&project_id=${encodeURIComponent(projectId)}&count=${count}&complexity=${complexity}`;
       const response = await apiFetch(path, { method: "POST" });
       if (!response.ok) throw new Error(typeof response.data?.detail === "string" ? response.data.detail : response.data?.detail?.message || "Generation could not be completed.");
       if (kind === "scenarios" && !response.data?.scenarios?.length) throw new Error("No scenarios were generated. Check the story’s acceptance criteria.");
@@ -83,6 +85,7 @@ export default function CatalogCreation({ kind, projectId, onSaved }: {
       <div className="story-generation-bar">
       {knowledgeEnabled&&source&&<p className="text-sm">Uses the approved story and its reviewed context. Generated drafts require review.</p>}
       <div className="space-y-3">
+      <ComplexitySelect value={complexity} onChange={setComplexity} disabled={busy} />
       <label className="block">Requested count <input aria-label={kind==="scenarios"?"Requested scenarios":"Requested count"} type="number" min={1} max={20} value={count} onChange={event => setCount(Math.max(1, Math.min(20, Number(event.target.value) || 1)))} /></label>
       <div className="catalog-actions">
         <button className="workspace-button" disabled={busy || !source} onClick={() => setEditing(true)}>Add manually</button>
