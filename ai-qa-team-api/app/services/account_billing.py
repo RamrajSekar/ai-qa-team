@@ -46,3 +46,20 @@ async def change_seats(database, account, delta):
     result = await database["customer_accounts"].update_one(query, {"$inc": {"subscription.usage.team_members_used": delta}})
     if delta > 0 and result.modified_count != 1:
         raise HTTPException(403, "Account member allowance reached.")
+
+
+async def scenario_complexity_usage(database, account_id):
+    """Read-only inventory breakdown; subscription reservations remain untouched."""
+    rows = await database["projects"].aggregate([
+        {"$match": {"account_id": account_id}},
+        {"$lookup": {"from": "scenarios", "let": {"project": "$project_id"}, "pipeline": [
+            {"$match": {"$expr": {"$eq": ["$project_id", "$$project"]}}},
+            {"$group": {"_id": {"$cond": [
+                {"$in": ["$complexity", ["basic", "medium", "advanced"]]},
+                "$complexity", "unspecified"]}, "count": {"$sum": 1}}},
+        ], "as": "complexity_counts"}},
+        {"$unwind": "$complexity_counts"},
+        {"$group": {"_id": "$complexity_counts._id", "count": {"$sum": "$complexity_counts.count"}}},
+    ]).to_list(4)
+    return {f"scenarios_{tier}_used": next((row["count"] for row in rows if row["_id"] == tier), 0)
+            for tier in ("basic", "medium", "advanced", "unspecified")}

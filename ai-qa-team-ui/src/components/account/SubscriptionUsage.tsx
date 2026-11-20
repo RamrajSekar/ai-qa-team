@@ -55,7 +55,16 @@ export default function SubscriptionUsage({ subscription }: { subscription: Acco
     <section className={styles.group} aria-labelledby="workspace-capacity-title">
       <h3 id="workspace-capacity-title">Workspace Capacity</h3><p className={styles.description}>Resource allowances across all projects. These counts are separate from AI credits.</p>
       <div className={`${styles.grid} ${styles.resources}`}>
-        {[["Projects", "projects_used"], ["Stories", "stories_used"], ["Scenarios", "scenarios_used"]].map(([label, key]) => <div className={styles.card} key={key}>{meter(label, key)}</div>)}
+        {[["Projects", "projects_used"], ["Stories", "stories_used"]].map(([label, key]) => <div className={styles.card} key={key}>{meter(label, key)}</div>)}
+        <div className={`${styles.card} ${styles.testCases}`}>
+          {meter("Scenarios", "scenarios_used")}
+          <div className={styles.tiers} role="group" aria-label="Scenario usage by complexity">
+            {["basic", "medium", "advanced", "unspecified"].map(tier => <div key={tier} className={styles.compactMeter}>
+              <dl className={styles.meterLine}><dt>{title(tier)}</dt><dd>{subscription.usage[`scenarios_${tier}_used`] ?? "Unavailable"}</dd></dl>
+            </div>)}
+          </div>
+          <p className={styles.note}>Counts by complexity. All levels share the total scenario allowance.</p>
+        </div>
         <div className={`${styles.card} ${styles.testCases}`}>{meter("Test Cases", "testcases_used")}<div className={styles.tiers} role="group" aria-label="Test case usage by complexity">{["basic", "medium", "advanced"].map(tier => <div key={tier}>{meter(title(tier), `testcases_${tier}_used`, true)}</div>)}</div></div>
       </div>
     </section>
