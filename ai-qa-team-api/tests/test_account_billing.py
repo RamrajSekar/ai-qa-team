@@ -146,7 +146,11 @@ class AccountBillingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(client.post('/projects/P1/team', json={"email": self.owner["email"], "role": "ADMIN"}).status_code, 403)
         self.assertEqual(client.get('/account/projects').status_code, 403)
         self.assertEqual(client.patch('/auth/auth/upgrade-plan?plan=enterprise').status_code, 403)
-        self.assertEqual(client.get('/account/subscription').json()["billing_scope"], "ACCOUNT")
+        with patch("app.services.account_billing.scenario_complexity_usage", new=AsyncMock(return_value={"scenarios_basic_used": 2})):
+            payload = client.get('/account/subscription').json()
+        self.assertEqual(payload["billing_scope"], "ACCOUNT")
+        self.assertEqual(payload["subscription"]["usage"]["scenarios_basic_used"], 2)
+        self.assertNotIn("scenarios_basic_used", self.db["customer_accounts"].docs[0]["subscription"]["usage"])
 
     async def test_seats_are_atomic_and_revoke_releases_without_project_assignment_charges(self):
         self.db["customer_accounts"].docs[0]["subscription"]["limits"]["team_members_limit"] = 1

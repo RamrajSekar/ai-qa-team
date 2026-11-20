@@ -62,7 +62,11 @@ async def account_subscription(response: Response, user=Depends(get_current_user
     response.headers["Cache-Control"] = "private, no-store"
     if not billing:
         return {"billing_scope": "LEGACY_USER", "migration_required": True}
-    return {"account_id": account["_id"], "billing_scope": "ACCOUNT", "subscription": billing["subscription"]}
+    from copy import deepcopy
+    from app.services.account_billing import scenario_complexity_usage
+    subscription = deepcopy(billing["subscription"])
+    subscription.setdefault("usage", {}).update(await scenario_complexity_usage(db, account["_id"]))
+    return {"account_id": account["_id"], "billing_scope": "ACCOUNT", "subscription": subscription}
 
 
 @router.get("/invitations")
