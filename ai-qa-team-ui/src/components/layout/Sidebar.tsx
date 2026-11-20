@@ -9,7 +9,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { LayoutGrid, FolderOpen, Zap, ChevronLeft, ChevronRight, Layers, FileText, GitBranch, Users, BrainCircuit, ShieldCheck, MessageSquareText, Bug } from "lucide-react";
 
 export default function Sidebar() {
-  const { enabled } = useFeatures();
+  const { enabled, ready, failed, retry } = useFeatures();
   const { user } = useAuth();
   const pathname = usePathname();
   const { projects } = useProjects();
@@ -37,7 +37,7 @@ export default function Sidebar() {
     ...((enabled("manual_test_results", "test_generation") || enabled("automation_execution_ui", "test_execution_ui", "test_generation", "approved_visual_run_admission")) ? [{ name: "Test Execution", icon: Zap, href: `/projects/${projectId}/test-execution` }] : []),
     { name: "Environments", icon: FolderOpen, href: `/projects/${projectId}/environments` },
     ...(enabled("repository_ui", "repository_discovery", "test_registry") ? [{ name: "Repositories", icon: GitBranch, href: `/projects/${projectId}/repositories` }] : []),
-    ...(!enabled("customer_accounts") && project?.current_user_role === "ADMIN" ? [{ name: "Team", icon: Users, href: `/projects/${projectId}/settings/team` }] : []),
+    ...(ready && !failed && !enabled("customer_accounts") && project?.current_user_role === "ADMIN" ? [{ name: "Team", icon: Users, href: `/projects/${projectId}/settings/team` }] : []),
     ...(enabled("automation_execution_ui") ? [{ name: "Execution history", icon: Zap, href: `/projects/${projectId}/execution-history` }] : []),
   ] : [];
   const destination = [...globalMenu, ...platformMenu, ...projectMenu].filter((item) => pathname === item.href || pathname.startsWith(item.href + "/"))
@@ -51,6 +51,8 @@ export default function Sidebar() {
         </button>
       </div>
       <nav className="workspace-nav">
+        {!ready && <p role="status">Loading navigation…</p>}
+        {failed && <div role="alert"><p>Navigation settings unavailable.</p><button className="workspace-button" onClick={retry}>Retry settings</button></div>}
         <p className="workspace-nav-label">Workspace</p>
         {globalMenu.map(({ name, icon: Icon, href }) => <Link key={href} href={href} title={name} aria-label={name} aria-current={destination === href ? "page" : undefined} className="workspace-nav-link"><Icon size={18} /><span>{name}</span></Link>)}
         {platformMenu.length > 0 && <><p className="workspace-nav-label">Platform Admin</p>{platformMenu.map(({ name, icon: Icon, href }) => <Link key={href} href={href} title={name} aria-label={name} aria-current={destination === href ? "page" : undefined} className="workspace-nav-link"><Icon size={18} /><span>{name}</span></Link>)}</>}
