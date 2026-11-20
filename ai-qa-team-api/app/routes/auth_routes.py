@@ -5,6 +5,7 @@ from app.models.user_model import User, OnboardingModel
 from app.config import settings
 from app.utils.redis_client import store_refresh_token, get_refresh_token, delete_refresh_token
 from passlib.context import CryptContext
+from starlette.concurrency import run_in_threadpool
 from app.utils.oauth_client import oauth
 from app.utils.mongo_helper import serialize_public_user
 from app.utils.auth_cookies import clear_auth_cookies, set_access_cookie, set_auth_cookies
@@ -50,6 +51,8 @@ def to_json_safe(obj):
 @router.post("/signup")
 async def signup(user: User):
     try:
+        if not isinstance(user.password, str) or not user.password or len(user.password) > 4096:
+            raise HTTPException(422, "A valid password is required.")
         # 1️⃣ Check for existing email BEFORE doing anything else
         normalized_email = str(user.email).strip().lower()
         existing = await db["users"].find_one({"email": normalized_email})
@@ -57,7 +60,7 @@ async def signup(user: User):
             raise HTTPException(400, "Email already exists")
 
         # 2️⃣ Hash password
-        hashed_pw = pwd_context.hash(user.password)
+        hashed_pw = await run_in_threadpool(pwd_context.hash, user.password)
 
         # 3️⃣ Create subscription (in memory)
         subscription = Subscription(plan="free")
@@ -89,7 +92,7 @@ async def signup(user: User):
         # 6️⃣ Generate tokens
         access = create_access_token({"email": normalized_email, "role": "admin"})
         refresh = create_refresh_token({"email": normalized_email, "role": "admin"})
-        store_refresh_token(normalized_email, refresh)
+        await run_in_threadpool(store_refresh_token, normalized_email, refresh)
         safe_user_doc = serialize_public_user(user_doc)
         response = JSONResponse({"user": safe_user_doc})
         set_auth_cookies(response, access, refresh)
@@ -102,12 +105,20 @@ async def signup(user: User):
 
 @router.post("/login")
 async def login(credentials: dict):
-    # print("LOGIN REQ =", credentials["email"], credentials["password"])
+    if (not isinstance(credentials.get("email"), str) or not credentials["email"].strip()
+            or not isinstance(credentials.get("password"), str) or not credentials["password"]
+            or len(credentials["email"]) > 320 or len(credentials["password"]) > 4096):
+        raise HTTPException(422, "Invalid login fields.")
     user = await db["users"].find_one({"email": str(credentials["email"]).strip().lower()})
     if not user:
         raise HTTPException(401, "Invalid credentials")
 
-    if not pwd_context.verify(credentials["password"], user["password"]):
+    stored_password = user.get("password")
+    try:
+        valid = isinstance(stored_password, str) and await run_in_threadpool(pwd_context.verify, credentials["password"], stored_password)
+    except (ValueError, TypeError):
+        valid = False
+    if not valid:
         raise HTTPException(401, "Invalid credentials")
 
     if accounts_enabled() or user.get("account_id"):
@@ -124,7 +135,7 @@ async def login(credentials: dict):
     access = create_access_token({"email": user_data["email"], "role": user_data["role"]})
     refresh = create_refresh_token({"email": user_data["email"], "role": user_data["role"]})
 
-    store_refresh_token(user_data["email"], refresh)
+    await run_in_threadpool(store_refresh_token, user_data["email"], refresh)
 
     # --- FIX: Set cookies ---
     response = JSONResponse({
@@ -270,7 +281,7 @@ async def oauth_callback(request: Request, provider: str):
         refresh_token = create_refresh_token({"email": email, "role": persisted_role})
 
         # store refresh token in Redis
-        store_refresh_token(email, refresh_token)
+        await run_in_threadpool(store_refresh_token, email, refresh_token)
 
         if not settings.frontend_url:
             raise HTTPException(status_code=500, detail="FRONTEND_URL is not configured")
@@ -293,12 +304,12 @@ async def refresh_token(request: Request):
         raise HTTPException(status_code=400, detail="Missing refresh token")
 
     try:
-        payload = decode_token(refresh_token)
+        payload = decode_token(refresh_token, expected_type="refresh")
         email = payload.get("email")
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-    stored = get_refresh_token(email)
+    stored = await run_in_threadpool(get_refresh_token, email)
     if stored != refresh_token:
         raise HTTPException(status_code=401, detail="Refresh token expired or revoked")
 
@@ -411,7 +422,7 @@ async def get_my_profile(request: Request, refresh_usage: bool = True):
 @router.post("/logout")
 async def logout(current_user=Depends(get_current_user)):
     # 1️⃣ Invalidate refresh token in Redis
-    delete_refresh_token(current_user["email"])
+    await run_in_threadpool(delete_refresh_token, current_user["email"])
 
     # 2️⃣ Build response
     response = JSONResponse({"message": "Logged out successfully"})

@@ -22,9 +22,15 @@ async def authorize_references(request, user, database):
                     if key in references and references[key] != body[key]:
                         raise HTTPException(422, "Conflicting resource references.")
                     references[key] = body[key]
+    testcase_ids = references.get("testcase_ids", [])
+    if (not isinstance(testcase_ids, list) or len(testcase_ids) > 1000
+            or any(not isinstance(value, str) or not value for value in testcase_ids)):
+        raise HTTPException(422, "Invalid resource references (maximum 1000 test cases).")
     projects = set()
     if references.get("project_id"):
-        projects.add(str(references["project_id"]))
+        if not isinstance(references["project_id"], str):
+            raise HTTPException(422, "Invalid project reference.")
+        projects.add(references["project_id"])
     resources = {"story_id": "stories", "scenario_id": "scenarios", "testcase_id": "testcases",
                  "recording_id": "recordings", "env_id": "environments", "repository_id": "repositories",
                  "execution_id": "executions", "membership_id": "project_memberships"}
@@ -35,11 +41,18 @@ async def authorize_references(request, user, database):
         if not isinstance(values, list):
             raise HTTPException(422, "Invalid resource references.")
         values = [*values, *([references[key]] if references.get(key) else [])]
-        for value in values:
-            if not isinstance(value, str):
-                raise HTTPException(422, "Invalid resource references.")
-            document = await database[collection].find_one({key: value})
-            if document and document.get("project_id"):
+        if any(not isinstance(value, str) or not value for value in values):
+            raise HTTPException(422, "Invalid resource references.")
+        values = list(dict.fromkeys(values))
+        if len(values) > 1:
+            documents = await database[collection].find({key: {"$in": values}}, {"project_id": 1}).to_list(len(values))
+        elif values:
+            document = await database[collection].find_one({key: values[0]}, {"project_id": 1})
+            documents = [document] if document else []
+        else:
+            documents = []
+        for document in documents:
+            if document.get("project_id"):
                 projects.add(document["project_id"])
     for project_id in projects:
         # Narrow account-administration capability, not project-content access.

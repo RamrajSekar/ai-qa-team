@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { apiFetch } from "@/utils/api";
 
@@ -19,10 +19,16 @@ type FeatureState = {
   failed: boolean;
 };
 
-const FeatureContext = createContext<FeatureState>({ flags: {}, ready: false, failed: false });
+const FeatureContext = createContext<FeatureState & { retry: () => void }>({ flags: {}, ready: false, failed: false, retry: () => {} });
 
 export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<FeatureState>({ flags: {}, ready: false, failed: false });
+
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => {
+    setState({ flags: {}, ready: false, failed: false });
+    setAttempt(value => value + 1);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -37,9 +43,9 @@ export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
       if (active) setState({ flags: {}, ready: true, failed: true });
     });
     return () => { active = false; };
-  }, []);
+  }, [attempt]);
 
-  return <FeatureContext.Provider value={state}>{children}</FeatureContext.Provider>;
+  return <FeatureContext.Provider value={{ ...state, retry }}>{children}</FeatureContext.Provider>;
 }
 
 export function useFeatures() {
@@ -58,7 +64,7 @@ export function FeatureGate({ names, children }: { names: FeatureName[]; childre
 // Stop disabled page trees mounting, rather than hiding them after their effects run.
 export function FeatureRouteGuard({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { enabled, ready, failed } = useFeatures();
+  const { enabled, ready, failed, retry } = useFeatures();
   const segment = pathname.split("/")[1] === "projects"
     ? pathname.split("/")[3]
     : pathname.split("/")[1];
@@ -68,6 +74,9 @@ export function FeatureRouteGuard({ children }: { children: ReactNode }) {
     "visual-lab": "visual_runner_lab", "test-execution": "test_execution_ui",
   };
   const feature = pathname === "/settings/account" || pathname.startsWith("/settings/account/") ? "customer_accounts" : required[segment];
+  if (failed && (feature || ["visual-lab", "test-execution", "execution-history"].includes(segment))) {
+    return <div role="alert">Feature settings could not be loaded. <button className="workspace-button" onClick={retry}>Retry settings</button></div>;
+  }
   if (segment === "test-execution" && ready && enabled("manual_test_results", "test_generation")) return children;
   if (["visual-lab", "test-execution", "execution-history"].includes(segment)) {
     if (!ready) return <p role="status">Loading features...</p>;
@@ -75,7 +84,6 @@ export function FeatureRouteGuard({ children }: { children: ReactNode }) {
   }
   if (!feature) return children;
   if (!ready) return <p role="status">Loading features...</p>;
-  if (failed) return <p role="alert">Feature availability could not be loaded. Reload to try again.</p>;
   if (!enabled(feature)) return <p role="status">This feature is disabled.</p>;
   return children;
 }
