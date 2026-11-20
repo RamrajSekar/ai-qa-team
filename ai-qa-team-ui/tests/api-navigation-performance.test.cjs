@@ -3,9 +3,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
-function client(fetch) {
+function client(fetch, base = 'https://api.example.test') {
  const code = ts.transpileModule(fs.readFileSync('src/utils/api.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
- const context = { exports: {}, process: { env: { NEXT_PUBLIC_API_URL: 'https://api.example.test' } }, fetch, Headers, AbortSignal, DOMException, setTimeout, clearTimeout, console: { log() {} } };
+ const context = { exports: {}, process: { env: { NEXT_PUBLIC_API_URL: base } }, fetch, Headers, AbortSignal, DOMException, setTimeout, clearTimeout, console: { log() {} } };
  vm.runInNewContext(code, context);
  return context.exports.apiFetch;
 }
@@ -49,3 +49,15 @@ test('multipart bodies keep browser-controlled content type',async()=>{
  const api=client(async(_,options)=>{assert.equal(new Headers(options.headers).has('content-type'),false);return json({});});
  assert.equal((await api('/knowledge',{method:'POST',body})).ok,true);
 });
+
+for (const endpoint of ['/auth/me?refresh_usage=false', '/features']) {
+ test(`relative API base retries ${endpoint} without duplicating its prefix`, async () => {
+  const calls = [];
+  const api = client(async url => {
+   calls.push(url);
+   return json({}, calls.length === 1 ? 401 : 200);
+  }, '/api');
+  assert.equal((await api(endpoint)).ok, true);
+  assert.deepEqual(calls, [`/api${endpoint}`, '/api/auth/refresh', `/api${endpoint}`]);
+ });
+}
