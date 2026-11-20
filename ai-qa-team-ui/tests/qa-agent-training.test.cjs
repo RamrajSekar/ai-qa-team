@@ -8,6 +8,7 @@ test('current table hides history, shows name/topic and permits discarding a sta
  assert.equal(await page.getByText('History and sources',{exact:true}).count(),0);
  await page.getByRole('cell',{name:'Landing page',exact:true}).waitFor();
  page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Remove',exact:true}).click();
+ await page.getByRole('heading',{name:'Review removal',exact:true}).waitFor();
  reviews[0].base_version_id='f'.repeat(32);await page.reload();
  await page.getByText('Approved knowledge changed.',{exact:false}).waitFor();
  page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Discard request',exact:true}).click();
