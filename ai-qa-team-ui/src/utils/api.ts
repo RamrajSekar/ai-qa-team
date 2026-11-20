@@ -68,7 +68,7 @@ export async function apiFetch(url: string, options: APIOptions = {}): Promise<A
     const refreshed = await waitForRefresh(refreshSession(API_URL), options.signal);
     options.signal?.throwIfAborted();
     if (refreshed) {
-      return apiFetch(path, { ...options, retry: true });
+      return apiFetch(url, { ...options, retry: true });
     }
   }
 
