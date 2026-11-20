@@ -34,3 +34,17 @@ See [PRODUCT_KNOWLEDGE](PRODUCT_KNOWLEDGE.md), [PLATFORM_PROMPTS](PLATFORM_PROMP
 and [UI_UX_REFRESH](UI_UX_REFRESH.md) for actual checks and limits. Phase 2 execution
 architecture is planned in [HYBRID_EXECUTION_PLAN](HYBRID_EXECUTION_PLAN.md); it is not
 implicitly authorized by Test Design completion work.
+
+
+## 2026-11-20 qualification checkpoint
+
+See [Test Design qualification](TEST_DESIGN_QUALIFICATION.md). The committed API
+passed the authenticated signup → knowledge → story analysis → scenario → reviewed
+case → export journey against a separate local Mongo replica set with deterministic
+AI responses. Tenant/role checks and single-winner approval/AI-credit reservations
+passed. **Concurrent scenario/test-case last-slot enforcement failed**: both requests
+saved records beyond the shared limit. Phase 1 sign-off remains blocked until atomic
+resource reservations/settlement are implemented and reverified. These local checks
+do not close real-provider quality, Redis distribution or multi-host failover gates.
+Audio/video remains deferred by the user's scope decision; unfinished ingestion is
+not activated by qualification.

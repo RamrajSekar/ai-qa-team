@@ -1,0 +1,191 @@
+{
+  "verified_commit": "2f1d6dcd722b511bdd3bf61bf20caa9d1d3eba17",
+  "real_mongo": {
+    "database": "ephemeral-loopback-only",
+    "provider": "deterministic-double",
+    "checks": [
+      {
+        "name": "signup_account_project",
+        "passed": true
+      },
+      {
+        "name": "teach_review_approve_real_mongo",
+        "passed": true
+      },
+      {
+        "name": "story_analysis_scenario_case_approval_export",
+        "passed": true
+      },
+      {
+        "name": "exact_context_and_preconditions",
+        "passed": true
+      },
+      {
+        "name": "foreign_account_read_evidence_and_export_isolation",
+        "passed": true,
+        "paths": 8
+      },
+      {
+        "name": "foreign_account_cannot_approve",
+        "passed": true
+      },
+      {
+        "name": "managed_last_credit_atomic",
+        "passed": true
+      },
+      {
+        "name": "byok_last_credit_atomic",
+        "passed": true
+      },
+      {
+        "name": "scenarios_last_slot_enforced",
+        "passed": false,
+        "statuses": [
+          200,
+          200
+        ],
+        "before": 1,
+        "after": 3,
+        "limit": 2,
+        "usage": 3
+      },
+      {
+        "name": "testcases_last_slot_enforced",
+        "passed": false,
+        "statuses": [
+          200,
+          200
+        ],
+        "before": 1,
+        "after": 3,
+        "limit": 2,
+        "usage": 3
+      },
+      {
+        "name": "knowledge_competing_approvals_one_winner",
+        "passed": true
+      },
+      {
+        "name": "knowledge_retry_preserves_original_approval",
+        "passed": true
+      },
+      {
+        "name": "test_design_competing_approvals_one_winner",
+        "passed": true
+      },
+      {
+        "name": "same_account_without_project_membership_denied",
+        "passed": true
+      },
+      {
+        "name": "project_member_can_read_approved_knowledge",
+        "passed": true
+      },
+      {
+        "name": "project_member_cannot_approve_knowledge",
+        "passed": true
+      },
+      {
+        "name": "member_design_approval_retry_preserves_actor",
+        "passed": true
+      },
+      {
+        "name": "project_member_can_approve_design_under_member_policy",
+        "passed": true
+      },
+      {
+        "name": "platform_owner_with_foreign_stale_membership_denied",
+        "passed": true
+      },
+      {
+        "name": "changed_story_blocks_test_design",
+        "passed": true
+      },
+      {
+        "name": "no_execution_or_media_started",
+        "passed": true
+      }
+    ],
+    "findings": [
+      "scenarios_last_slot_enforced",
+      "testcases_last_slot_enforced"
+    ],
+    "ai_calls": 8,
+    "ephemeral_database": "qa_test_design_2e42d61d0dfa4d9abec3809d11879eb2",
+    "cleanup": "ephemeral database dropped"
+  },
+  "unit_suites": [
+    {
+      "suite": "test_product_knowledge.py",
+      "passed": true,
+      "tests": 30
+    },
+    {
+      "suite": "test_knowledge_training.py",
+      "passed": true,
+      "tests": 18
+    },
+    {
+      "suite": "test_test_design_review.py",
+      "passed": true,
+      "tests": 10
+    },
+    {
+      "suite": "test_approved_story_context.py",
+      "passed": true,
+      "tests": 22
+    },
+    {
+      "suite": "test_requirement_contexts.py",
+      "passed": true,
+      "tests": 16
+    },
+    {
+      "suite": "test_story_knowledge_review.py",
+      "passed": true,
+      "tests": 15
+    },
+    {
+      "suite": "test_story_knowledge_proposals.py",
+      "passed": true,
+      "tests": 8
+    },
+    {
+      "suite": "test_scenario_counts.py",
+      "passed": true,
+      "tests": 4
+    },
+    {
+      "suite": "test_separate_ai_allowances.py",
+      "passed": true,
+      "tests": 13
+    },
+    {
+      "suite": "test_account_billing.py",
+      "passed": true,
+      "tests": 12
+    },
+    {
+      "suite": "test_customer_accounts.py",
+      "passed": true,
+      "tests": 29
+    },
+    {
+      "suite": "test_value_ownership.py",
+      "passed": true,
+      "tests": 8
+    }
+  ],
+  "browser": {
+    "passed": 24,
+    "failed": 0,
+    "mode": "isolated production build; intercepted auth/API",
+    "suites": [
+      "design-review-pages.test.cjs",
+      "qa-agent-training.test.cjs",
+      "simple-generation.test.cjs",
+      "test-design-approval-ux.test.cjs"
+    ]
+  },
+  "qualification_passed": false
+}
