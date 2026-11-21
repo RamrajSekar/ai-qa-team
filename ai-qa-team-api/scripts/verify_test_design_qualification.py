@@ -227,9 +227,11 @@ class Qualification:
     async def object_quota_races(self, client, project, story, scenario, testcase):
         # Run before approval races so context changes cannot mask resource limits.
         account=(await self.db['projects'].find_one({'project_id':project}))['account_id']
-        for kind,operation,path in (
-            ('scenarios','SCENARIO_DESIGN',f'/scenarios/generate-from-story?story_id={story}&count=1&complexity=basic&approved_story=true'),
-            ('testcases','TEST_DESIGN',f'/testcases/generate?scenario_id={scenario}&project_id={project}&count=1&complexity=basic')):
+        for kind,operation,path,manual in (
+            ('scenarios','SCENARIO_DESIGN',f'/scenarios/generate-from-story?story_id={story}&count=1&complexity=basic&approved_story=true',False),
+            ('scenarios','SCENARIO_DESIGN',f'/scenarios/generate-from-story?story_id={story}&count=1&complexity=basic&approved_story=true',True),
+            ('testcases','TEST_DESIGN',f'/testcases/generate?scenario_id={scenario}&project_id={project}&count=1&complexity=basic',False),
+            ('testcases','TEST_DESIGN',f'/testcases/generate?scenario_id={scenario}&project_id={project}&count=1&complexity=basic',True)):
             # These concurrent calls intentionally use a deterministic design
             # boundary: AI rate/concurrency controls are not resource reservations.
             used=await self.db[kind].count_documents({'project_id':project})
@@ -237,10 +239,34 @@ class Qualification:
             if kind=='testcases':changes.update({'subscription.usage.testcases_basic_used':used,'subscription.limits.testcases_basic_limit':used+1})
             await self.db['customer_accounts'].update_one({'_id':account},{'$set':changes})
             self.race_operation=operation;self.race_count=0;self.race_gate=asyncio.Event()
-            results=await asyncio.gather(client.post(path),client.post(path))
+            first=asyncio.create_task(client.post(path))
+            for _ in range(100):
+                if self.race_count:break
+                await asyncio.sleep(.01)
+            assert self.race_count==1, 'First generation did not enter the deterministic provider'
+            if manual and kind=='scenarios':
+                second=await client.post('/scenarios',json={**self.intent,'story_id':story,'complexity':'basic','steps':[]})
+            elif manual:
+                second=await client.post(f'/testcases/draft?project_id={project}&scenario_id={scenario}',json={'title':'Manual fixture','description':'Manual fixture','steps':[{'action':'click','description':'Save draft','expected':'Draft saved.'}]})
+            else:
+                second=await client.post(path)
+            self.race_gate.set()
+            results=[await first,second]
             self.race_operation=None
             row=await self.db['customer_accounts'].find_one({'_id':account});actual=await self.db[kind].count_documents({'project_id':project})
-            self.check(kind+'_last_slot_enforced',actual<=used+1,statuses=[value.status_code for value in results],before=used,after=actual,limit=used+1,usage=row['subscription']['usage'][kind+'_used'])
+            self.check(('manual_' if manual else '')+kind+'_last_slot_enforced',actual==used+1 and sorted(value.status_code for value in results)==[200,403] and self.race_count==1,statuses=[value.status_code for value in results],before=used,after=actual,limit=used+1,usage=row['subscription']['usage'][kind+'_used'])
+
+
+        # Partial generation releases slots; replay of that same intentional
+        # request must not spend another AI request or create duplicate rows.
+        used=await self.db['scenarios'].count_documents({'project_id':project})
+        await self.db['customer_accounts'].update_one({'_id':account},{'$set':{'subscription.limits.scenarios_limit':used+4}})
+        request_id=uuid4().hex
+        path=f'/scenarios/generate-from-story?story_id={story}&count=3&complexity=basic&approved_story=true&request_id={request_id}'
+        calls=self.report['ai_calls']
+        first=await client.post(path);second=await client.post(path)
+        record=await self.db['resource_quota_reservations'].find_one({'request_id':request_id})
+        self.check('request_identity_prevents_generation_replay_after_partial_output',first.status_code==200 and second.status_code==409 and self.report['ai_calls']==calls+1 and record['state']=='SETTLED' and record['remaining']==0)
 
 
 async def main():

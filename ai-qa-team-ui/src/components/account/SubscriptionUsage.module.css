@@ -31,3 +31,9 @@
 .compactMeter .meterLine dt, .compactMeter .meterLine dd { font-size: 12px; }
 .compactMeter .progress { height: 4px; }
 @media (max-width: 640px) { .grid, .resources, .tiers { grid-template-columns: minmax(0, 1fr); } .plan { width: 100%; justify-content: space-between; } .card, .ai { padding: 16px; } }
+
+.aiUsageTile { display: grid; gap: 12px; min-width: 0; padding: 20px; border: 1px solid var(--ws-border); border-radius: 12px; background: var(--ws-surface); }
+.currentAiTile { border-color: var(--ws-accent); background: var(--ws-accent-soft); box-shadow: inset 0 0 0 1px var(--ws-accent); }
+.aiTileHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.aiTileHeader h4 { margin: 0; font-size: 14px; font-weight: 650; }
+.currentBadge { display: inline-flex; padding: 4px 8px; border-radius: 6px; background: var(--ws-accent); color: white; font-size: 10px; font-weight: 750; letter-spacing: .06em; }

@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import AIPoolUsage from "./AIPoolUsage";
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 import styles from "./SubscriptionUsage.module.css";
@@ -38,6 +39,7 @@ export default function SubscriptionUsage({ subscription }: { subscription: Acco
   return <section className={styles.section} aria-labelledby="subscription-usage-title">
     <header className={styles.header}>
       <div><p className="workspace-eyebrow">Account subscription</p><h2 id="subscription-usage-title">Subscription &amp; usage</h2><p className={styles.description}>One shared allowance for your account’s users and projects.</p></div>
+      <div><Link href="/pricing" className="workspace-button">View plans</Link><p className={styles.note}>Paid upgrades are not yet available online.</p></div>
       <dl className={styles.plan}><div><dt>Plan</dt><dd><strong>{title(subscription.plan)}</strong></dd></div><div><dt>Status</dt><dd><strong className={styles.status}>{title(subscription.status)}</strong></dd></div></dl>
     </header>
 

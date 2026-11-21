@@ -6,6 +6,14 @@ PROVIDER_CATALOG = {
         {"name": "model", "label": "Model", "secret": False, "required": True},
         {"name": "api_key", "label": "API Key", "secret": True, "required": True},
     ], "capabilities": ["structured_output", "tool_calling", "vision", "streaming"]},
+    "gemini": {"label": "Google Gemini", "modes": ["BYOK"], "fields": [
+        {"name": "model", "label": "Model", "secret": False, "required": True},
+        {"name": "api_key", "label": "API Key", "secret": True, "required": True},
+    ], "capabilities": ["structured_output"]},
+    "anthropic": {"label": "Anthropic Claude", "modes": ["BYOK"], "fields": [
+        {"name": "model", "label": "Model", "secret": False, "required": True},
+        {"name": "api_key", "label": "API Key", "secret": True, "required": True},
+    ], "capabilities": ["structured_output"]},
     "azure_openai": {"label": "Azure OpenAI", "modes": ["BYOK"], "fields": [
         {"name": "endpoint", "label": "Endpoint", "secret": False, "required": True},
         {"name": "deployment", "label": "Deployment", "secret": False, "required": True},

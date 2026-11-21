@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import Optional, List
+from typing import Optional, List, Annotated
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -10,6 +10,7 @@ from app.services.story_service import get_next_sequence
 from app.models.test_case_model import TestCaseResponse, TestStep, TestCaseCreate
 from app.utils.subscription_dependency import subscription_required
 from app.services.subscription_services import get_subscription, increment_usage
+from app.services.resource_quota import ResourceQuota
 from app.services.test_generator import generate_playwright_test
 from app.config import settings
 from app.services.step_mapper import StepMapper
@@ -59,6 +60,7 @@ async def generate_testcases(
     scenario_id: str = Query(...),
     count: int = Query(1, ge=1, le=20),
     complexity: str = Query("basic", regex="^(basic|medium|advanced)$"),
+    request_id: Annotated[str | None, Query(pattern=r"^[0-9a-f]{32}$")] = None,
     project_id: Optional[str] = Query(None),
     current_user=Depends(get_current_user),
 ):
@@ -138,100 +140,99 @@ async def generate_testcases(
             f"Test case generation limit reached for {complexity} cases.",
         )
 
-    knowledge_plans = None
-    if settings.features.product_knowledge and scenario.get("spec_kind") != "coverage-intent-v1":
-        raise HTTPException(409, "Preserve this legacy scenario. Create and approve a coverage intent against current knowledge before generating new detailed cases.")
-    if scenario.get("spec_kind") == "coverage-intent-v1":
-        try:
-            knowledge_plans, _ = await KnowledgeTestDesign(db).testcases(scenario["project_id"], current_user, scenario, allowed)
-        except AIUsageError as exc:
-            raise HTTPException(exc.status_code, exc.public_detail()) from None
-        except LLMProviderError as exc:
-            raise public_error(exc) from None
-        allowed = len(knowledge_plans)
+    quota = ResourceQuota(db)
+    async with quota.admission(current_user, scenario["project_id"], "testcases", allowed, complexity,
+            request_id=request_id, source=scenario_id) as reservation:
+        allowed = reservation["capacity"]
+        knowledge_plans = None
+        if settings.features.product_knowledge and scenario.get("spec_kind") != "coverage-intent-v1":
+            raise HTTPException(409, "Preserve this legacy scenario. Create and approve a coverage intent against current knowledge before generating new detailed cases.")
+        if scenario.get("spec_kind") == "coverage-intent-v1":
+            try:
+                knowledge_plans, _ = await KnowledgeTestDesign(db).testcases(scenario["project_id"], current_user, scenario, allowed)
+            except AIUsageError as exc:
+                raise HTTPException(exc.status_code, exc.public_detail()) from None
+            except LLMProviderError as exc:
+                raise public_error(exc) from None
+            allowed = len(knowledge_plans)
 
-    # -------------------------------------
-    # 3) StepMapper: scenario steps → structured
-    # -------------------------------------
-    mapper = StepMapper()
-    nl_steps = scenario.get("steps", [])
+        # -------------------------------------
+        # 3) StepMapper: scenario steps → structured
+        # -------------------------------------
+        mapper = StepMapper()
+        nl_steps = scenario.get("steps", [])
 
-    generated_cases: List[TestCaseResponse] = []
+        generated_cases: List[TestCaseResponse] = []
 
-    for index in range(allowed):
-        testcase_id = await get_next_sequence("testcase_id", "TC")
+        for index in range(allowed):
+            testcase_id = await get_next_sequence("testcase_id", "TC")
 
-        structured_steps_dicts = [
-            mapper.to_structured(step) for step in nl_steps
-        ]
-        structured_steps = [TestStep(**s) for s in structured_steps_dicts]
+            structured_steps_dicts = [
+                mapper.to_structured(step) for step in nl_steps
+            ]
+            structured_steps = [TestStep(**s) for s in structured_steps_dicts]
 
-        # Generate Playwright code from structured steps
-        code = generate_playwright_test(scenario)
+            # Generate Playwright code from structured steps
+            code = generate_playwright_test(scenario)
 
-        doc = {
-            "testcase_id": testcase_id,
-            "scenario_id": scenario_id,
-            "project_id": scenario["project_id"],
-            "title": scenario["title"],
-            "description": scenario.get("description", ""),
+            doc = {
+                "testcase_id": testcase_id,
+                "scenario_id": scenario_id,
+                "project_id": scenario["project_id"],
+                "title": scenario["title"],
+                "description": scenario.get("description", ""),
 
-            # dual representation
-            "natural_steps": nl_steps,
-            "steps": [s.model_dump() for s in structured_steps],
+                # dual representation
+                "natural_steps": nl_steps,
+                "steps": [s.model_dump() for s in structured_steps],
 
-            "complexity": complexity,
-            "status": "generated",
-            "code": code,
-            "created_by": user_email,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_by": None,
-            "updated_at": None,
-            # optional test-data linking
-            "data_set_id": None,
-            "data_overrides": {},
-        }
+                "complexity": complexity,
+                "status": "generated",
+                "code": code,
+                "created_by": user_email,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_by": None,
+                "updated_at": None,
+                # optional test-data linking
+                "data_set_id": None,
+                "data_overrides": {},
+            }
 
-        if knowledge_plans is not None:
-            plan = knowledge_plans[index]
-            doc.update({**plan, "title": plan["title"], "description": plan["purpose"], "code": "",
-                        "status": "draft", "spec_kind": "detailed-case-v1",
-                        "knowledge_version_id": scenario["knowledge_version_id"],
-                        "story_analysis_id": scenario["story_analysis_id"],
-                        **{key:scenario[key] for key in ("requirements_context_id","requirements_context_digest","design_basis","target_release","criteria_basis") if key in scenario},
-                        "natural_steps": [{"action": step["instruction"], "expected": step["expected"]} for step in plan["procedure"]],
-                        "steps": [{"action": "unknown", "description": step["instruction"], "expected": step["expected"]} for step in plan["procedure"]]})
+            if knowledge_plans is not None:
+                plan = knowledge_plans[index]
+                doc.update({**plan, "title": plan["title"], "description": plan["purpose"], "code": "",
+                            "status": "draft", "spec_kind": "detailed-case-v1",
+                            "knowledge_version_id": scenario["knowledge_version_id"],
+                            "story_analysis_id": scenario["story_analysis_id"],
+                            **{key:scenario[key] for key in ("requirements_context_id","requirements_context_digest","design_basis","target_release","criteria_basis") if key in scenario},
+                            "natural_steps": [{"action": step["instruction"], "expected": step["expected"]} for step in plan["procedure"]],
+                            "steps": [{"action": "unknown", "description": step["instruction"], "expected": step["expected"]} for step in plan["procedure"]]})
 
-        res = await db["testcases"].insert_one(doc)
-        doc["_id"] = str(res.inserted_id)
-        doc.pop("_id", None)
+            doc = await quota.persist(reservation, doc, index)
+            doc.pop("_id", None)
 
-        generated_cases.append(
-            TestCaseResponse(
-                testcase_id=doc["testcase_id"],
-                scenario_id=doc["scenario_id"],
-                project_id=doc["project_id"],
-                title=doc["title"],
-                description=doc.get("description"),
-                **{key: doc[key] for key in ("spec_kind", "purpose", "role", "preconditions", "public_data", "assertions", "cleanup",
-                                           "acceptance_criteria_refs", "rule_references", "knowledge_version_id", "story_analysis_id", "requirements_context_id", "requirements_context_digest", "design_basis", "target_release", "criteria_basis", "requirements_review_required", "requirements_review_release") if key in doc},
-                complexity=doc.get("complexity"),
-                steps=[TestStep(**s) for s in doc.get("steps", [])],
-                status=doc["status"],
-                code=doc["code"],
-                created_by=doc.get("created_by"),
-                created_at=doc.get("created_at"),
-                updated_by=doc.get("updated_by"),
-                updated_at=doc.get("updated_at"),
+            generated_cases.append(
+                TestCaseResponse(
+                    testcase_id=doc["testcase_id"],
+                    scenario_id=doc["scenario_id"],
+                    project_id=doc["project_id"],
+                    title=doc["title"],
+                    description=doc.get("description"),
+                    **{key: doc[key] for key in ("spec_kind", "purpose", "role", "preconditions", "public_data", "assertions", "cleanup",
+                                               "acceptance_criteria_refs", "rule_references", "knowledge_version_id", "story_analysis_id", "requirements_context_id", "requirements_context_digest", "design_basis", "target_release", "criteria_basis", "requirements_review_required", "requirements_review_release") if key in doc},
+                    complexity=doc.get("complexity"),
+                    steps=[TestStep(**s) for s in doc.get("steps", [])],
+                    status=doc["status"],
+                    code=doc["code"],
+                    created_by=doc.get("created_by"),
+                    created_at=doc.get("created_at"),
+                    updated_by=doc.get("updated_by"),
+                    updated_at=doc.get("updated_at"),
+                )
             )
-        )
 
-        # Increment testcase usage
-        await increment_usage(user_id, "testcases_used")
-        if sub.get("billing_scope") == "ACCOUNT":
-            await increment_usage(user_id, f"testcases_{complexity}_used")
 
-    return generated_cases
+        return generated_cases
 
 
 # ==========================================================
@@ -459,8 +460,7 @@ async def create_catalog_testcase(payload: CatalogTestCaseEdit, project_id: str,
            "natural_steps": [{"action": step.description or step.action, "expected": step.expected} for step in payload.steps],
            "complexity": "basic", "status": "draft", "code": "", "created_by": current_user["email"],
            "created_at": datetime.now(timezone.utc).isoformat()}
-    await db["testcases"].insert_one(doc.copy())
-    await increment_usage(current_user.get("_id") or current_user["email"], "testcases_used")
-    if subscription.get("billing_scope") == "ACCOUNT":
-        await increment_usage(current_user.get("_id") or current_user["email"], "testcases_basic_used")
-    return TestCaseResponse(**doc)
+    quota = ResourceQuota(db)
+    async with quota.admission(current_user, project_id, "testcases", 1, "basic", source=scenario_id) as reservation:
+        await quota.persist(reservation, doc, 0)
+        return TestCaseResponse(**doc)

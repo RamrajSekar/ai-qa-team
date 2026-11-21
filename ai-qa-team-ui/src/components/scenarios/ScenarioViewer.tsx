@@ -47,7 +47,10 @@ export default function ScenarioViewer({ open, scenario, onClose, onApproved }: 
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
       <div className="bg-white rounded-lg w-full max-w-3xl p-6 shadow-xl relative">
         
-        {scenario.design_basis && <p>Basis: {["story_only_provisional","approved_story_only"].includes(scenario.design_basis || "") ? "Provisional story-only — not validated against product knowledge" : scenario.design_basis === "approved_story_with_knowledge" ? "Approved story with independent product knowledge" : "Explicitly approved requirement change"} · Release: {scenario.target_release}</p>}
+        {scenario.design_basis && <details className="mb-4"><summary>Requirements used</summary>
+          <p>{scenario.design_basis === "approved_story_only" ? "Approved story requirements. Product knowledge was not used." : scenario.design_basis === "story_only_provisional" ? "Story requirements only. Product knowledge was not used." : scenario.design_basis === "approved_story_with_knowledge" ? "Approved story with independent product knowledge." : "Explicitly approved requirement change."}</p>
+          {scenario.target_release && <p>Release: {scenario.target_release}</p>}
+        </details>}
         <button
           onClick={onClose}
           aria-label="Close scenario"
@@ -118,7 +121,7 @@ export default function ScenarioViewer({ open, scenario, onClose, onApproved }: 
             Approve scenario
           </button>}
           {canGenerate && <button type="button" className="workspace-button workspace-primary" disabled={busy || generatedIds.length > 0}
-            onClick={() => void perform(`/testcases/generate?scenario_id=${scenarioId}&project_id=${projectId}&count=1&complexity=${complexity}`, "POST", data => {
+            onClick={() => void perform(`/testcases/generate?scenario_id=${scenarioId}&project_id=${projectId}&count=1&complexity=${complexity}&request_id=${crypto.randomUUID().replaceAll("-", "")}`, "POST", data => {
               if (!Array.isArray(data) || !data.length) throw new Error("No test cases were returned.");
               setGeneratedIds(data.map(item => item.testcase_id));
             })}>Generate test case</button>}

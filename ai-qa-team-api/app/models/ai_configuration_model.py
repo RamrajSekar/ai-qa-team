@@ -13,7 +13,7 @@ def contains_secret_field(value: Any) -> bool:
 
 
 class AIConfigurationInput(BaseModel):
-    provider_id: Literal["managed", "openai", "azure_openai"]
+    provider_id: Literal["managed", "openai", "azure_openai", "gemini", "anthropic"]
     mode: Literal["MANAGED", "BYOK"]
     model: str | None = None
     configuration: dict[str, Any] = Field(default_factory=dict)
@@ -24,7 +24,7 @@ class AIConfigurationInput(BaseModel):
         if contains_secret_field(self.configuration): raise ValueError("Secrets must be submitted through api_key")
         if self.provider_id == "managed" and self.mode != "MANAGED": raise ValueError("Managed provider requires MANAGED mode")
         if self.provider_id != "managed" and self.mode != "BYOK": raise ValueError("BYOK provider requires BYOK mode")
-        if self.provider_id in ("managed", "openai") and not self.model: raise ValueError("Model is required")
+        if self.provider_id in ("managed", "openai", "gemini", "anthropic") and not self.model: raise ValueError("Model is required")
         if self.provider_id == "azure_openai":
             missing = [key for key in ("endpoint", "deployment", "api_version") if not self.configuration.get(key)]
             if missing: raise ValueError(f"Missing Azure configuration: {', '.join(missing)}")

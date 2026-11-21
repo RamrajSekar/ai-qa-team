@@ -3,6 +3,7 @@ import os
 import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
+from resource_quota_double import ResourceQuotaDouble
 
 with patch.dict(os.environ, {"MONGO_URI": "mongodb://localhost:27017", "MONGO_DB": "count_tests", "REDIS_HOST": "localhost",
                             "REDIS_PORT": "6399", "REDIS_USERNAME": "", "REDIS_PASSWORD": "", "SESSION_SECRET_KEY": "test", "JWT_SECRET_KEY": "test"}):
@@ -19,7 +20,7 @@ class ScenarioCountTests(unittest.IsolatedAsyncioTestCase):
         sub = {"plan": "free", "limits": {"scenarios_limit": scenario_limit, "ai_gen_limit": ai_limit}, "usage": {"ai_gen_used": 0}}
         rows = [{"title": f"Intent {i}", "steps": []} for i in range(actual)]
         designer = MagicMock(); designer.scenarios = AsyncMock(return_value=(rows, {"knowledge": {"version_id": "k"}, "analysis": {"analysis_id": "a"}}))
-        with patch.object(routes, "db", db), patch.object(settings, "features", FeatureFlags(product_knowledge=knowledge)), \
+        with patch.object(routes, "ResourceQuota", ResourceQuotaDouble), patch.object(routes, "db", db), patch.object(settings, "features", FeatureFlags(product_knowledge=knowledge)), \
              patch.object(routes, "get_subscription", AsyncMock(return_value=sub)), \
              patch.object(routes, "require_project_member", AsyncMock()), \
              patch.object(routes, "get_next_sequence", AsyncMock(side_effect=[f"SC{i}" for i in range(actual)])), \
@@ -33,12 +34,12 @@ class ScenarioCountTests(unittest.IsolatedAsyncioTestCase):
         result, increments, calls, _ = await self.run_generation(10, 10, 3, 1)
         self.assertEqual((result.summary.requested_count, result.summary.allowed_count, result.summary.generated_count), (3, 3, 1))
         self.assertEqual((result.summary.remaining_ai_generations, result.summary.remaining_scenario_slots), (9, 9))
-        self.assertEqual((increments, calls), (2, 1))
+        self.assertEqual((increments, calls), (1, 1))  # AI only; resource accounting belongs to the transaction boundary.
 
     async def test_knowledge_batch_charge_is_not_duplicated_per_row(self):
         result, increments, calls, design = await self.run_generation(2, 10, 3, 2, True)
         self.assertEqual((result.summary.allowed_count, result.summary.generated_count), (2, 2))
-        self.assertEqual((increments, calls, design), (2, 0, 1))
+        self.assertEqual((increments, calls, design), (0, 0, 1))
         self.assertEqual(result.summary.remaining_ai_generations, 9)
 
     async def test_exhausted_allowance_does_not_invoke_ai(self):

@@ -1,3 +1,4 @@
+from resource_quota_double import ResourceQuotaDouble
 """Release approvals with synthetic database/auth/AI; no live provider or execution."""
 import asyncio
 import json
@@ -257,7 +258,7 @@ class RequirementTests(unittest.IsolatedAsyncioTestCase):
         factory=lambda database:KnowledgeTestDesign(database,self.usage)
         factory.references=KnowledgeTestDesign.references
         for module in (scenario_routes,testcase_routes):
-            for name,value in {'db':self.db,'get_subscription':AsyncMock(return_value=sub),
+            for name,value in {'ResourceQuota':ResourceQuotaDouble,'db':self.db,'get_subscription':AsyncMock(return_value=sub),
                                'require_project_member':AsyncMock(return_value=({}, {'role':'ADMIN'})),
                                'get_next_sequence':AsyncMock(return_value='SC_R' if module is scenario_routes else 'TC_R'),
                                'increment_usage':AsyncMock(),'KnowledgeTestDesign':factory}.items():

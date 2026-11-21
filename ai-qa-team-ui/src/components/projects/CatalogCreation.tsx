@@ -52,16 +52,23 @@ export default function CatalogCreation({ kind, projectId, onSaved }: {
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Could not load source records."); }
     finally { setBusy(false); }
   },[kind,projectId]);
-  useEffect(()=>{if(kind!=="scenarios")return;const preferred=new URL(window.location.href).searchParams.get("story_id");if(preferred)void loadSources(0,preferred);},[kind,loadSources]);
+  useEffect(() => {
+    if (kind !== "scenarios") return;
+    let active = true;
+    const preferred = new URL(window.location.href).searchParams.get("story_id");
+    if (preferred) queueMicrotask(() => { if (active) void loadSources(0, preferred); });
+    return () => { active = false; };
+  }, [kind, loadSources]);
 
   async function generate() {
     setBusy(true);
     setError("");
     setMessage("");
     try {
+      const requestId = crypto.randomUUID().replaceAll("-", "");
       const path = kind === "scenarios"
-        ? `/scenarios/generate-from-story?story_id=${encodeURIComponent(source)}&count=${count}&complexity=${complexity}${knowledgeEnabled?"&approved_story=true":""}`
-        : `/testcases/generate?scenario_id=${encodeURIComponent(source)}&project_id=${encodeURIComponent(projectId)}&count=${count}&complexity=${complexity}`;
+        ? `/scenarios/generate-from-story?story_id=${encodeURIComponent(source)}&count=${count}&complexity=${complexity}&request_id=${requestId}${knowledgeEnabled?"&approved_story=true":""}`
+        : `/testcases/generate?scenario_id=${encodeURIComponent(source)}&project_id=${encodeURIComponent(projectId)}&count=${count}&complexity=${complexity}&request_id=${requestId}`;
       const response = await apiFetch(path, { method: "POST" });
       if (!response.ok) throw new Error(typeof response.data?.detail === "string" ? response.data.detail : response.data?.detail?.message || "Generation could not be completed.");
       if (kind === "scenarios" && !response.data?.scenarios?.length) throw new Error("No scenarios were generated. Check the story’s acceptance criteria.");

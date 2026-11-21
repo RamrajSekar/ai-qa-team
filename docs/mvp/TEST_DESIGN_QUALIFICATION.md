@@ -134,3 +134,8 @@ snapshot reproduced both quota failures. All generated databases were dropped,
 and the separate Mongo process was shut down. Script compilation and Git whitespace
 checks passed. Real-provider design quality and a browser-to-live-API journey remain
 unqualified; this task must not be read as a full Phase 1 release sign-off.
+
+
+## 2026-11-21 development checkpoint
+
+The historical last-slot failures below are resolved by the [2026-11-21 resource quota fix](RESOURCE_QUOTA.md) in isolated development qualification. Preserve these original results as the before-fix baseline.

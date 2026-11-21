@@ -1,3 +1,4 @@
+from resource_quota_double import ResourceQuotaDouble
 """Approved story authority reuse; no real DB/model/execution."""
 import unittest
 from fastapi import HTTPException
@@ -96,7 +97,7 @@ class ApprovedStoryTests(unittest.IsolatedAsyncioTestCase):
         app.dependency_overrides[scenario_routes.get_current_user]=lambda:self.user
         app.dependency_overrides[subscription_dependency.get_current_user]=lambda:self.user
         patches=[]
-        for module,name,value in [(subscription_dependency,'get_subscription',AsyncMock(return_value=sub)),(scenario_routes,'db',self.db),(scenario_routes,'get_subscription',AsyncMock(return_value=sub)),(scenario_routes,'require_project_member',AsyncMock()),(scenario_routes,'get_next_sequence',AsyncMock(return_value='SC_NEW')),(scenario_routes,'increment_usage',AsyncMock()),(scenario_routes,'KnowledgeTestDesign',factory)]:
+        for module,name,value in [(scenario_routes,'ResourceQuota',ResourceQuotaDouble),(subscription_dependency,'get_subscription',AsyncMock(return_value=sub)),(scenario_routes,'db',self.db),(scenario_routes,'get_subscription',AsyncMock(return_value=sub)),(scenario_routes,'require_project_member',AsyncMock()),(scenario_routes,'get_next_sequence',AsyncMock(return_value='SC_NEW')),(scenario_routes,'increment_usage',AsyncMock()),(scenario_routes,'KnowledgeTestDesign',factory)]:
             patcher=patch.object(module,name,value);patcher.start();patches.append(patcher)
         try:
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app),base_url='http://test') as client:

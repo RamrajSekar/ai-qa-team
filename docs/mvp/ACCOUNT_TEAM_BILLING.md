@@ -106,3 +106,8 @@ Final UI rerun: all 6 intercepted account UI tests passed (about 136 seconds, in
 
 
 Account presentation/Free team amendment (2026-11-12): [ACCOUNT_UI_REFINEMENTS.md](ACCOUNT_UI_REFINEMENTS.md) records hidden account IDs, centralized workspace order, grouped testcase usage, two additional Free account members, optional SMTP delivery (disabled; manual links retained), and the relocated/default-hidden Test Execution page. Other quotas and execution qualification gates remain unchanged.
+
+
+## 2026-11-21 development checkpoint
+
+Primary scenario/test-case creation now reserves account capacity transactionally; [details and cutover prerequisites](RESOURCE_QUOTA.md). Project/story races and gated raw repository imports remain separate work.

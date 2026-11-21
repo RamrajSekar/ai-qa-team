@@ -1,4 +1,4 @@
-export type ProviderId = "managed" | "openai" | "azure_openai";
+export type ProviderId = "managed" | "openai" | "azure_openai" | "gemini" | "anthropic";
 
 export interface ProviderField { name: string; label: string; secret: boolean; required: boolean; }
 export interface ProviderDefinition { provider_id: ProviderId; label: string; modes: ("MANAGED" | "BYOK")[]; fields: ProviderField[]; capabilities: string[]; }
