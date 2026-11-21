@@ -15,6 +15,7 @@ from app.routes.auth_routes import get_current_user
 from app.utils.subscription_dependency import subscription_required
 from app.services.story_service import get_next_sequence
 from app.services.subscription_services import get_subscription, increment_usage
+from app.services.resource_quota import ResourceQuota
 
 from app.ai.scenario_prompts import (
     build_scenario_prompt_from_story,
@@ -165,13 +166,11 @@ async def create_scenario(
                         "story_analysis_id": context["analysis"]["analysis_id"],
                             **{key:context[key] for key in ("requirements_context_id","requirements_context_digest","design_basis","target_release","criteria_basis") if key in context}})
 
-        result = await db["scenarios"].insert_one(doc)
-        doc["_id"] = result.inserted_id
-        if current_user.get("account_id"):
-            from app.services.account_billing import billing_account
-            if await billing_account(db, current_user):
-                await increment_usage(user_email, "scenarios_used")
-        return _build_scenario_response(doc)
+        quota = ResourceQuota(db)
+        async with quota.admission(current_user, story["project_id"], "scenarios", 1,
+                scenario.complexity or "basic", source=scenario.story_id) as reservation:
+            doc = await quota.persist(reservation, doc, 0)
+            return _build_scenario_response(doc)
 
     except HTTPException:
         raise
@@ -371,6 +370,7 @@ async def generate_scenarios_from_story(
     story_id: str = Query(...),
     count: int = Query(3, ge=1, le=20),
     complexity: str = Query("basic"),
+    request_id: Annotated[str | None, Query(pattern=r"^[0-9a-f]{32}$")] = None,
     requirements_context_id: Annotated[str | None, Query(pattern=r"^[0-9a-f]{32}$")] = None,
     approved_story: Annotated[bool, Query()] = False,
     current_user=Depends(get_current_user),
@@ -412,67 +412,69 @@ async def generate_scenarios_from_story(
             "scenario_builder", "Scenario Builder"
         )
 
-        context = None
-        if (requirements_context_id or approved_story) and not knowledge_mode:
-            raise HTTPException(409,"Requirements contexts require knowledge and analysis features; no legacy fallback.")
-        if knowledge_mode:
-            ai_list, context = await KnowledgeTestDesign(db).scenarios(story["project_id"], current_user, story, allowed, complexity, requirements_context_id=requirements_context_id, approved_story=approved_story)
-        else:
-            resolved_prompt = await get_active_prompt("LEGACY_STORY_SCENARIOS", database=db)
-            prompt = build_scenario_prompt_from_story(agent, story, allowed, complexity, template=resolved_prompt["system_prompt"])
-            ai_list = (await generate_scenarios_from_prompt(story["project_id"], prompt,
-                prompt_key=resolved_prompt["prompt_key"], prompt_version=str(resolved_prompt["resolved_version"]),
-                **({"user": current_user} if sub.get("billing_scope") == "ACCOUNT" else {})))[:allowed]
+        quota = ResourceQuota(db)
+        async with quota.admission(current_user, story["project_id"], "scenarios", allowed, complexity,
+                request_id=request_id, source=story_id) as reservation:
+            allowed = reservation["capacity"]
+            context = None
+            if (requirements_context_id or approved_story) and not knowledge_mode:
+                raise HTTPException(409,"Requirements contexts require knowledge and analysis features; no legacy fallback.")
+            if knowledge_mode:
+                ai_list, context = await KnowledgeTestDesign(db).scenarios(story["project_id"], current_user, story, allowed, complexity, requirements_context_id=requirements_context_id, approved_story=approved_story)
+            else:
+                resolved_prompt = await get_active_prompt("LEGACY_STORY_SCENARIOS", database=db)
+                prompt = build_scenario_prompt_from_story(agent, story, allowed, complexity, template=resolved_prompt["system_prompt"])
+                ai_list = (await generate_scenarios_from_prompt(story["project_id"], prompt,
+                    prompt_key=resolved_prompt["prompt_key"], prompt_version=str(resolved_prompt["resolved_version"]),
+                    **({"user": current_user} if sub.get("billing_scope") == "ACCOUNT" else {})))[:allowed]
 
-        created = []
+            created = []
 
-        for item in ai_list:
-            scenario_id = await get_next_sequence("scenario_id", "SC")
+            for index, item in enumerate(ai_list):
+                scenario_id = await get_next_sequence("scenario_id", "SC")
 
-            raw_steps = item.get("steps", [])
-            normalized_steps = [
-                normalize_step_dict(step, i)
-                for i, step in enumerate(raw_steps, start=1)
-            ]
+                raw_steps = item.get("steps", [])
+                normalized_steps = [
+                    normalize_step_dict(step, i)
+                    for i, step in enumerate(raw_steps, start=1)
+                ]
 
-            doc = {
-                "scenario_id": scenario_id,
-                **({"prompt_key": resolved_prompt["prompt_key"], "prompt_version": str(resolved_prompt["resolved_version"])} if not knowledge_mode else {}),
-                "story_id": story_id,
-                "project_id": story["project_id"],
-                "title": item["title"],
-                "description": item.get("description", ""),
-                "steps": normalized_steps,
-                "status": "pending",
-                "complexity": complexity,
-                "created_by": email,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "approved": False,
-                "generated_by_agent": agent,
-            }
+                doc = {
+                    "scenario_id": scenario_id,
+                    **({"prompt_key": resolved_prompt["prompt_key"], "prompt_version": str(resolved_prompt["resolved_version"])} if not knowledge_mode else {}),
+                    "story_id": story_id,
+                    "project_id": story["project_id"],
+                    "title": item["title"],
+                    "description": item.get("description", ""),
+                    "steps": normalized_steps,
+                    "status": "pending",
+                    "complexity": complexity,
+                    "created_by": email,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "approved": False,
+                    "generated_by_agent": agent,
+                }
 
-            if context:
-                doc.update({**item, "spec_kind": "coverage-intent-v1", "steps": [],
-                            "knowledge_version_id": context["knowledge"]["version_id"],
-                            "story_analysis_id": context["analysis"]["analysis_id"],
-                            **{key:context[key] for key in ("requirements_context_id","requirements_context_digest","design_basis","target_release","criteria_basis") if key in context}})
+                if context:
+                    doc.update({**item, "spec_kind": "coverage-intent-v1", "steps": [],
+                                "knowledge_version_id": context["knowledge"]["version_id"],
+                                "story_analysis_id": context["analysis"]["analysis_id"],
+                                **{key:context[key] for key in ("requirements_context_id","requirements_context_digest","design_basis","target_release","criteria_basis") if key in context}})
 
-            res = await db["scenarios"].insert_one(doc)
-            doc["_id"] = res.inserted_id
+                doc = await quota.persist(reservation, doc, index)
 
-            created.append(_build_scenario_response(doc))
+                created.append(_build_scenario_response(doc))
 
-            if not knowledge_mode and sub.get("billing_scope") != "ACCOUNT":
-                await increment_usage(user_id, "ai_gen_used")
-            await increment_usage(user_id, "scenarios_used")
+                if not knowledge_mode and sub.get("billing_scope") != "ACCOUNT":
+                    await increment_usage(user_id, "ai_gen_used")
 
-        actual = len(created)
-        spent = 1 if knowledge_mode or sub.get("billing_scope") == "ACCOUNT" else actual
-        return ScenarioGenerationResponse(scenarios=created, summary=ScenarioGenerationSummary(
-            message=f"{actual} of {count} requested scenarios generated (allowed {allowed}).",
-            requested_count=count, allowed_count=allowed, generated_count=actual,
-            remaining_ai_generations=None if rem_ai is None else max(rem_ai - spent, 0),
-            remaining_scenario_slots=None if rem_scen is None else max(rem_scen - actual, 0), plan=sub["plan"]))
+            actual = len(created)
+            spent = 1 if knowledge_mode or sub.get("billing_scope") == "ACCOUNT" else actual
+            return ScenarioGenerationResponse(scenarios=created, summary=ScenarioGenerationSummary(
+                message=f"{actual} of {count} requested scenarios generated (allowed {allowed}).",
+                requested_count=count, allowed_count=allowed, generated_count=actual,
+                remaining_ai_generations=None if rem_ai is None else max(rem_ai - spent, 0),
+                remaining_scenario_slots=None if rem_scen is None else max(rem_scen - actual, 0), plan=sub["plan"]))
 
     except AIUsageError as exc:
         raise HTTPException(exc.status_code, exc.public_detail()) from None
@@ -496,6 +498,7 @@ async def generate_from_recording(
     recording_id: str = Query(...),
     count: int = Query(3, ge=1, le=20),
     complexity: str = Query("medium"),
+    request_id: Annotated[str | None, Query(pattern=r"^[0-9a-f]{32}$")] = None,
     current_user=Depends(get_current_user),
     _: None = Depends(subscription_required("ai_generation")),
 ):
@@ -549,62 +552,70 @@ async def generate_from_recording(
             "scenario_builder", "Scenario Builder"
         )
 
-        resolved_prompt = await get_active_prompt("LEGACY_RECORDING_SCENARIOS", database=db)
-        prompt = build_scenario_prompt_from_recording(
-            agent_name, story, recording, allowed, complexity, template=resolved_prompt["system_prompt"]
-        )
-        ai_result = await generate_scenarios_from_prompt(story["project_id"], prompt,
-            prompt_key=resolved_prompt["prompt_key"], prompt_version=str(resolved_prompt["resolved_version"]),
-            **({"user": current_user} if sub.get("billing_scope") == "ACCOUNT" else {}))
+        quota = ResourceQuota(db)
+        async with quota.admission(current_user, story["project_id"], "scenarios", allowed, complexity,
+                request_id=request_id, source=[story_id, recording_id]) as reservation:
+            allowed = reservation["capacity"]
+            resolved_prompt = await get_active_prompt("LEGACY_RECORDING_SCENARIOS", database=db)
+            prompt = build_scenario_prompt_from_recording(
+                agent_name, story, recording, allowed, complexity, template=resolved_prompt["system_prompt"]
+            )
+            ai_result = await generate_scenarios_from_prompt(story["project_id"], prompt,
+                prompt_key=resolved_prompt["prompt_key"], prompt_version=str(resolved_prompt["resolved_version"]),
+                **({"user": current_user} if sub.get("billing_scope") == "ACCOUNT" else {}))
 
-        created_docs = []
-        ai_result = ai_result[:allowed]
+            created_docs = []
+            ai_result = ai_result[:allowed]
 
-        for item in ai_result:
-            scenario_id = await get_next_sequence("scenario_id", "SC")
+            for index, item in enumerate(ai_result):
+                scenario_id = await get_next_sequence("scenario_id", "SC")
 
-            raw_steps = item.get("steps", [])
-            normalized_steps = [
-                normalize_step_dict(step, i)
-                for i, step in enumerate(raw_steps, start=1)
-            ]
+                raw_steps = item.get("steps", [])
+                normalized_steps = [
+                    normalize_step_dict(step, i)
+                    for i, step in enumerate(raw_steps, start=1)
+                ]
 
-            doc = {
-                "scenario_id": scenario_id,
-                "prompt_key": resolved_prompt["prompt_key"], "prompt_version": str(resolved_prompt["resolved_version"]),
-                "story_id": story_id,
-                "project_id": story["project_id"],
-                "title": item["title"],
-                "description": item.get("description", ""),
-                "steps": normalized_steps,
-                "status": "pending",
-                "complexity": complexity,
-                "created_by": email,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "generated_by_agent": agent_name,
-                "approved": False,
-            }
+                doc = {
+                    "scenario_id": scenario_id,
+                    "prompt_key": resolved_prompt["prompt_key"], "prompt_version": str(resolved_prompt["resolved_version"]),
+                    "story_id": story_id,
+                    "project_id": story["project_id"],
+                    "title": item["title"],
+                    "description": item.get("description", ""),
+                    "steps": normalized_steps,
+                    "status": "pending",
+                    "complexity": complexity,
+                    "created_by": email,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "generated_by_agent": agent_name,
+                    "approved": False,
+                }
 
-            result = await db["scenarios"].insert_one(doc)
-            doc["_id"] = result.inserted_id
-            created_docs.append(_build_scenario_response(doc))
+                doc = await quota.persist(reservation, doc, index)
+                created_docs.append(_build_scenario_response(doc))
 
-            if sub.get("billing_scope") != "ACCOUNT":
-                await increment_usage(user_id, "ai_gen_used")
-            await increment_usage(user_id, "scenarios_used")
+                if sub.get("billing_scope") != "ACCOUNT":
+                    await increment_usage(user_id, "ai_gen_used")
 
-        return ScenarioGenerationResponse(
-            scenarios=created_docs,
-            summary=ScenarioGenerationSummary(
-                message=f"{allowed} scenarios generated from recording.",
-                remaining_ai_generations=None if rem_ai is None else max(rem_ai - (1 if sub.get("billing_scope") == "ACCOUNT" else len(created_docs)), 0),
-                remaining_scenario_slots=None if rem_scen is None else max(rem_scen - len(created_docs), 0),
-                plan=sub["plan"],
-            ),
-        )
+            return ScenarioGenerationResponse(
+                scenarios=created_docs,
+                summary=ScenarioGenerationSummary(
+                    message=f"{allowed} scenarios generated from recording.",
+                    remaining_ai_generations=None if rem_ai is None else max(rem_ai - (1 if sub.get("billing_scope") == "ACCOUNT" else len(created_docs)), 0),
+                    remaining_scenario_slots=None if rem_scen is None else max(rem_scen - len(created_docs), 0),
+                    plan=sub["plan"],
+                ),
+            )
 
-    except Exception as e:
-        raise HTTPException(500, str(e))
+    except HTTPException:
+        raise
+    except AIUsageError as exc:
+        raise HTTPException(exc.status_code, exc.public_detail()) from None
+    except LLMProviderError as exc:
+        raise public_error(exc) from None
+    except Exception:
+        raise HTTPException(500, "Scenario generation could not be completed.") from None
 
 
 # ------------------------------------------------------

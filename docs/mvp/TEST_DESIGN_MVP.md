@@ -48,3 +48,8 @@ resource reservations/settlement are implemented and reverified. These local che
 do not close real-provider quality, Redis distribution or multi-host failover gates.
 Audio/video remains deferred by the user's scope decision; unfinished ingestion is
 not activated by qualification.
+
+
+## 2026-11-21 development checkpoint
+
+Scenario/test-case last-slot races are fixed in development with transactional reservations. See [resource quota checkpoint](RESOURCE_QUOTA.md) for evidence, old-writer cutover and remaining gates.

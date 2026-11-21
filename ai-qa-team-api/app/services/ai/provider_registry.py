@@ -3,6 +3,7 @@ from collections.abc import Callable
 from app.services.ai.base_provider import BaseAIProvider
 from app.services.ai.azure_openai_provider import AzureOpenAIProvider
 from app.services.ai.openai_provider import OpenAIProvider
+from app.services.ai.additional_providers import GeminiProvider, AnthropicProvider
 
 ProviderFactory = Callable[[str, str | None, dict], BaseAIProvider]
 
@@ -25,3 +26,6 @@ provider_registry.register("openai", lambda secret, model, _: OpenAIProvider(sec
 provider_registry.register("azure_openai", lambda secret, _model, config: AzureOpenAIProvider(
     secret, config["endpoint"], config["deployment"], config["api_version"]
 ))
+
+provider_registry.register("gemini", lambda secret, model, _: GeminiProvider(secret, model))
+provider_registry.register("anthropic", lambda secret, model, _: AnthropicProvider(secret, model))

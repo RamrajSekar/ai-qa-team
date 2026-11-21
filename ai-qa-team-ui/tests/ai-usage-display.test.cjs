@@ -26,15 +26,17 @@ async function setup(t,unavailable=false){
 test('saved project mode highlights its pool and switching display preserves both balances',async t=>{
  const {page,calls,subscription}=await setup(t);await page.goto(base+'/settings/account');
  const managed=page.getByRole('region',{name:'Managed AI Requests',exact:true});
+ await page.getByRole('link',{name:'View plans',exact:true}).waitFor();assert.equal(await page.getByRole('link',{name:'View plans',exact:true}).getAttribute('href'),'/pricing');
  await managed.waitFor();assert.match(await managed.innerText(),/3 \/ 25/);
- assert.equal(await page.getByRole('region',{name:'BYOK AI Requests',exact:true}).count(),0);
- await page.getByText('Other AI usage',{exact:true}).click();
+ await managed.getByText('CURRENT',{exact:true}).waitFor();
+ assert.equal(await page.getByRole('region',{name:'BYOK AI Requests',exact:true}).getByText('CURRENT',{exact:true}).count(),0);
  assert.match(await page.getByRole('region',{name:'BYOK AI Requests',exact:true}).innerText(),/1 \/ 25/);
  await page.getByLabel('AI mode for project',{exact:true}).selectOption('P2');
  await page.getByText('BYOK selected for BYOK project.',{exact:false}).waitFor();
- assert.equal(await page.getByRole('region',{name:'Managed AI Requests',exact:true}).count(),0);
- await page.getByText('Other AI usage',{exact:true}).click();
+ await page.getByRole('region',{name:'BYOK AI Requests',exact:true}).getByText('CURRENT',{exact:true}).waitFor();
+ assert.equal(await managed.getByText('CURRENT',{exact:true}).count(),0);
  assert.match(await page.getByRole('region',{name:'Managed AI Requests',exact:true}).innerText(),/3 \/ 25/);
+ await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
  assert.deepEqual(subscription.usage,{managed_ai_credits_used:3,byok_ai_requests_used:1});
  assert.equal(calls.filter(call=>!['GET','OPTIONS'].includes(call.method)).length,0);
  await page.reload();await page.getByRole('region',{name:'Managed AI Requests',exact:true}).waitFor();
@@ -43,7 +45,7 @@ test('saved project mode highlights its pool and switching display preserves bot
 test('unavailable saved mode keeps both balances visible instead of guessing',async t=>{
  const {page}=await setup(t,true);await page.goto(base+'/settings/account');
  await page.getByText('Saved AI mode unavailable. Both balances are shown.',{exact:true}).waitFor();
- await page.getByRole('region',{name:'Managed AI Requests',exact:true}).waitFor();await page.getByRole('region',{name:'BYOK AI Requests',exact:true}).waitFor();
+ await page.getByRole('region',{name:'Managed AI Requests',exact:true}).waitFor();await page.getByRole('region',{name:'BYOK AI Requests',exact:true}).waitFor();assert.equal(await page.getByText('CURRENT',{exact:true}).count(),0);
 });
 test('legal pages and footer links remain unpublished',async t=>{
  const {page}=await fixture(browser,t);await page.goto(base+'/');

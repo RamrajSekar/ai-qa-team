@@ -22,14 +22,16 @@ export default function AIPoolUsage({usage,limits}:{usage:Partial<Record<"manage
   return()=>controller.abort();
  },[projectId]);
  const mode=resolved?.project===projectId?resolved.mode:null;
- function meter(mode:Mode){const pool=pools[mode];const used=usage[pool.used]??0,limit=limits[pool.limit];return <section aria-label={pool.label} className={styles.ai}>
-  <dl className={styles.meterLine}><dt>{pool.label}</dt><dd>{limit===undefined?"Unavailable":limit===null?`${used} / Unlimited`:`${used} / ${limit}`}</dd></dl>
-  {typeof limit==="number"&&limit>0&&<progress className={styles.progress} aria-label={`${pool.label} usage`} value={Math.min(used,limit)} max={limit} />}
+ function meter(poolMode:Mode){const pool=pools[poolMode];const current=mode===poolMode;const used=usage[pool.used]??0,limit=limits[pool.limit];return <section aria-label={pool.label} className={`${styles.aiUsageTile} ${current?styles.currentAiTile:""}`}>
+  <div className={styles.aiTileHeader}><h4>{pool.label}</h4>{current&&<span className={styles.currentBadge}>CURRENT</span>}</div>
+  <dl className={styles.meterLine}><dt>Requests used</dt><dd>{limit===undefined?"Unavailable":limit===null?`${used} / Unlimited`:`${used} / ${limit}`}</dd></dl>
+  {typeof limit==="number"&&limit>0&&<progress className={styles.progress} aria-label={`${pool.label} usage`} value={Math.min(Math.max(used,0),limit)} max={limit} />}
   <p className={styles.note}>{limit===undefined?"Allowance not configured":limit===null?"Unlimited allowance":`${Math.max(0,limit-used)} remaining`}</p>
  </section>;}
  return <div className={styles.group}>
   {projects.length>1&&<label>AI mode for project<select aria-label="AI mode for project" value={projectId} onChange={event=>setSelection(event.target.value)}>{projects.map(project=><option key={project.project_id} value={project.project_id}>{project.name}</option>)}</select></label>}
-  {mode?<><p className={styles.note}>{mode==="MANAGED"?"Managed":"BYOK"} selected for {projects.find(project=>project.project_id===projectId)?.name}. Balances are shared across the account.</p>{meter(mode)}<details key={mode}><summary>Other AI usage</summary><div className="pt-3">{meter(mode==="MANAGED"?"BYOK":"MANAGED")}</div></details></>:
-   <><p role="status" className={styles.note}>{loading||(!failed&&projectId&&resolved?.project!==projectId)?"Loading saved AI mode…":projectId?"Saved AI mode unavailable. Both balances are shown.":"No accessible project selected. Both balances are shown."}</p><div className={styles.grid}>{meter("MANAGED")}{meter("BYOK")}</div></>}
+  {mode?<p className={styles.note}>{mode==="MANAGED"?"Managed":"BYOK"} selected for {projects.find(project=>project.project_id===projectId)?.name}. Balances are shared across the account.</p>:
+   <p role="status" className={styles.note}>{loading||(!failed&&projectId&&resolved?.project!==projectId)?"Loading saved AI mode…":projectId?"Saved AI mode unavailable. Both balances are shown.":"No accessible project selected. Both balances are shown."}</p>}
+  <div className={styles.grid}>{meter("MANAGED")}{meter("BYOK")}</div>
  </div>;
 }

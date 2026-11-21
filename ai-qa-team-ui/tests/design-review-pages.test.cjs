@@ -11,7 +11,7 @@ async function fixture(t,{execution=false,manual=false,fullCatalog=false}={}){
  await context.addCookies([{name:'access_token',value:'synthetic-only',url:base}]);
  const story={id:'ST1',story_id:'ST1',project_id:'P1',title:'Save an order',acceptance_criteria:'Order saved appears',created_at:'2026-11-12'};
  const project={project_id:'P1',name:'Design workspace',current_user_role:'ADMIN'};
- const scenarios=[{scenario_id:'SC1',story_id:'ST1',project_id:'P1',title:'Save a valid order',approved:true,steps:[],created_by:'fixture@example.test'},{scenario_id:'SC2',story_id:'ST1',project_id:'P1',title:'Reject empty order',approved:false,steps:[]}];
+ const scenarios=[{scenario_id:'SC1',story_id:'ST1',project_id:'P1',title:'Save a valid order',approved:true,design_basis:'approved_story_only',target_release:'Story requirements',steps:[],created_by:'fixture@example.test'},{scenario_id:'SC2',story_id:'ST1',project_id:'P1',title:'Reject empty order',approved:false,steps:[]}];
  if(fullCatalog){scenarios[0].approved=false;scenarios[1].created_by='fixture@example.test';for(let i=3;i<=51;i++)scenarios.push({...scenarios[0],scenario_id:'SC'+i,title:'Coverage '+i});}
  const cases=[{testcase_id:'TC1',scenario_id:'SC1',project_id:'P1',title:'Save order with required data',status:'draft',preconditions:['Customer is active'],steps:[{action:'Click Save order',expected:'Order saved'}],created_by:'fixture@example.test'}];
  const calls=[];let historyFails=false;
@@ -55,6 +55,14 @@ test('stories search, protected deletion feedback and accessible cancellation',a
 });
 test('scenario review separates approval and coverage with page-local filters',async t=>{
  const{page,calls}=await fixture(t);await page.goto(base+'/projects/P1/scenarios');await page.getByRole('button',{name:'Save a valid order',exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Review scenario',exact:true}).first().innerText(),'Review');assert.equal(await page.getByRole('button',{name:'Edit scenario',exact:true}).innerText(),'Edit');assert.equal(await page.getByRole('button',{name:'Delete scenario',exact:true}).innerText(),'Delete');
+ await page.getByRole('columnheader',{name:'Status',exact:true}).waitFor();
+ const row=page.getByRole('row').filter({has:page.getByRole('button',{name:'Save a valid order',exact:true})});
+ assert.equal((await row.getByRole('cell').nth(2).innerText()).trim(),'Approved');
+ assert.equal(await page.getByText('Provisional · story-only',{exact:true}).count(),0);
+ await row.getByRole('button',{name:'Review scenario',exact:true}).click();
+ await page.getByText('Requirements used',{exact:true}).click();
+ await page.getByText('Approved story requirements. Product knowledge was not used.',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Close scenario',exact:true}).click();
  await page.getByLabel('Status',{exact:true}).selectOption('pending');await page.getByRole('button',{name:'Save a valid order',exact:true}).waitFor({state:'hidden'});assert.equal(await page.getByRole('button',{name:'Save a valid order',exact:true}).count(),0);await page.getByRole('button',{name:'Reject empty order',exact:true}).waitFor();
  await page.getByLabel('Status',{exact:true}).selectOption('all');await page.getByRole('searchbox').fill('SC1');await page.getByRole('button',{name:'Save a valid order',exact:true}).waitFor();assert.equal(calls.filter(x=>x.method==='POST').length,0);await capture(page,'scenarios');await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await capture(page,'scenarios-mobile');
 });

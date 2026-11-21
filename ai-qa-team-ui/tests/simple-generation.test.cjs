@@ -6,7 +6,7 @@ for(const role of ['ADMIN','TESTER'])test(`approved story generates in one actio
  const headers={'access-control-allow-origin':base,'access-control-allow-credentials':'true','access-control-allow-headers':'content-type','access-control-allow-methods':'GET,POST,OPTIONS'};
  await f.context.route(url=>url.pathname==='/scenarios/generate-from-story',route=>{
   if(route.request().method()==='OPTIONS')return route.fulfill({headers,status:204});
-  generations++;assert.equal(new URL(route.request().url()).searchParams.get('approved_story'),'true');
+  generations++;const params=new URL(route.request().url()).searchParams;assert.equal(params.get('approved_story'),'true');assert.match(params.get('request_id'),/^[0-9a-f]{32}$/);
   return route.fulfill({headers,json:{scenarios:[{scenario_id:'SC1'}],summary:{message:'Drafts generated from approved story.'}}});
  });
  await f.page.goto(base+'/projects/P1/scenarios?story_id=ST1');

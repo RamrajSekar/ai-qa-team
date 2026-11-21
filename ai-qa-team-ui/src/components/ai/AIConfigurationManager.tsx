@@ -18,10 +18,11 @@ export default function AIConfigurationManager({ projectId, onBusyChange }: { pr
   const [loaded, setLoaded] = useState(false);
   const provider = useMemo(() => providers.find((item) => item.provider_id === providerId), [providers, providerId]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     const [catalog, configuration] = await Promise.all([
-      apiFetch(`/projects/${projectId}/ai/providers`), apiFetch(`/projects/${projectId}/ai/configuration`),
+      apiFetch(`/projects/${projectId}/ai/providers`, { signal }), apiFetch(`/projects/${projectId}/ai/configuration`, { signal }),
     ]);
+    if (signal?.aborted) return;
     if (!catalog.ok || !Array.isArray(catalog.data) || !configuration.ok) throw new Error("Configuration unavailable");
     setProviders(catalog.data);
     if (configuration.ok && configuration.data) {
@@ -31,7 +32,17 @@ export default function AIConfigurationManager({ projectId, onBusyChange }: { pr
     setLoaded(true);
   }, [projectId]);
 
-  useEffect(() => { setLoaded(false); void load().catch(() => setMessage("Could not load AI settings. Return to Workspace → AI Configuration or try again later.")); }, [load]);
+  useEffect(() => {
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (controller.signal.aborted) return;
+      setLoaded(false);
+      void load(controller.signal).catch(() => {
+        if (!controller.signal.aborted) setMessage("Could not load AI settings. Try again later.");
+      });
+    });
+    return () => controller.abort();
+  }, [load]);
   useEffect(() => { onBusyChange?.(busy); }, [busy, onBusyChange]);
 
   function payload() {
@@ -88,7 +99,7 @@ export default function AIConfigurationManager({ projectId, onBusyChange }: { pr
   return <section className="ai-config-card">
     <div className="ai-config-summary"><span><BrainCircuit size={21} /></span><div><strong>{!loaded ? (message ? "AI settings unavailable" : "Loading AI settings…") : active ? providers.find((item) => item.provider_id === active.provider_id)?.label || active.provider_id : "Managed (default)"}</strong><p>{!loaded ? "Wait for saved settings before changing providers." : active ? `${active.status} · ${active.model || active.configuration.deployment || "Configured"}` : "Managed is the default for projects without a saved provider. No customer key is required."}</p></div>{active?.credential_configured && <span className="workspace-badge"><KeyRound size={13} /> Configured{active.credential_suffix ? ` ····${active.credential_suffix}` : ""}</span>}</div>
     {!canManage ? <p className="workspace-description">A Project Admin manages AI provider settings.</p> : <div className="ai-config-form">
-      <label>Provider<select aria-label="Provider" disabled={busy || !loaded} value={providerId} onChange={(event) => { setProviderId(event.target.value as ProviderId); setValues(event.target.value === "managed" || event.target.value === "openai" ? { model: "gpt-4o-mini" } : { api_version: "2024-10-21" }); setMessage(null); }}>{providers.map((item) => <option value={item.provider_id} key={item.provider_id}>{item.provider_id === "managed" ? "Managed" : `BYOK · ${item.label}`}</option>)}</select></label>
+      <label>Provider<select aria-label="Provider" disabled={busy || !loaded} value={providerId} onChange={(event) => { setProviderId(event.target.value as ProviderId); setValues(event.target.value === "managed" || event.target.value === "openai" ? { model: "gpt-4o-mini" } : event.target.value === "azure_openai" ? { api_version: "2024-10-21" } : { model: "" }); setMessage(null); }}>{providers.map((item) => <option value={item.provider_id} key={item.provider_id}>{item.provider_id === "managed" ? "Managed" : `BYOK · ${item.label}`}</option>)}</select></label>
       <div className="ai-config-fields">{provider?.fields.map((field) => <label key={field.name}>{field.label}<input type={field.secret ? "password" : "text"} autoComplete={field.secret ? "new-password" : "off"} value={values[field.name] || ""} placeholder={field.secret && active?.credential_configured ? "Enter a new key to replace" : ""} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} /></label>)}</div>
       <p className="ai-config-note">{providerId === "managed"
         ? "Managed uses the platform’s OpenAI credentials configured on the backend. A platform administrator manages this key."

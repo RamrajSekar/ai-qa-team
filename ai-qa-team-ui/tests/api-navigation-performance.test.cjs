@@ -50,7 +50,7 @@ test('multipart bodies keep browser-controlled content type',async()=>{
  assert.equal((await api('/knowledge',{method:'POST',body})).ok,true);
 });
 
-for (const endpoint of ['/auth/me?refresh_usage=false', '/features']) {
+for (const endpoint of ['/auth/me?refresh_usage=false', '/features', '/scenarios/generate-from-story?story_id=S1&request_id=0123456789abcdef0123456789abcdef']) {
  test(`relative API base retries ${endpoint} without duplicating its prefix`, async () => {
   const calls = [];
   const api = client(async url => {
