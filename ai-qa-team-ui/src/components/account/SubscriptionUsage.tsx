@@ -39,7 +39,7 @@ export default function SubscriptionUsage({ subscription }: { subscription: Acco
   return <section className={styles.section} aria-labelledby="subscription-usage-title">
     <header className={styles.header}>
       <div><p className="workspace-eyebrow">Account subscription</p><h2 id="subscription-usage-title">Subscription &amp; usage</h2><p className={styles.description}>One shared allowance for your account’s users and projects.</p></div>
-      <div><Link href="/pricing" className="workspace-button">View plans</Link><p className={styles.note}>Paid upgrades are not yet available online.</p></div>
+      <div><Link href="/settings/account/plans" className="workspace-button">View plans</Link><p className={styles.note}>Paid upgrades are not yet available online.</p></div>
       <dl className={styles.plan}><div><dt>Plan</dt><dd><strong>{title(subscription.plan)}</strong></dd></div><div><dt>Status</dt><dd><strong className={styles.status}>{title(subscription.status)}</strong></dd></div></dl>
     </header>
 
@@ -61,7 +61,7 @@ export default function SubscriptionUsage({ subscription }: { subscription: Acco
         <div className={`${styles.card} ${styles.testCases}`}>
           {meter("Scenarios", "scenarios_used")}
           <div className={styles.tiers} role="group" aria-label="Scenario usage by complexity">
-            {["basic", "medium", "advanced", "unspecified"].map(tier => <div key={tier} className={styles.compactMeter}>
+            {["basic", "medium", "advanced"].map(tier => <div key={tier} className={styles.compactMeter}>
               <dl className={styles.meterLine}><dt>{title(tier)}</dt><dd>{subscription.usage[`scenarios_${tier}_used`] ?? "Unavailable"}</dd></dl>
             </div>)}
           </div>

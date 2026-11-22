@@ -1,3 +1,4 @@
+import MarketingAuthLinks from "@/components/marketing/MarketingAuthLinks";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -6,7 +7,7 @@ export default function Hero() {
     <a className="lp-skip" href="#product">Skip to content</a>
     <header className="lp-header"><Link className="lp-brand" href="/"><span>QA</span> AI QA Team</Link>
       <nav aria-label="Public navigation"><a href="#how-it-works">How it works</a><Link href="/pricing">Pricing</Link></nav>
-      <div className="lp-actions"><ThemeToggle /><Link href="/auth?mode=login">Sign in</Link><Link className="lp-button" href="/auth?mode=signup">Get started</Link></div>
+      <div className="lp-actions"><ThemeToggle /><MarketingAuthLinks /></div>
     </header>
     <section id="product" className="lp-hero lp-container" aria-labelledby="hero-title">
       <div><p className="lp-eyebrow">AI-assisted test design</p><h1 id="hero-title">Clearer stories.<br /><span>Better test cases.</span></h1>
