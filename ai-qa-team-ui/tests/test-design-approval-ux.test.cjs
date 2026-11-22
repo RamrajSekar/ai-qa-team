@@ -38,5 +38,5 @@ test('project member can prepare draft but cannot see approval action',async t=>
 });
 
 test('project-admin signoff can be disabled while explicit member approval remains',async t=>{
- const f=await fixture(t,{admin:false,adminOnly:false});const p=f.page;await p.getByText('Project-admin sign-off is not required. Any authorized project member can review and approve the saved version.',{exact:true}).waitFor();await p.getByRole('button',{name:'Save test case draft'}).click();await p.getByLabel('I reviewed the saved test steps, expected results and source links.',{exact:true}).check();await p.getByRole('button',{name:'Approve Test Case',exact:true}).click();await p.getByRole('status').filter({hasText:'Test case approved.'}).waitFor();assert.equal(f.approvals,1);
+ const f=await fixture(t,{admin:false,adminOnly:false});const p=f.page;await p.getByText('Any authorized project member can approve the saved version.',{exact:true}).waitFor();await p.getByRole('button',{name:'Save test case draft'}).click();await p.getByLabel('I reviewed the saved test steps, expected results and source links.',{exact:true}).check();await p.getByRole('button',{name:'Approve Test Case',exact:true}).click();await p.getByRole('status').filter({hasText:'Test case approved.'}).waitFor();assert.equal(f.approvals,1);
 });

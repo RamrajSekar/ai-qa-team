@@ -33,9 +33,9 @@ export default function ExecutionHistory({ projectId }: { projectId: string }) {
   const statuses = Array.from(new Set(rows.map(row => row.status).filter((value): value is string => !!value)));
   function reload(nextPage = page) { setLoading(true); setError(false); setRows([]); setPage(nextPage); setRevision(value => value + 1); }
   return <div className="design-page">
-    <header className="workspace-page-header"><div><p className="workspace-eyebrow">Execution records</p><h1>Execution history</h1><p className="workspace-description">Inspect recorded outcomes without starting or replaying a run.</p></div>
+    <header className="workspace-page-header"><div><p className="workspace-eyebrow">Execution records</p><h1>Execution history</h1><p className="workspace-description">Review past execution results.</p></div>
       <button className="workspace-button" disabled={loading} onClick={() => reload()}>Refresh history</button></header>
-    <div className="design-guide"><strong>Historical results stay unchanged</strong><p>Statuses are shown as originally recorded. Development runs remain in their own evidence views. A completed browser action does not by itself mean a business test passed.</p></div>
+    <div className="design-guide"><strong>Historical results stay unchanged</strong><p>Original results are preserved. Development runs have separate evidence; browser completion alone is not a test pass.</p></div>
     {!loading && !error && <DesignStats items={[{ label: "Project records on this page", value: rows.length }, { label: "Matching records", value: visible.length }]} />}
     <DesignToolbar query={query} onQuery={setQuery} placeholder="Search execution or test case ID on this page"><label>Status<select aria-label="Status" value={status} onChange={event => setStatus(event.target.value)}><option value="all">All statuses</option>{statuses.map(value => <option key={value}>{value}</option>)}</select></label></DesignToolbar>
     {loading ? <DesignState title="Loading execution history…" /> : error ? <DesignState error title="Execution history unavailable"><p>Check your connection and try again.</p><button className="workspace-button" onClick={() => reload()}>Try again</button></DesignState> : <>

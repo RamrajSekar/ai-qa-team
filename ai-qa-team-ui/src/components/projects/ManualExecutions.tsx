@@ -30,7 +30,7 @@ export default function ManualExecutions({ projectId, executionId }: { projectId
     void fetchExecution();
     return () => controller.abort();
   }, [load]);
-  return <div className="design-page"><header className="workspace-page-header"><div><p className="workspace-eyebrow">Manual testing</p><h1>Test Execution</h1><p className="workspace-description">Group approved test cases by release or cycle, then record each case’s result.</p></div><Link className="workspace-button workspace-primary" href={`${root}/testcases`}>Select approved test cases</Link></header>
+  return <div className="design-page"><header className="workspace-page-header"><div><p className="workspace-eyebrow">Manual testing</p><h1>Test Execution</h1><p className="workspace-description">Run approved cases by release or cycle and record results.</p></div><Link className="workspace-button workspace-primary" href={`${root}/testcases`}>Select approved test cases</Link></header>
     {error && <DesignState error title={error}><button className="workspace-button" onClick={() => { setError(""); void load().catch(() => setError("Could not reload executions.")); }}>Try again</button></DesignState>}
     {loading ? <DesignState title="Loading manual executions…" /> : execution ? <>
       <section><div className="design-record-heading"><h2 className="text-xl font-semibold">{execution.manifest.title}</h2><DesignBadge>{execution.lifecycle.replaceAll("_", " ")}</DesignBadge></div><p className="whitespace-pre-wrap">Release / Cycle: {execution.manifest.release_cycle}</p><p>Mode: Manual · {execution.completed_count}/{execution.manifest.cases.length} case results recorded</p><p className="workspace-metadata">Completion means results were recorded; it does not mean every case passed.</p></section>

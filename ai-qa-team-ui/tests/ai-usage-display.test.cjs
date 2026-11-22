@@ -32,7 +32,7 @@ test('saved project mode highlights its pool and switching display preserves bot
  assert.equal(await page.getByRole('region',{name:'BYOK AI Requests',exact:true}).getByText('CURRENT',{exact:true}).count(),0);
  assert.match(await page.getByRole('region',{name:'BYOK AI Requests',exact:true}).innerText(),/1 \/ 25/);
  await page.getByLabel('AI mode for project',{exact:true}).selectOption('P2');
- await page.getByText('BYOK selected for BYOK project.',{exact:false}).waitFor();
+
  await page.getByRole('region',{name:'BYOK AI Requests',exact:true}).getByText('CURRENT',{exact:true}).waitFor();
  assert.equal(await managed.getByText('CURRENT',{exact:true}).count(),0);
  assert.match(await page.getByRole('region',{name:'Managed AI Requests',exact:true}).innerText(),/3 \/ 25/);

@@ -63,7 +63,7 @@ export default function AccountSettings({ team = false }: { team?: boolean }) {
     finally { setBusy(false); }
   }
   return <div className="design-page">
-    <header><p className="workspace-eyebrow">Customer workspace</p><h1>{team ? "Account team" : "Account"}</h1><p className="workspace-description">One customer account for your team and projects. Project permissions remain separate.</p></header>
+    <header><p className="workspace-eyebrow">Customer workspace</p><h1>{team ? "Account team" : "Account"}</h1><p className="workspace-description">Manage your account, team and project access.</p></header>
     {error && <div role="alert" className="repository-error">{error}{account&&<button className="workspace-button" disabled={busy||loading} onClick={()=>void action(load)}>Reload account</button>}</div>}
     <nav className="repository-actions" aria-label="Account settings"><Link className="workspace-button" href="/settings/account">Account details</Link><Link className="workspace-button" href="/settings/account/team">Team & project access</Link></nav>
     {!account && loading ? <p role="status">Loading account…</p> : !account ? <button className="workspace-button" disabled={busy} onClick={() => void action(load)}>Reload account</button> : <>
@@ -72,11 +72,11 @@ export default function AccountSettings({ team = false }: { team?: boolean }) {
         {admin && <button className="workspace-button workspace-primary" disabled={busy || name.trim().length < 2} onClick={() => void action(async () => {
           await request("/account", { method: "PATCH", body: JSON.stringify({ name: name.trim() }) }); await load(); setMessage("Account name saved.");
         })}>Save account name</button>}
-        <p className="workspace-description">{billingLoading ? "Loading subscription…" : !billing ? "Subscription unavailable. Reload to try again." : billing.billing_scope === "ACCOUNT" ? "Your subscription and usage are shared across this customer account." : "Account subscription migration is required before shared billing is enabled."}</p>
+        <p className="workspace-description">{billingLoading ? "Loading subscription…" : !billing ? "Subscription unavailable. Reload to try again." : billing.billing_scope === "ACCOUNT" ? "Subscription and usage are shared across your account." : "Account subscription migration is required before shared billing is enabled."}</p>
       </section>}
       {!team && !billingLoading && billing?.subscription && <SubscriptionUsage subscription={billing.subscription} />}
       {team && <section><h2>Account members</h2>{members.map(member => <div className="workspace-row" key={member.email}><div><strong>{member.name || member.email}</strong><p className="workspace-row-subtitle">{member.email}</p></div><span className="workspace-badge">{member.account_role}</span></div>)}</section>}
-      {team && admin && <section className="space-y-4"><h2>Invite a new account member</h2><p className="workspace-description">{emailEnabled ? "Send a seven-day invitation by email." : "Create a seven-day invitation link and share it privately. Email delivery can be enabled later."} Existing members are added to projects under Project assignments below.</p>
+      {team && admin && <section className="space-y-4"><h2>Invite a new account member</h2><p className="workspace-description">{emailEnabled ? "Send a seven-day invitation by email." : "Share a private invitation link, valid for seven days."} Assign existing members to projects below.</p>
         <label>New member email<input type="email" value={email} disabled={busy} onChange={event => setEmail(event.target.value)} /></label>
         {user?.account_role === "OWNER" && <label>Account role<select value={role} disabled={busy} onChange={event => setRole(event.target.value)}><option value="MEMBER">Member</option><option value="ADMIN">Account administrator</option></select></label>}
         <button className="workspace-button workspace-primary" disabled={busy || !email.includes("@")} onClick={() => void action(async () => {
@@ -90,7 +90,7 @@ export default function AccountSettings({ team = false }: { team?: boolean }) {
         {link && <div className="workspace-notice"><label>Private invitation link<input readOnly value={link} onFocus={event => event.target.select()} /></label><button className="workspace-button" onClick={() => void action(async () => { await navigator.clipboard.writeText(link); setMessage("Invitation link copied. Share it only with the invited person."); })}>Copy invitation link</button><button className="workspace-button" onClick={() => setLink("")}>Hide link</button></div>}
         <h3>Pending invitations</h3>{invitations.map(invitation => <div className="workspace-row" key={invitation.invitation_id}><div><strong>{invitation.email}</strong><p className="workspace-row-subtitle">{invitation.role} · expires {new Date(invitation.expires_at).toLocaleDateString()}</p></div><button className="workspace-button" disabled={busy} onClick={() => void action(async () => { await request(`/account/invitations/${invitation.invitation_id}`, { method: "DELETE" }); setLink(""); await load(); setMessage("Invitation revoked."); })}>Revoke invitation</button></div>)}
       </section>}
-      {team && admin && <section><h2>Project assignments</h2><p>Assign account members to projects. Account administration does not grant access to project content.</p><label>Project<select aria-label="Project" value={projectId} onChange={event => setProjectId(event.target.value)}><option value="">Select a project</option>{projects.map(project => <option key={project.project_id} value={project.project_id}>{project.name} ({project.project_id})</option>)}</select></label>{projectId && <TeamManager key={projectId} projectId={projectId} />}</section>}
+      {team && admin && <section><h2>Project assignments</h2><p>Assign project access separately from account roles.</p><label>Project<select aria-label="Project" value={projectId} onChange={event => setProjectId(event.target.value)}><option value="">Select a project</option>{projects.map(project => <option key={project.project_id} value={project.project_id}>{project.name} ({project.project_id})</option>)}</select></label>{projectId && <TeamManager key={projectId} projectId={projectId} />}</section>}
     </>}
     {message && <p role="status">{message}</p>}
   </div>;

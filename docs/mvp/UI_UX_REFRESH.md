@@ -175,3 +175,21 @@ qualification. Execution MVP is held. No deployment was performed for this local
 ## Short action labels (2026-11-13)
 
 Scenario/testcase catalog actions and project overview actions now display Review, Edit and Delete. Context remains in accessible labels and dialog titles; permissions and behavior are unchanged. Saved-draft review buttons use the same concise label. Ten focused catalog/approval UI tests passed with intercepted fixtures; TypeScript, focused lint and whitespace checks passed. These checks do not establish real-login integration.
+
+
+## 2026-11-22 concise workspace notes
+
+Shortened account, QA Agent, catalog, test-review and execution helper text without
+changing operations, counters, flags or approval rules. Managed and BYOK notes now
+sit inside their respective tiles. Removed the repeated selected-project caption
+and scenario complexity explanation. Team capacity explains unique people briefly.
+Account-level usage and mode-switch balance preservation remain stated once.
+
+Production UI build and TypeScript passed. Scoped ESLint reports the same four
+pre-existing `react-hooks/set-state-in-effect` errors as committed HEAD in
+knowledge/page.tsx, AccountSettings, PendingReviews and TestDesignReview; their
+effect logic is unchanged. No new lint finding. Browser regressions covered 48
+checks: 46 passed initially; two assertions still expected the old copy and
+passed targeted reruns after updating those expectations. Coverage includes
+Account/onboarding, usage tiles, QA Agent recovery/Ask, catalogs and test approval.
+Checks use intercepted APIs, not live providers or production data.

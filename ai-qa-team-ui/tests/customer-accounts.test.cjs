@@ -185,8 +185,8 @@ test('subscription redesign has bold plan/status and explains monthly AI credits
   const meter = section.getByRole('progressbar', { name: 'AI Requests usage', exact: true });
   assert.equal(await meter.getAttribute('value'), '1');
   assert.equal(await meter.getAttribute('max'), '3');
-  await section.getByText(/Monthly allowance shared by product knowledge extraction/).waitFor();
-  await section.getByText('AI used during browser execution is not included in this counter yet.', { exact: true }).waitFor();
+  await section.getByText(/Shared monthly allowance for knowledge/).waitFor();
+  await section.getByText('Browser-execution AI usage is excluded.', { exact: true }).waitFor();
   await section.getByRole('heading', { name: 'Workspace Capacity', exact: true }).waitFor();
   await section.getByRole('heading', { name: 'Team Capacity', exact: true }).waitFor();
   assert.equal(await section.getByRole('heading', { name: 'Execution Usage', exact: true }).count(), 0);
@@ -216,8 +216,8 @@ test('split AI allowances show separate Managed credits and BYOK requests', asyn
   await byok.waitFor();
   assert.equal(await managed.getAttribute('value'), '1'); assert.equal(await managed.getAttribute('max'), '25');
   assert.equal(await byok.getAttribute('value'), '2'); assert.equal(await byok.getAttribute('max'), '25');
-  await section.getByText(/Each AI request uses one unit/).waitFor();
-  await section.getByText(/BYOK uses your key and provider billing/).waitFor();
+  await section.getByText(/One request uses one unit/).waitFor();
+  await section.getByText(/Uses your key and provider billing/).waitFor();
   assert.equal(await section.getByRole('heading', { name: 'Execution Usage', exact: true }).count(), 0);
   assert.equal(await section.getByRole('progressbar', { name: 'AI Requests usage', exact: true }).count(), 0);
 });
