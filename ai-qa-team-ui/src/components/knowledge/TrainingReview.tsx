@@ -85,7 +85,7 @@ export default function TrainingReview({ initial, base, canApprove, onSession, o
       void perform(()=>knowledgeRequest(path+"/discard",{expected_revision:session.revision}));
     }}>Discard request</button>}
     {session.state !== "rejected" && session.base_version_id !== currentVersionId && session.saved_version?.status !== "approved" && <div className="design-state">
-      <p>Approved knowledge changed. Your review and extraction are retained. Review these proposals against current knowledge without another AI request.</p>
+      <p>Knowledge changed. Review your saved proposals against the current version; no new AI request is needed.</p>
       <button className="workspace-button" disabled={dirty || saving} onClick={() => void perform(() => knowledgeRequest(path + "/rebase", {
         request_id: crypto.randomUUID().replaceAll("-", ""), expected_revision: session.revision,
       }))}>Review against current knowledge</button>
@@ -100,7 +100,7 @@ export default function TrainingReview({ initial, base, canApprove, onSession, o
     </>}
     {session.mode === "removal" && <div>
       <label>Reason for removal<textarea aria-label="Reason for removal" disabled={!editable || saving} className="border rounded w-full" maxLength={2000} value={reason} onChange={event=>{edits.current++;setReason(event.target.value);setDirty(true);setError("");}} /></label>
-      <h3>Affected scenarios and test cases</h3><p>Linked or version-dependent designs require review after knowledge changes. Existing execution records remain unchanged.</p>
+      <h3>Affected scenarios and test cases</h3><p>Affected designs need review. Execution history stays unchanged.</p>
       {Object.entries(session.removal_impact || {}).map(([kind,rows])=><div key={kind}><strong>{kind === "scenarios" ? "Scenarios" : "Test cases"}</strong>{rows.length ? rows.map(row=><p key={row.id}>{row.title}</p>) : <p>No linked items found.</p>}</div>)}
     </div>}
     {editable && proposals.length > 0 && <div className="workspace-actions">{(["confirmed","rejected"] as const).map(decision=><button key={decision} className="workspace-button" disabled={saving} onClick={()=>{edits.current++;setProposals(items=>items.map(item=>item.decision === "pending" ? {...item,decision} : item));setDirty(true);setError("");}}>{decision === "confirmed" ? "Confirm all undecided" : "Reject all undecided"}</button>)}</div>}
@@ -117,7 +117,7 @@ export default function TrainingReview({ initial, base, canApprove, onSession, o
           <button type="button" className="workspace-button" onClick={() => update(item.claim.claim_id, { decision: "rejected" }, session.proposals.find(proposal => proposal.claim.claim_id === item.claim.claim_id)?.claim)}>Reject</button>
           <button type="button" className="workspace-button" onClick={() => update(item.claim.claim_id, { decision: "clarify" })}>Clarify</button>
         </div>}
-        {item.decision === "clarify" && <p>Clarification needed. Edit the statement using source evidence, then confirm or reject it. The proposal stays pending until then.</p>}
+        {item.decision === "clarify" && <p>Clarify using source evidence, then confirm or reject. Until then, this stays pending.</p>}
         {editable && item.decision !== "rejected" && (item.decision === "clarify" || item.clarification_question) && <div className="space-y-2">
           <label className="block">Clarification question<textarea aria-label="Clarification question" className="border rounded w-full" maxLength={1000} value={item.clarification_question || ""} onChange={event => update(item.claim.claim_id, { clarification_question: event.target.value, decision: "clarify" })} /></label>
           <label className="block">Clarification answer<textarea aria-label="Clarification answer" className="border rounded w-full" maxLength={2000} value={item.clarification_answer || ""} onChange={event => update(item.claim.claim_id, { clarification_answer: event.target.value, decision: "clarify" })} /></label>
@@ -125,7 +125,7 @@ export default function TrainingReview({ initial, base, canApprove, onSession, o
         {editable && editId === item.claim.claim_id && <div className="space-y-3">
           <label className="block">Rule statement<textarea aria-label="Rule statement" className="border rounded w-full" maxLength={1500} value={item.claim.statement} onChange={event => update(item.claim.claim_id, { decision: "pending" }, { statement: event.target.value })} /></label>
           <label className="block">Information type<select value={item.claim.epistemic_status} onChange={event => update(item.claim.claim_id, { decision: "pending" }, { epistemic_status: event.target.value as Claim["epistemic_status"] })}>{["expected", "observed", "inferred", "unknown"].map(value => <option key={value}>{value}</option>)}</select></label>
-          <p>A correction still needs supporting source evidence. Exact source quotes cannot be invented or changed into requirements automatically.</p>
+          <p>Corrections need source evidence. Preserve exact quotes.</p>
           <label className="block">Supporting source<select value={item.claim.source_id} onChange={event => update(item.claim.claim_id, {decision:"pending"}, {source_id:event.target.value, segment_index:sources.find(source=>source.source_id===event.target.value)?.kind === "recording_transcript" ? 0 : null})}>
             {!sources.some(source=>source.source_id===item.claim.source_id) && <option value={item.claim.source_id}>Current source evidence</option>}
             {sources.map(source=><option key={source.source_id} value={source.source_id}>{source.title}</option>)}
@@ -149,7 +149,7 @@ export default function TrainingReview({ initial, base, canApprove, onSession, o
       {session.saved_version.status === "approved" ? <p role="status">Knowledge approved and saved.</p> : canApprove ? <button className="workspace-button workspace-primary" disabled={saving} onClick={() => void perform(async () => {
         await knowledgeRequest(`${base}/versions/${session.saved_version!.version_id}/approve`, {});
         return knowledgeRequest<TrainingSession>(path);
-      })}>Approve changes</button> : <p>A project administrator must approve this saved knowledge. Your review is available to the project team.</p>}
+      })}>Approve changes</button> : <p>A Project Admin must approve these saved changes.</p>}
     </section>}
     {error && <p role="alert">{error} Your saved review is retained. Use Refresh status before further actions.</p>}
   </section>;

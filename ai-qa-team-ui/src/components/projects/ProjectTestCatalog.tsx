@@ -158,7 +158,7 @@ export default function ProjectTestCatalog({ kind }: { kind: "scenarios" | "test
   return (
     <div className="design-page catalog-page">
       <div className="workspace-page-header">
-        <div><p className="workspace-eyebrow">Test design</p><h1>{title}</h1><p className="workspace-description">{kind === "scenarios" ? "Review what to verify before designing detailed test cases." : "Review procedures, approve explicit expectations and export test designs."}</p></div>
+        <div><p className="workspace-eyebrow">Test design</p><h1>{title}</h1><p className="workspace-description">{kind === "scenarios" ? "Review scenario coverage before designing test cases." : "Review, approve and export test cases."}</p></div>
         {kind!=="scenarios"&&<Link className="workspace-button" href={`${projectPath}/stories`}>Open stories to create or generate</Link>}
       </div>
       <CatalogCreation key={projectId} kind={kind} projectId={projectId} onSaved={async () => { await load(); }} />

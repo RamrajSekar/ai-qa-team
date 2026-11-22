@@ -29,7 +29,7 @@ export default function PendingReviews({projectId}:{projectId:string}){
      {data.items.map(item=><tr className="border-t" key={`${item.type}:${item.id}`}><td className="p-3">{item.type}</td><td className="p-3"><strong>{item.title}</strong>{item.detail&&<p>{item.detail}</p>}</td><td className="p-3"><DesignBadge tone={item.status==="Blocked"||item.status==="Needs attention"?"warning":undefined}>{item.status}</DesignBadge></td><td className="p-3">{item.pending_with?.length?item.pending_with.join(", "):"No eligible reviewer"}</td><td className="p-3"><Link className="workspace-button" href={item.href}>Review</Link></td></tr>)}
     </tbody></table></div>:<p>{data.unavailable_types.length?"Review results are incomplete. Refresh to try again.":"No pending reviews on this page."}</p>}
     <nav className="flex flex-wrap items-center gap-3" aria-label="Review pages"><button className="workspace-button" disabled={!page} onClick={()=>setPage(p=>p-1)}>Previous reviews</button><span>Page {page+1}</span><button className="workspace-button" disabled={!data.has_more} onClick={()=>setPage(p=>p+1)}>Next reviews</button></nav>
-    <p className="text-xs">Pending with lists eligible reviewers, not a personal assignment. Each page checks up to 20 records per review type.</p>
+    <p className="text-xs">Pending with shows eligible reviewers. Up to 20 items per type, per page.</p>
    </>}
   </div>
  </section>;

@@ -125,7 +125,7 @@ function ReviewForm({ testcase, projectId, canApprove }: { testcase: CatalogCase
     {activeVersion?.approved_by && <p className="workspace-metadata">Approved by {activeVersion.approved_by_display_name || activeVersion.approved_by}{activeVersion.approved_by_project_role ? ` (${activeVersion.approved_by_project_role})` : ""}{activeVersion.approved_at ? ` · ${new Date(activeVersion.approved_at).toLocaleString()}` : ""}</p>}
     {!mayApprove && adminOnly && <p>A project administrator must approve the saved draft. You can prepare it for review.</p>}
     {error && <p role="alert">{error}</p>}{message && <p role="status">{message}</p>}
-    {!adminOnly && <p>Project-admin sign-off is not required. Any authorized project member can review and approve the saved version.</p>}
+    {!adminOnly && <p>Any authorized project member can approve the saved version.</p>}
     <fieldset disabled={busy} className="space-y-3"><legend className="font-semibold">Test case draft</legend>
       <label className="block">Test case title<input className="border rounded w-full p-2" value={design.title} maxLength={240} onChange={event => update({ title: event.target.value })} /></label>
       <label className="block">Purpose<textarea className="border rounded w-full p-2" value={design.purpose} maxLength={1500} onChange={event => update({ purpose: event.target.value })} /></label>
@@ -137,7 +137,7 @@ function ReviewForm({ testcase, projectId, canApprove }: { testcase: CatalogCase
         <button className="workspace-button" onClick={() => update({ procedure: design.procedure.filter((_, i) => i !== index) })}>Remove Test Step {index+1}</button>
       </div>)}
       <button className="workspace-button" disabled={design.procedure.length >= 40} onClick={() => update({ procedure: [...design.procedure, { instruction: "", expected: "" }] })}>Add Test Step</button>
-      <fieldset className="space-y-2"><legend className="font-semibold">{state?.current_context?.criteria_basis ? "Requirements covered (optional)" : "Acceptance criteria covered (optional)"}</legend><p>Select relevant excerpts when useful. Release-context options can include explicitly approved expectations or provisional story requirements; you do not need to type reference IDs.</p>
+      <fieldset className="space-y-2"><legend className="font-semibold">{state?.current_context?.criteria_basis ? "Requirements covered (optional)" : "Acceptance criteria covered (optional)"}</legend><p>Optionally select relevant approved or provisional requirements.</p>
         {!criterionOptions.length && <p>No criteria available to link.</p>}
         {criterionOptions.map((quote, index) => <label className="review-choice" key={quote}><input type="checkbox" checked={design.acceptance_criteria_refs.includes(quote)} disabled={!design.acceptance_criteria_refs.includes(quote) && design.acceptance_criteria_refs.length >= 15} onChange={event => update({ acceptance_criteria_refs: event.target.checked ? [...design.acceptance_criteria_refs, quote] : design.acceptance_criteria_refs.filter(value => value !== quote) })} /><span>Criterion {index+1}: {quote}{!criteria.includes(quote) && " (no longer in source story)"}</span></label>)}
       </fieldset>
@@ -146,10 +146,10 @@ function ReviewForm({ testcase, projectId, canApprove }: { testcase: CatalogCase
         {unavailableRules.length > 0 && <div><p>Some existing rule links are unavailable in the approved knowledge version.</p><button className="workspace-button" onClick={() => update({ rule_references: design.rule_references.filter(id => !unavailableRules.includes(id)) })}>Remove unavailable rule links</button></div>}
       </fieldset>}
       <details><summary>Additional outcomes, cleanup and test data (optional)</summary><div className="space-y-3 mt-3">
-        <p>These fields are optional for approval. Every test step’s expected result remains a required check, even when no additional outcomes are entered.</p>
+        <p>These fields are optional. Every step still requires an expected result.</p>
         <label className="block">Additional expected outcomes (one per line)<textarea className="border rounded w-full p-2" value={design.assertions.join("\n")} onChange={event => update({ assertions: event.target.value.split("\n") })} /></label>
         <label className="block">Cleanup / restore state (one per line)<textarea className="border rounded w-full p-2" value={design.cleanup.join("\n")} onChange={event => update({ cleanup: event.target.value.split("\n") })} /></label>
-        <p>Cleanup describes how to restore data changed by this case. Leave it blank when nothing needs restoring.</p>
+        <p>Describe any data cleanup needed, or leave blank.</p>
         <label className="block">Test data (JSON text values; no secrets)<textarea className="border rounded w-full p-2" rows={3} value={data} maxLength={10000} onChange={event => { setData(event.target.value); setDirty(true); setReviewed(false); }} /></label>
       </div></details>
       {state?.current_context?.source_context_changed && <label className="review-choice"><input type="checkbox" checked={acknowledged} onChange={event => { setAcknowledged(event.target.checked); setDirty(true); setReviewed(false); }} />I reviewed copied content against changed approved knowledge and story analysis.</label>}

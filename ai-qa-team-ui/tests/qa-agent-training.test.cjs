@@ -10,7 +10,7 @@ test('current table hides history, shows name/topic and permits discarding a sta
  page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Remove',exact:true}).click();
  await page.getByRole('heading',{name:'Review removal',exact:true}).waitFor();
  reviews[0].base_version_id='f'.repeat(32);await page.reload();
- await page.getByText('Approved knowledge changed.',{exact:false}).waitFor();
+ await page.getByText('Knowledge changed.',{exact:false}).waitFor();
  page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Discard request',exact:true}).click();
  await page.getByRole('tab',{name:'Approved',exact:true}).click();
  assert.equal(await page.getByRole('row',{name:'Approved rule',exact:true}).count(),1);
@@ -84,8 +84,8 @@ test('admin creates project, teaches three rules, adds fourth, resumes clarifica
 test('member can save review, cannot approve, and admin can resume it',async t=>{
  const f=await fixture(browser,t,{role:'TESTER'});const {page}=f;await page.goto(base+'/projects/P1/knowledge');
  await teach(page,'Member training','Rule one.');await confirmAll(page);await page.getByRole('button',{name:'Review changes',exact:true}).click();
- await page.getByText('A project administrator must approve this saved knowledge.',{exact:false}).waitFor();assert.equal(await page.getByRole('button',{name:'Approve changes',exact:true}).count(),0);
- await page.reload();await page.getByText('A project administrator must approve this saved knowledge.',{exact:false}).waitFor();assert.equal(f.calls.filter(c=>c.path.endsWith('/extract')).length,1);
+ await page.getByText('A Project Admin must approve these saved changes.',{exact:false}).waitFor();assert.equal(await page.getByRole('button',{name:'Approve changes',exact:true}).count(),0);
+ await page.reload();await page.getByText('A Project Admin must approve these saved changes.',{exact:false}).waitFor();assert.equal(f.calls.filter(c=>c.path.endsWith('/extract')).length,1);
  f.setRole('ADMIN');await page.reload();await page.getByRole('button',{name:'Approve changes',exact:true}).click();await page.getByRole('tab',{name:'Approved',exact:true}).click();
 });
 test('rejecting proposals preserves knowledge and removal requires explicit confirmation',async t=>{

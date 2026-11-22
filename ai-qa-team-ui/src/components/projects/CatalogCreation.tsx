@@ -102,7 +102,7 @@ export default function CatalogCreation({ kind, projectId, onSaved }: {
         <button className="workspace-button" disabled={busy} onClick={() => setOpen(false)}>Close</button>
       </div>
       </div></div>
-      {kind === "testcases" && <p className="text-sm">Scenarios define coverage intent. Knowledge-aware generation produces detailed procedures, data and explicit assertions from an approved scenario. Existing legacy scenarios retain their conversion path.</p>}
+      {kind === "testcases" && <p className="text-sm">Generate detailed steps and expected results from approved scenarios.</p>}
       {kind === "testcases" && <div className="catalog-actions">
         <button disabled={busy || sourcePage === 0} onClick={() => void loadSources(sourcePage - 1)}>Previous sources</button>
         <button disabled={busy || !more} onClick={() => void loadSources(sourcePage + 1)}>Next sources</button>
