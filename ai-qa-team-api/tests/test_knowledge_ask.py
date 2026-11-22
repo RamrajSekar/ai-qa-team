@@ -30,7 +30,7 @@ class AskTests(unittest.IsolatedAsyncioTestCase):
 
     def answer(self,**changes):
         self.usage.execute.return_value=SimpleNamespace(text=json.dumps({"status":"supported","answer":"A confirmation is shown.",
-            "citations":[{"claim_id":"K1","quote":"Show Draft saved."}],**changes}))
+            "citations":[{"claim_id":"K1"}],**changes}))
 
     async def test_scoped_cited_answer_metered_once_without_stored_text(self):
         version=await self.approved();self.answer()
@@ -109,7 +109,7 @@ class AskTests(unittest.IsolatedAsyncioTestCase):
         await self.approved()
         async def changed(*args):
             self.db["product_knowledge_versions"].docs.clear()
-            return SimpleNamespace(text=json.dumps({"status":"supported","answer":"Saved.","citations":[{"claim_id":"K1","quote":"Draft saved"}]}))
+            return SimpleNamespace(text=json.dumps({"status":"supported","answer":"Saved.","citations":[{"claim_id":"K1"}]}))
         self.usage.execute.side_effect=changed
         with self.assertRaises(HTTPException) as stale:await self.ask.ask("P1",self.user,self.payload)
         self.assertEqual(stale.exception.status_code,409)
@@ -125,3 +125,63 @@ class AskTests(unittest.IsolatedAsyncioTestCase):
         with patch.object(settings,"knowledge_encryption_required",True):
             with self.assertRaises(HTTPException) as blocked:fixtures.ProductKnowledge(self.db,self.usage)
         self.assertEqual(blocked.exception.status_code,503)
+
+    async def test_quotes_come_from_approved_statement_not_generated_or_source_excerpt(self):
+        first = await self.approved()
+        statement = "Landing page buttons:\nHome, Pricing, Login, Signup."
+        draft = await self.service.create_version("P1", "reviewer", fixtures.KnowledgeDraft(
+            title="Reviewed landing rule", parent_version_id=first["version_id"],
+            claims=[{**self.claim, "statement": statement}]))
+        await self.service.approve("P1", "reviewer", draft["version_id"])
+        self.answer()
+        result = await self.ask.ask("P1", self.user, self.payload)
+        self.assertEqual(result["citations"][0]["quote"], statement)
+        self.assertEqual(result["citations"][0]["source_quote"], "Show Draft saved.")
+        request = self.usage.execute.call_args.args[3]
+        context = json.loads(request.prompt)["approved_knowledge"]["claims"][0]
+        self.assertEqual(set(context), {"claim_id", "statement", "epistemic_status"})
+        reference = next(item for item in request.response_schema["$defs"].values()
+                         if "claim_id" in item.get("properties", {}))
+        self.assertEqual(reference["properties"]["claim_id"]["enum"], ["K1"])
+        self.assertNotIn("quote", reference["properties"])
+        self.assertEqual(self.usage.execute.await_count, 1)
+
+    async def test_unknown_claim_id_is_rejected_without_generated_quote(self):
+        await self.approved()
+        self.answer(citations=[{"claim_id": "UNKNOWN"}])
+        with self.assertRaises(HTTPException) as error:
+            await self.ask.ask("P1", self.user, self.payload)
+        self.assertEqual(error.exception.status_code, 502)
+        self.assertEqual(self.usage.execute.await_count, 1)
+        self.assertEqual(self.db["knowledge_ask_requests"].docs[0]["state"], "uncertain")
+
+    async def test_model_cannot_supply_invented_quote_or_source_link(self):
+        await self.approved()
+        self.answer(citations=[{"claim_id": "K1", "quote": "Invented wording", "source_id": "FOREIGN"}])
+        with self.assertRaises(HTTPException) as error:
+            await self.ask.ask("P1", self.user, self.payload)
+        self.assertEqual(error.exception.status_code, 502)
+        self.assertNotIn("Invented wording", str(error.exception.detail))
+        self.assertEqual(self.usage.execute.await_count, 1)
+
+    async def test_legacy_approved_knowledge_needs_no_migration(self):
+        approved = await self.approved()
+        legacy = {**deepcopy(approved), "_id": approved["version_id"]}
+        for key in ("knowledge_contract_version", "changes", "removed_claim_ids"):
+            legacy.pop(key)
+        self.db["product_knowledge_versions"].docs[:] = [legacy]
+        before = deepcopy(legacy)
+        self.answer()
+        result = await self.ask.ask("P1", self.user, self.payload)
+        self.assertEqual(result["citations"][0]["quote"], self.claim["statement"])
+        self.assertEqual(self.db["product_knowledge_versions"].docs, [before])
+
+    async def test_http_response_keeps_existing_citation_contract(self):
+        await self.approved()
+        self.answer()
+        response = await self.client.post(self.base + "/ask", json=self.payload.model_dump())
+        self.assertEqual(response.status_code, 200, response.text)
+        citation = response.json()["citations"][0]
+        self.assertEqual(set(citation), {"claim_id", "quote", "source_id", "source_quote", "information_type", "segment_index"})
+        self.assertEqual(citation["quote"], self.claim["statement"])
+        self.assertEqual(citation["source_id"], self.claim["source_id"])

@@ -144,3 +144,35 @@ selector. Those failures were retained, fixed and followed by the passing final 
 Backend fixture corrections concerned a validation field name, the usage telemetry
 field `operation_type` and stale feature-map expectations; no checks were removed.
 Live KMS, Mongo, provider quality and encryption migration remain NOT RUN.
+
+
+## 2026-11-22 citation reliability follow-up
+
+A user screenshot showed approved rules alongside Ask's unavailable-citation
+error. This establishes a rejected citation, not missing approved knowledge;
+without retaining raw answers it does not identify whether the ID or quote failed.
+The prior contract required the model to reproduce an exact statement substring,
+which can fail on line breaks, punctuation, combined rules or source/statement
+confusion. No production data was queried and no uncertain question was replayed.
+
+Ask now supplies approved claim IDs, statements and information types to the model.
+Its internal response schema lists current claim IDs as allowed references and
+accepts only claim selection, never generated citation text or source links.
+Trusted code independently checks each ID, then attaches the exact approved
+statement and original source evidence. Public citation fields are unchanged.
+No fuzzy matching or inferred mapping of unknown IDs is introduced. A matching
+ID/evidence is still not proof that every generated sentence is semantically true.
+
+Preserved: source-evidence checks before AI, current-snapshot-only context, scope
+and version rechecks, conflict requiring two distinct references, not-covered
+canonicalization, metering, duplicate receipts and no automatic retries. Existing
+approved versions and old request receipts need no migration or alteration.
+Existing active platform prompts remain in place; server instructions specify the
+claim-selection response. UI and public API response shapes remain compatible.
+
+73 isolated backend tests passed: 15 Ask tests (five new), 30 knowledge regressions,
+15 AI usage tests and 13 provider/configuration tests. The Ask tests include the
+real HTTP route with fixtures, multiline reviewed statements distinct from source
+quotes, unknown references, fabricated evidence, legacy records, isolation, stale
+context and duplicate submission. No live model/Mongo or production qualification
+was performed; this does not establish the exact rejected production reference.
