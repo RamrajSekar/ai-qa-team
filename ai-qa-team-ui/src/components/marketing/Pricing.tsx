@@ -4,10 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/utils/api";
 
+import { useAuth } from "@/components/providers/AuthProvider";
+
 type Offer = { monthly_usd: number | null; managed_ai_credits_limit: number; byok_ai_requests_limit: number };
 type Catalog = { stage: string; currency: string; free: Offer & { additional_members_limit: number }; managed: Offer; byok: Offer; enterprise: Offer; pilot: { fixed_usd: number } };
 
-export default function Pricing() {
+export default function Pricing({ workspace = false }: { workspace?: boolean }) {
+  const { user } = useAuth();
+  const signedIn = workspace || !!user;
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [error, setError] = useState(false);
   const [reload, setReload] = useState(0);
@@ -26,9 +30,9 @@ export default function Pricing() {
     <p className="lp-note">Indicative prices. Paid plans are not yet available for self-service purchase.</p>
     {error ? <div role="alert"><p>Pricing details are temporarily unavailable.</p><button className="lp-button" onClick={() => setReload(value => value + 1)}>Try again</button></div> : !catalog ? <p role="status">Loading pricing details…</p> : <>
       <div className="lp-pricing-grid">
-        <article className="lp-pricing-card"><h2>Free Evaluation</h2><p className="lp-pricing-price">{price(catalog.free.monthly_usd)}</p><p>Explore the Test Design workspace.</p><ul><li>{catalog.free.managed_ai_credits_limit} Managed AI Requests / month</li><li>{catalog.free.byok_ai_requests_limit} BYOK AI Requests / month</li><li>Owner + {catalog.free.additional_members_limit} additional members</li></ul><Link className="lp-button lp-secondary" href="/auth?mode=signup">Get started</Link></article>
-        <article className="lp-pricing-card"><h2>Managed AI</h2><p className="lp-pricing-price">~{price(catalog.managed.monthly_usd)}<small>/ month · indicative</small></p><p>Use AI without setting up a provider key.</p><ul><li>{catalog.managed.managed_ai_credits_limit} Managed AI Requests / month</li><li>Included supported AI usage</li><li>Shared knowledge and test review</li></ul><Link className="lp-button" href="/auth?mode=signup">Explore Managed</Link></article>
-        <article className="lp-pricing-card"><h2>Bring Your Own Key</h2><p className="lp-pricing-price">~{price(catalog.byok.monthly_usd)}<small>/ month · indicative</small></p><p>Use a supported AI provider account you control.</p><ul><li>{catalog.byok.byok_ai_requests_limit} BYOK AI Requests / month</li><li>Same Test Design workspace</li><li>AI provider charges paid separately</li></ul><Link className="lp-button lp-secondary" href="/auth?mode=signup">Explore BYOK</Link></article>
+        <article className="lp-pricing-card"><h2>Free Evaluation</h2><p className="lp-pricing-price">{price(catalog.free.monthly_usd)}</p><p>Explore the Test Design workspace.</p><ul><li>{catalog.free.managed_ai_credits_limit} Managed AI Requests / month</li><li>{catalog.free.byok_ai_requests_limit} BYOK AI Requests / month</li><li>Owner + {catalog.free.additional_members_limit} additional members</li></ul>{!workspace && <Link className="lp-button lp-secondary" href={signedIn ? "/settings/account" : "/auth?mode=signup"}>{signedIn ? "Back to account" : "Get started"}</Link>}</article>
+        <article className="lp-pricing-card"><h2>Managed AI</h2><p className="lp-pricing-price">~{price(catalog.managed.monthly_usd)}<small>/ month · indicative</small></p><p>Use AI without setting up a provider key.</p><ul><li>{catalog.managed.managed_ai_credits_limit} Managed AI Requests / month</li><li>Included supported AI usage</li><li>Shared knowledge and test review</li></ul>{!workspace && <Link className="lp-button lp-secondary" href={signedIn ? "/settings/account" : "/auth?mode=signup"}>{signedIn ? "Back to account" : "Explore Managed"}</Link>}</article>
+        <article className="lp-pricing-card"><h2>Bring Your Own Key</h2><p className="lp-pricing-price">~{price(catalog.byok.monthly_usd)}<small>/ month · indicative</small></p><p>Use a supported AI provider account you control.</p><ul><li>{catalog.byok.byok_ai_requests_limit} BYOK AI Requests / month</li><li>Same Test Design workspace</li><li>AI provider charges paid separately</li></ul>{!workspace && <Link className="lp-button lp-secondary" href={signedIn ? "/settings/account" : "/auth?mode=signup"}>{signedIn ? "Back to account" : "Explore BYOK"}</Link>}</article>
       </div>
       <div className="lp-callout"><h2>Start with a focused pilot</h2><p>Approximately {price(catalog.pilot.fixed_usd)} for an agreed scope. Discuss pilot or enterprise requirements with us during onboarding.</p></div>
     </>}
