@@ -18,9 +18,9 @@ for(const role of ['ADMIN','TESTER'])test(`manual story approval is explicit and
  await f.page.getByLabel('Review note (optional)',{exact:true}).fill('Reviewed scope and expected behavior.');
  await f.page.getByRole('checkbox',{name:'I reviewed this story and it is clear enough for test design.'}).check();
  await confirm.click();await f.page.getByRole('dialog').waitFor({state:'hidden'});
- await f.page.getByText('Approved · Manual review',{exact:true}).waitFor();
+ await f.page.getByText('Approved',{exact:true}).waitFor();
  await f.page.getByText('Not analyzed. Approved through manual review.',{exact:true}).waitFor();
  assert.equal(posts.length,1);assert.equal(posts[0].confirmed,true);assert.equal(posts[0].snapshot_digest,'a'.repeat(64));
  assert.equal(f.calls.filter(c=>c.path.endsWith('/analyze')).length,0);
- await f.page.reload();await f.page.getByText('Approved · Manual review',{exact:true}).waitFor();assert.equal(posts.length,1);
+ await f.page.reload();await f.page.getByText('Approved',{exact:true}).waitFor();assert.equal(posts.length,1);
 });

@@ -91,3 +91,22 @@ class AttemptBugTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 429)
         self.assertEqual((await self.client.get(self.path+'/bugs')).status_code, 200)
         self.assertEqual(self.db['test_attempt_bugs'].docs, [])
+
+    async def test_blocked_bug_actions_preserve_verdict_and_review_guards(self):
+        blocked = (await self.record(idempotency_key='e'*32, verdict='blocked', actual_result='Environment unavailable')).json()
+        path = self.base+'/attempts/'+blocked['run_id']
+        preview = await self.client.get(path+'/bugs')
+        self.assertEqual(preview.status_code, 200)
+        draft = preview.json()['draft']
+        self.assertTrue(draft['title'].startswith('Blocked:'))
+        self.assertIn('Result: blocked', draft['context'])
+        self.assertEqual(draft['actual_result'], 'Environment unavailable')
+        payload = {'kind':'draft','reviewed':True,'draft':draft,'idempotency_key':'b'*32}
+        self.assertEqual((await self.client.post(path+'/bugs',json={**payload,'reviewed':False})).status_code,422)
+        saved = await self.client.post(path+'/bugs',json=payload)
+        self.assertEqual(saved.status_code,201,saved.text)
+        self.assertEqual(saved.json()['run_id'],blocked['run_id'])
+        self.assertEqual((await self.client.post(path+'/bugs',json=payload)).json(),saved.json())
+        for verdict in ('passed','needs_review','cancelled'):
+            attempt=(await self.record(idempotency_key=str(('passed','needs_review','cancelled').index(verdict)+3)*32,verdict=verdict)).json()
+            self.assertEqual((await self.client.get(self.base+'/attempts/'+attempt['run_id']+'/bugs')).status_code,409)
