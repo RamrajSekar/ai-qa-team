@@ -45,7 +45,7 @@ class AttemptBugs:
         return BugDraft(title=f"{prefix}: {case['title']}"[:240], summary=f"Human-reported {row['verdict']} result; review reproduction details before sharing.",
             steps=[s["instruction"] for s in case["procedure"]],
             expected_result="\n".join([s["expected"] for s in case["procedure"]] + case.get("assertions", []))[:8000],
-            actual_result=row["actual_result"], context="\n".join(context)[:4000], missing_information=missing).model_dump()
+            actual_result=row["actual_result"], environment=(row.get("environment") or {}).get("name") or (row.get("environment") or {}).get("env_id") or "", context="\n".join(context)[:4000], missing_information=missing).model_dump()
 
     async def links(self, project, run):
         await self.attempt(project, run)

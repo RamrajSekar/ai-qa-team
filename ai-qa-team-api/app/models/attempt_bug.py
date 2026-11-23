@@ -14,6 +14,7 @@ class BugDraft(Contract):
     steps: list[Line] = Field(max_length=80)
     expected_result: str = Field(min_length=1, max_length=8000)
     actual_result: str = Field(min_length=1, max_length=5000)
+    environment: str = Field(default="", max_length=240)
     context: str = Field(default="", max_length=4000)
     missing_information: list[Line] = Field(default_factory=list, max_length=20)
 
@@ -42,6 +43,8 @@ class BugLinkInput(Contract):
         if self.kind == "draft":
             if self.draft is None or self.url is not None:
                 raise ValueError("Supply a reviewed draft, without a URL")
+            if not self.draft.environment.strip():
+                raise ValueError("Environment is required for a bug draft")
         else:
             parsed = urlsplit(self.url or "")
             if (self.draft is not None or self.proposal_id is not None or parsed.scheme != "https"
