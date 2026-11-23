@@ -97,7 +97,7 @@ class AttemptBugTests(unittest.IsolatedAsyncioTestCase):
         path = self.base+'/attempts/'+blocked['run_id']
         preview = await self.client.get(path+'/bugs')
         self.assertEqual(preview.status_code, 200)
-        draft = preview.json()['draft']
+        draft = {**preview.json()['draft'], 'environment': 'QA sandbox'}
         self.assertTrue(draft['title'].startswith('Blocked:'))
         self.assertIn('Result: blocked', draft['context'])
         self.assertEqual(draft['actual_result'], 'Environment unavailable')
@@ -110,3 +110,15 @@ class AttemptBugTests(unittest.IsolatedAsyncioTestCase):
         for verdict in ('passed','needs_review','cancelled'):
             attempt=(await self.record(idempotency_key=str(('passed','needs_review','cancelled').index(verdict)+3)*32,verdict=verdict)).json()
             self.assertEqual((await self.client.get(self.base+'/attempts/'+attempt['run_id']+'/bugs')).status_code,409)
+
+    async def test_bug_environment_required_on_save_and_preview_keeps_unknown(self):
+        draft = (await self.client.get(self.path+'/bugs')).json()['draft']
+        payload = {'kind':'draft','reviewed':True,'draft':draft,'idempotency_key':'b'*32}
+        for value in ('', '   '):
+            response=await self.client.post(self.path+'/bugs',json={**payload,'draft':{**draft,'environment':value}})
+            self.assertEqual(response.status_code,422)
+        self.assertEqual(self.db['test_attempt_bugs'].docs,[])
+        saved=await self.client.post(self.path+'/bugs',json={**payload,'draft':{**draft,'environment':'UAT'}})
+        self.assertEqual(saved.status_code,201,saved.text)
+        self.assertEqual(saved.json()['draft']['environment'],'UAT')
+        self.assertEqual(saved.json()['draft']['context'],draft['context'])

@@ -1,2 +1,5 @@
 .button.button { display: inline-flex; align-items: center; justify-content: center; width: 36px; min-width: 36px; height: 36px; min-height: 36px; padding: 0; flex-shrink: 0; }
 @media (max-width: 640px), (pointer: coarse) { .button.button { width: 44px; min-width: 44px; height: 44px; min-height: 44px; } }
+
+:global(.workspace-shell) .button.button, :global(html[data-workspace-theme]) [data-slot="dialog-content"] .button.button { padding: 0; }
+.button svg { flex-shrink: 0; width: 17px; height: 17px; }

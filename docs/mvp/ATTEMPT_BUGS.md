@@ -144,3 +144,44 @@ local draft/HTTPS linking and opt-in AI with doubles. Desktop Failed/Blocked
 layouts and existing mobile execution checks passed. Scoped lint passed with the
 existing set-state-in-effect findings excluded. No migration, external bug
 publication, live model or production-data test occurred.
+
+
+## Bug draft fields (2026-11-23)
+
+Bug drafts display Actual result and a required, bounded Environment text box.
+Preview prefills the saved attempt's environment name/ID when known; unknown
+values remain blank. New draft saves reject missing/blank environments in the
+API as well as the UI. External URL linking keeps its existing contract.
+Existing drafts without this new field remain readable and are not migrated.
+Deploy UI/API together so new draft submissions include Environment.
+
+Bug context remains in backend draft/source facts but is omitted from the editor
+and local-draft display. An entered Environment survives explicit AI drafting;
+AI does not invent or replace it. The existing review checkbox, immutable attempt
+links and explicit metered AI boundary remain unchanged. Icon buttons override
+dialog padding and prevent SVG shrinking.
+
+Production UI build/TypeScript, seven isolated attempt-bug tests and 17
+intercepted-API browser checks passed. Browser coverage checks required Environment,
+retention after AI, hidden context, full-sized dialog icons and Failed/Blocked
+flows. Visual captures were inspected. Scoped lint passed excluding the existing
+effect-rule findings. No live model, production data or data migration used.
+
+
+## Copy-ready draft report (2026-11-23)
+
+The draft dialog is titled Draft Bug. Title, required Environment and summary stay
+visible; detailed steps/results/missing-information editing is under an optional
+foldout. A large read-only report follows the current draft fields, with numbered
+steps to reproduce, Environment, Expected result and Actual result (plus title and
+summary). Copy report is an explicit clipboard action, not an external issue write
+or save. Environment is required for the copy button; manual selection remains
+available if clipboard access fails. Hidden context is excluded from the report.
+The two verbose provenance/AI-success notices were removed. Review and save guards
+remain unchanged; no automatic AI call or publication was introduced.
+
+Production UI build/TypeScript and seven intercepted-API manual execution browser
+checks passed, including copied content, required Environment and retention after
+AI for Failed/Blocked. Clipboard was a browser double, not the user's clipboard.
+Desktop/mobile captures were inspected. Scoped lint passed with the existing
+effect-rule finding excluded. No backend contract or data migration changes.
