@@ -28,7 +28,7 @@
 .tiers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--ws-border); }
 .tiers > div { padding-left: 12px; border-left: 2px solid var(--ws-border); }
 .compactMeter { display: grid; gap: 4px; }
-.compactMeter .meterLine dt, .compactMeter .meterLine dd { font-size: 12px; }
+.tiers .meterLine dt, .tiers .meterLine dd { font-size: 13px; font-weight: 600; }
 .compactMeter .progress { height: 4px; }
 @media (max-width: 640px) { .grid, .resources, .tiers { grid-template-columns: minmax(0, 1fr); } .plan { width: 100%; justify-content: space-between; } .card, .ai { padding: 16px; } }
 

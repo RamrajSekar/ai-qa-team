@@ -58,7 +58,7 @@ export default function StepProject({ user, refreshUser, next }: StepProjectProp
 
   return (
     <StepLayout title={accounts ? "Name your account & first project" : "Create your project"} description={accounts ? "Your customer account groups your team and projects. Give your first project a clear name." : "Give your first project a clear name."}>
-      {accounts && !existingProject && <><label htmlFor="onboarding-account-name">Customer / account name</label><input id="onboarding-account-name" value={accountName} maxLength={160} disabled={!canManage || !accountLoaded} onChange={event => setAccountName(event.target.value)} placeholder="Customer or company name" />{!canManage && <p>Only an account owner or administrator can edit account details and create projects.</p>}</>}
+      {accounts && !existingProject && <><label htmlFor="onboarding-account-name">Customer / account name</label><input id="onboarding-account-name" value={accountName} maxLength={15} disabled={!canManage || !accountLoaded} onChange={event => setAccountName(event.target.value)} placeholder="Customer or company name" />{!canManage && <p>Only an account owner or administrator can edit account details and create projects.</p>}</>}
       {existingProject ? <p>Your project is already created. Continue setup without creating another project.</p> : <>
       <label htmlFor="onboarding-project-name">Project name</label>
       <input id="onboarding-project-name"

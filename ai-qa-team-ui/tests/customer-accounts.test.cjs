@@ -98,8 +98,8 @@ test('account owner creates private invitation link and can revoke it', async t 
 test('account member cannot invite or rename and does not start new-customer onboarding', async t => {
   const { page, calls } = await fixture(t, { role: 'MEMBER' });
   await page.goto(base + '/settings/account');
-  const name = page.getByLabel('Customer / account name'); await name.waitFor();
-  assert.equal(await name.isDisabled(), true);
+  await page.getByText('Customer One',{exact:true}).waitFor();
+  assert.equal(await page.getByRole('button',{name:'Edit account name'}).count(),0);
   assert.equal(await page.getByRole('button', { name: 'Create invitation link' }).count(), 0);
   assert.equal(calls.filter(call => call.path === '/account/invitations').length, 0);
   await page.goto(base + '/dashboard');
@@ -316,4 +316,27 @@ test('completed onboarding stays closed when all projects have been deleted', as
  await page.route('**/projects',route=>route.fulfill({json:[],headers:{'access-control-allow-origin':base,'access-control-allow-credentials':'true'}}));
  await page.goto(base+'/dashboard');await page.getByText('No projects created yet.',{exact:true}).waitFor();
  assert.equal(await page.getByRole('dialog',{name:'Set up your QA workspace'}).count(),0);
+});
+
+test('account name edits save on blur or Enter; Escape cancels and length is bounded',async t=>{
+ const {page,calls}=await fixture(t);await page.goto(base+'/settings/account');
+ const edit=page.getByRole('button',{name:'Edit account name',exact:true});await edit.click();
+ const name=page.getByLabel('Customer / account name',{exact:true});assert.equal(await name.getAttribute('maxlength'),'15');
+ await name.fill('Short');await name.press('Enter');await page.getByRole('status').filter({hasText:'Account name saved.'}).waitFor();
+ assert.equal(calls.filter(c=>c.path==='/account'&&c.method==='PATCH').length,1);assert.equal(await edit.textContent(),'Short');
+ await edit.click();await name.fill('Cancel');await name.press('Escape');assert.equal(await edit.textContent(),'Short');
+ assert.equal(calls.filter(c=>c.path==='/account'&&c.method==='PATCH').length,1);
+ await edit.click();await name.fill('Updated');await page.getByRole('heading',{name:'Customer details',exact:true}).click();
+ await edit.waitFor();assert.equal(await edit.textContent(),'Updated');assert.equal(calls.filter(c=>c.path==='/account'&&c.method==='PATCH').length,2);
+ assert.equal(await page.getByRole('button',{name:'Save account name'}).count(),0);
+});
+
+test('failed name save retains the edit and invalid names are not submitted',async t=>{
+ const {page,calls}=await fixture(t);let attempts=0;
+ await page.route('http://feature-api.test/account',route=>route.request().method()==='PATCH'?(attempts++,route.fulfill({status:503,headers:{'access-control-allow-origin':base,'access-control-allow-credentials':'true'},json:{detail:'Name could not be saved.'}})):route.fallback());
+ await page.goto(base+'/settings/account');await page.getByRole('button',{name:'Edit account name'}).click();
+ const name=page.getByLabel('Customer / account name',{exact:true});await name.fill('x');await name.press('Enter');
+ await page.getByRole('alert').filter({hasText:'Use 2-15 characters'}).waitFor();assert.equal(attempts,0);
+ await name.fill('Retained name');await name.press('Enter');await page.getByRole('alert').filter({hasText:'Name could not be saved.'}).waitFor();
+ assert.equal(await name.inputValue(),'Retained name');assert.equal(attempts,1);assert.equal(calls.filter(c=>c.path==='/account'&&c.method==='PATCH').length,0);
 });

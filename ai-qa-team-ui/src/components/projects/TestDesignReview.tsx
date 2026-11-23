@@ -18,15 +18,17 @@ interface ReviewState {
 }
 const clean = (values: string[]) => values.map(item => item.trim()).filter(Boolean);
 
-export default function TestDesignReview({ testcase, projectId, canApprove }: { testcase: CatalogCase; projectId: string; canApprove: boolean }) {
+type ReviewProps = { testcase: CatalogCase; projectId: string; canApprove: boolean; onApproved?: () => void };
+
+export default function TestDesignReview({ testcase, projectId, canApprove, onApproved }: ReviewProps) {
   const [open, setOpen] = useState(false);
   return <details className="border rounded p-3" onToggle={event => setOpen(event.currentTarget.open)}>
     <summary className="cursor-pointer font-medium">Review &amp; approve test case</summary>
-    {open && <ReviewForm testcase={testcase} projectId={projectId} canApprove={canApprove} />}
+    {open && <ReviewForm testcase={testcase} projectId={projectId} canApprove={canApprove} onApproved={onApproved} />}
   </details>;
 }
 
-function ReviewForm({ testcase, projectId, canApprove }: { testcase: CatalogCase; projectId: string; canApprove: boolean }) {
+function ReviewForm({ testcase, projectId, canApprove, onApproved }: ReviewProps) {
   const base = `/projects/${encodeURIComponent(projectId)}/test-design/cases/${encodeURIComponent(testcase.testcase_id)}`;
   const [state, setState] = useState<ReviewState | null>(null);
   const [design, setDesign] = useState<Design>({ title: testcase.title, purpose: testcase.purpose || testcase.description || testcase.title,
@@ -167,7 +169,7 @@ function ReviewForm({ testcase, projectId, canApprove }: { testcase: CatalogCase
           {mayApprove && <label className="review-choice"><input type="checkbox" disabled={busy || candidate.stale} checked={reviewed} onChange={event => setReviewed(event.target.checked)} />I reviewed the saved test steps, expected results and source links.</label>}
         </>}
       </>}
-      {mayApprove && <button className="workspace-button workspace-primary" disabled={busy || !candidate || candidate.stale || dirty || !reviewed} onClick={() => candidate && void action(async () => { await post(`${base}/${candidate.version_id}/approve`, {}); await load(); setReviewed(false); setMessage("Test case approved. No execution was started."); })}>Approve Test Case</button>}
+      {mayApprove && <button className="workspace-button workspace-primary" disabled={busy || !candidate || candidate.stale || dirty || !reviewed} onClick={() => candidate && void action(async () => { await post(`${base}/${candidate.version_id}/approve`, {}); if (onApproved) { onApproved(); return; } await load(); setReviewed(false); setMessage("Test case approved. No execution was started."); })}>Approve Test Case</button>}
       {candidate && dirty && <p>Editor changes are not included in the saved draft. Save your changes, or choose Review saved draft to load that exact version.</p>}
     </div>
     <button className="workspace-button" disabled={busy} onClick={() => void action(load)}>Refresh design review</button>

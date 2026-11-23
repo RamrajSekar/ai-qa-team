@@ -193,3 +193,28 @@ checks: 46 passed initially; two assertions still expected the old copy and
 passed targeted reruns after updating those expectations. Coverage includes
 Account/onboarding, usage tiles, QA Agent recovery/Ask, catalogs and test approval.
 Checks use intercepted APIs, not live providers or production data.
+
+
+## 2026-11-23 workspace action and account refinements
+
+Scenario and test-case complexity rows now share 13px semibold typography. Workspace
+row actions use labelled icons, with hover titles and larger touch targets; primary
+save/approval/generation controls retain text. Test Case Source shows only the scenario
+ID and links directly to its review. Successful test-case approval closes the review
+dialog, announces success and refreshes approval metadata; a rejected approval stays
+open without retry. Existing approval/version and execution contracts are unchanged.
+
+Account names are click-to-edit and save on Enter or blur. Escape cancels. Failed
+saves retain the edit. New names and renames use 2–15 characters in the account API
+and onboarding UI; existing names are not rewritten or truncated. Account roles
+still govern writes. No usage changes or data migration.
+
+Verification: production UI build including TypeScript passed; 29 isolated backend
+account tests passed, including rejection of an oversized rename without mutation.
+All 56 intercepted-API browser regressions passed across Account/onboarding,
+knowledge review, catalogs, pending reviews, manual results and saved-version
+approval success/failure. Two catalog checks reran for desktop/mobile screenshots,
+which were inspected along with Account typography. Scoped ESLint passed with the
+existing set-state-in-effect rule findings excluded; unchanged Overview/Stories
+and earlier Account/knowledge/review effects still require separate cleanup.
+No live customer data, model calls or production qualification was used.

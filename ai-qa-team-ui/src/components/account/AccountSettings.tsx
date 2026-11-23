@@ -26,6 +26,7 @@ export default function AccountSettings({ team = false }: { team?: boolean }) {
   const [account, setAccount] = useState<Account | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(""); const [email, setEmail] = useState("");
   const [role, setRole] = useState("MEMBER"); const [link, setLink] = useState("");
   const [busy, setBusy] = useState(false); const [error, setError] = useState(""); const [message, setMessage] = useState("");
@@ -68,10 +69,24 @@ export default function AccountSettings({ team = false }: { team?: boolean }) {
     <nav className="repository-actions" aria-label="Account settings"><Link className="workspace-button" href="/settings/account">Account details</Link><Link className="workspace-button" href="/settings/account/team">Team & project access</Link></nav>
     {!account && loading ? <p role="status">Loading account…</p> : !account ? <button className="workspace-button" disabled={busy} onClick={() => void action(load)}>Reload account</button> : <>
       {!team && <section className="space-y-4"><h2>Customer details</h2><p className="workspace-metadata">Your account role: {account.current_user_role}</p>
-        <label>Customer / account name<input value={name} maxLength={160} disabled={!admin || busy} onChange={event => setName(event.target.value)} /></label>
-        {admin && <button className="workspace-button workspace-primary" disabled={busy || name.trim().length < 2} onClick={() => void action(async () => {
-          await request("/account", { method: "PATCH", body: JSON.stringify({ name: name.trim() }) }); await load(); setMessage("Account name saved.");
-        })}>Save account name</button>}
+        <div><span className="workspace-metadata">Customer / account name</span>
+          {editingName ? <input aria-label="Customer / account name" autoFocus value={name} maxLength={15} disabled={busy}
+            onChange={event => setName(event.target.value)}
+            onKeyDown={event => {
+              if (event.key === "Enter") { event.preventDefault(); event.currentTarget.blur(); }
+              if (event.key === "Escape") { setName(account.name || ""); setEditingName(false); }
+            }}
+            onBlur={() => {
+              const value = name.trim();
+              if (value === account.name) { setEditingName(false); return; }
+              if (value.length < 2 || value.length > 15) { setError("Use 2-15 characters for the account name."); return; }
+              void action(async () => {
+                await request("/account", { method: "PATCH", body: JSON.stringify({ name: value }) });
+                setAccount(current => current ? { ...current, name: value } : current);
+                setName(value); setEditingName(false); setMessage("Account name saved.");
+              });
+            }} /> : admin ? <button type="button" className="account-name-edit" aria-label="Edit account name" title="Edit account name" onClick={() => { setName(account.name || ""); setEditingName(true); }}>{account.name || "Add account name"}</button> : <p>{account.name || "Not set"}</p>}
+        </div>
         <p className="workspace-description">{billingLoading ? "Loading subscription…" : !billing ? "Subscription unavailable. Reload to try again." : billing.billing_scope === "ACCOUNT" ? "Subscription and usage are shared across your account." : "Account subscription migration is required before shared billing is enabled."}</p>
       </section>}
       {!team && !billingLoading && billing?.subscription && <SubscriptionUsage subscription={billing.subscription} />}
