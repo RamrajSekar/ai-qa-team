@@ -166,3 +166,22 @@ intercepted-API browser checks passed. Browser coverage checks required Environm
 retention after AI, hidden context, full-sized dialog icons and Failed/Blocked
 flows. Visual captures were inspected. Scoped lint passed excluding the existing
 effect-rule findings. No live model, production data or data migration used.
+
+
+## Copy-ready draft report (2026-11-23)
+
+The draft dialog is titled Draft Bug. Title, required Environment and summary stay
+visible; detailed steps/results/missing-information editing is under an optional
+foldout. A large read-only report follows the current draft fields, with numbered
+steps to reproduce, Environment, Expected result and Actual result (plus title and
+summary). Copy report is an explicit clipboard action, not an external issue write
+or save. Environment is required for the copy button; manual selection remains
+available if clipboard access fails. Hidden context is excluded from the report.
+The two verbose provenance/AI-success notices were removed. Review and save guards
+remain unchanged; no automatic AI call or publication was introduced.
+
+Production UI build/TypeScript and seven intercepted-API manual execution browser
+checks passed, including copied content, required Environment and retention after
+AI for Failed/Blocked. Clipboard was a browser double, not the user's clipboard.
+Desktop/mobile captures were inspected. Scoped lint passed with the existing
+effect-rule finding excluded. No backend contract or data migration changes.
