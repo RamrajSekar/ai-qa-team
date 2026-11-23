@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import Link from "next/link";
+import { Pencil } from "lucide-react";
 import SubscriptionUsage, { type AccountSubscription } from "./SubscriptionUsage";
 import TeamManager from "@/components/team/TeamManager";
 import { apiFetch } from "@/utils/api";
@@ -69,8 +70,8 @@ export default function AccountSettings({ team = false }: { team?: boolean }) {
     <nav className="repository-actions" aria-label="Account settings"><Link className="workspace-button" href="/settings/account">Account details</Link><Link className="workspace-button" href="/settings/account/team">Team & project access</Link></nav>
     {!account && loading ? <p role="status">Loading account…</p> : !account ? <button className="workspace-button" disabled={busy} onClick={() => void action(load)}>Reload account</button> : <>
       {!team && <section className="space-y-4"><h2>Customer details</h2><p className="workspace-metadata">Your account role: {account.current_user_role}</p>
-        <div><span className="workspace-metadata">Customer / account name</span>
-          {editingName ? <input aria-label="Customer / account name" autoFocus value={name} maxLength={15} disabled={busy}
+        <div className="account-name-field"><span className="workspace-metadata">Account name</span>
+          {editingName ? <input className="account-name-input" aria-label="Customer / account name" autoFocus value={name} maxLength={15} disabled={busy}
             onChange={event => setName(event.target.value)}
             onKeyDown={event => {
               if (event.key === "Enter") { event.preventDefault(); event.currentTarget.blur(); }
@@ -85,7 +86,8 @@ export default function AccountSettings({ team = false }: { team?: boolean }) {
                 setAccount(current => current ? { ...current, name: value } : current);
                 setName(value); setEditingName(false); setMessage("Account name saved.");
               });
-            }} /> : admin ? <button type="button" className="account-name-edit" aria-label="Edit account name" title="Edit account name" onClick={() => { setName(account.name || ""); setEditingName(true); }}>{account.name || "Add account name"}</button> : <p>{account.name || "Not set"}</p>}
+            }} /> : admin ? <button type="button" className="account-name-edit" aria-label="Edit account name" title="Edit account name" onClick={() => { setName(account.name || ""); setEditingName(true); }}><span>{account.name || "Add account name"}</span><Pencil size={16} aria-hidden="true" /></button> : <p className="account-name-readonly">{account.name || "Not set"}</p>}
+          {editingName && <div className="account-name-hint"><span>{busy ? "Saving..." : "Saves automatically"}</span><span>{name.length}/15</span></div>}
         </div>
         <p className="workspace-description">{billingLoading ? "Loading subscription…" : !billing ? "Subscription unavailable. Reload to try again." : billing.billing_scope === "ACCOUNT" ? "Subscription and usage are shared across your account." : "Account subscription migration is required before shared billing is enabled."}</p>
       </section>}
