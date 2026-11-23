@@ -278,3 +278,25 @@ Next priority, accepted by the user after merging this slice: assess production
 Vercel navigation/login performance before further product work. Read-only timing
 and deployment/observability inspection only; do not change production settings or
 perform customer-data/model/browser-execution operations as part of the assessment.
+
+
+## Result-entry usability (2026-11-23)
+
+Passed entry supports explicit Select all expectations / Clear all and displays a
+confirmation count. No expectation is selected automatically. Save result explains
+missing actual observations, verdict or confirmations; every approved expectation
+is still required for Passed. The manual action uses a play icon to open result
+entry, never to launch automation. Latest run result links hide internal IDs; source
+scenario IDs have an underline and accent colour.
+
+Execution listing adds lifecycle, recorded/total progress and verdict counts through
+one project-scoped projected read for the current page (up to 20 x 10 results).
+Completion remains independent of pass/fail. Existing list fields remain compatible;
+no approved versions, histories, flags or stored records are migrated or changed.
+
+Verification: production UI build/TypeScript, 15 isolated manual-result backend tests
+and 16 intercepted-API execution/catalog browser checks passed. Added coverage for
+bulk select/clear, partial confirmation blocking, result navigation and scoped
+completed-with-failures counts. Account field redesign separately passed three
+browser checks and desktop/mobile inspection. Scoped lint passed with the existing
+effect-rule findings excluded. No live provider, model or production data used.

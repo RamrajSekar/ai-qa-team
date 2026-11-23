@@ -523,3 +523,7 @@ html[data-workspace-theme="dark"] .design-badge-warning { color: #fde68a; }
 .account-name-field .account-name-edit:hover { border-color: var(--ws-accent); background: var(--ws-accent-soft); }
 .account-name-field .account-name-edit:focus-visible, .account-name-field .account-name-input:focus-visible { outline: 2px solid var(--ws-accent); outline-offset: 2px; }
 .account-name-hint { display: flex; justify-content: space-between; gap: 12px; color: var(--ws-muted); font-size: 12px; }
+
+.design-table a.design-source-link { color: var(--ws-accent); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.design-source-link:hover { text-decoration-thickness: 2px; }
+.design-source-link:focus-visible { outline: 2px solid var(--ws-accent); outline-offset: 4px; border-radius: 2px; }
