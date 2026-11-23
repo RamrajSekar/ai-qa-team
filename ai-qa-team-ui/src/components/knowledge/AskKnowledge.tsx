@@ -27,7 +27,6 @@ export default function AskKnowledge({base,onInspect,onCorrect}:{base:string;onI
     {error&&<div role="alert"><p>{error}</p><p>Not retried automatically. Questions and answers are unsaved; resubmitting may use another request.</p><button className="workspace-button" disabled={busy} onClick={()=>void submit(true)}>Submit new request explicitly</button></div>}
     {answer&&<section aria-label="Knowledge answer" className="space-y-3"><strong>{answer.status==="supported"?"Answer from approved knowledge":answer.status==="conflicting"?"Conflicting knowledge — review needed":"Not covered"}</strong><p className="whitespace-pre-wrap">{answer.answer}</p>
       {answer.citations.map((item,index)=><article className="border rounded p-3 space-y-2" key={`${item.claim_id}-${index}`}><p>{item.quote}</p><p>Information type: {item.information_type}</p><details><summary>Source excerpt</summary><blockquote>{item.source_quote}</blockquote>{item.segment_index!==null&&<p>Transcript segment {item.segment_index+1}</p>}</details><div className="workspace-actions"><button className="workspace-button" onClick={()=>onInspect(item.source_id)}>Review source</button><button className="workspace-button" onClick={()=>onCorrect(item.claim_id)}>Propose correction</button></div></article>)}
-      <p>Verify cited rules. Answers do not update knowledge; refresh clears this conversation.</p>
     </section>}
   </section>;
 }

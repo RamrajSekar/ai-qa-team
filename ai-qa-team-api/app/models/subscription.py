@@ -65,6 +65,7 @@ class Subscription(BaseModel):
                 projects_limit=plan_data["projects_limit"],
                 stories_limit=plan_data["stories_limit"],
                 scenarios_limit=plan_data["scenarios_limit"],
+                testcases_limit=plan_data.get("testcases_limit", 0),
                 executions_limit=plan_data["executions_limit"],
                 team_members_limit=plan_data["team_members_limit"],
                 ai_gen_limit=plan_data["ai_gen_limit"],

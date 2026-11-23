@@ -41,7 +41,9 @@ class KnowledgeTestDesign:
             await ApprovedStoryContext(self.knowledge.db).resolve(project,story["story_id"],context["requirements_context_id"])
         return [item.model_dump() for item in items], context
 
-    async def testcases(self, project, user, scenario, count):
+    async def testcases(self, project, user, scenario, count, *, complexity="basic"):
+        if complexity not in ("basic", "medium", "advanced"):
+            raise HTTPException(422, "Unsupported test case complexity.")
         require_features("product_knowledge", "story_analysis", "test_generation")
         context = await self.knowledge.generation_context(project, scenario["story_id"], scenario.get("requirements_context_id"))
         if (scenario.get("requirements_context_id") != context.get("requirements_context_id")
@@ -55,8 +57,10 @@ class KnowledgeTestDesign:
             {"story": story, "scenario": {key: scenario.get(key) for key in (
                 "scenario_id", "title", "description", "purpose", "role", "coverage_type", "preconditions",
                 "expected_outcome", "acceptance_criteria_refs", "rule_references")},
-             "approved_context": context, "requested_count": count}, DesignedTestCases,
-            "test_design_v1")
+             "approved_context": context, "requested_count": count, "complexity": complexity}, DesignedTestCases,
+            "test_design_v1", task_instructions="Match the requested complexity within the approved scenario and requirements. "
+                "Basic covers a focused check; Medium combines relevant conditions; Advanced covers multi-step or edge conditions only when supported. "
+                "Never invent behavior, data constraints or expectations to increase complexity. Return fewer distinct cases when the approved scope is limited.")
         items = result.testcases[:count]
         if len({item.title.strip().lower() for item in items}) != len(items):
             raise HTTPException(502, "AI returned duplicate test cases. No drafts were saved.")

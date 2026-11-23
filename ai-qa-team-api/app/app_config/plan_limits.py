@@ -7,10 +7,11 @@ PLAN_LIMITS = {
         "executions_limit": 20,
         "team_members_limit": 2,
         "ai_gen_limit": 25,
-        # 🆕 testcases per complexity
+        # One Free allowance shared across all complexities.
+        "testcases_limit": 10,
         "testcases_basic_limit": 10,
-        "testcases_medium_limit": 0,
-        "testcases_advanced_limit": 0,
+        "testcases_medium_limit": 10,
+        "testcases_advanced_limit": 10,
         "description": "For individuals or small teams evaluating the platform."      
     },
     "pro": {

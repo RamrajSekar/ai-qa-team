@@ -9,6 +9,10 @@ from uuid import uuid4
 
 
 class ResourceQuotaDouble:
+    @staticmethod
+    def limits(subscription, kind, tier):
+        from app.services.resource_quota import ResourceQuota
+        return ResourceQuota.limits(subscription, kind, tier)
     def __init__(self, database): self.db = database
     @asynccontextmanager
     async def admission(self, user, project, kind, count, tier="basic", **kwargs):

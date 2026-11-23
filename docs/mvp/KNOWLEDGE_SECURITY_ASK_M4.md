@@ -176,3 +176,26 @@ real HTTP route with fixtures, multiline reviewed statements distinct from sourc
 quotes, unknown references, fabricated evidence, legacy records, isolation, stale
 context and duplicate submission. No live model/Mongo or production qualification
 was performed; this does not establish the exact rejected production reference.
+
+
+## 2026-11-23 Ask tab lifetime
+
+Ask previously stayed mounted behind hidden tabs, retaining its question and
+result in browser memory. Ask now mounts only on its active tab, keyed by project.
+Leaving Ask clears its question, answer and error; reopening does not submit or
+replay anything. A late response belongs to the discarded component and cannot
+repopulate the fresh tab. Source inspection dialogs do not leave the Ask tab.
+Teach/review panels and their persisted progress remain unchanged.
+
+Tab changes do not cancel a provider operation or refund its allowance. Server
+request receipts, uncertain outcomes and explicit retry controls remain unchanged.
+This is a local UI state fix; no knowledge, API, storage or flag migration.
+Ask is the initial tab when enabled; otherwise Teach is first and selected.
+Review/source deep links retain their existing destinations. Merely opening Ask
+never invokes AI or spends allowance; provider-backed submissions use the existing
+Managed/BYOK policy.
+Verification: production UI build/TypeScript and Ask component lint passed.
+All 14 Ask/training browser checks passed, including default selection, reset
+after switching tabs, late-response isolation and preserved resumable reviews.
+These are intercepted-API UI checks; no live model call or usage mutation.
+The pre-existing workspace-page hook lint finding remains unchanged.
