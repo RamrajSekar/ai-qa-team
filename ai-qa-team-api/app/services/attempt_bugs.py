@@ -16,6 +16,24 @@ from app.services.ai.base_provider import LLMRequest
 from app.services.prompt_registry_service import get_active
 
 
+def report_expectations(case):
+    # Overall assertions describe the intended outcome. Fall back to the complete
+    # per-step expectations when no overall outcomes were supplied; never infer one.
+    outcomes = [text for text in case.get("assertions", []) if text.strip()]
+    if not outcomes:
+        outcomes = [step["expected"] for step in case.get("procedure", []) if step.get("expected", "").strip()]
+    seen = set()
+    lines = []
+    for text in outcomes:
+        for line in text.splitlines():
+            line = line.strip()
+            key = " ".join(line.split()).casefold().rstrip(".")
+            if key and key not in seen:
+                seen.add(key)
+                lines.append(line)
+    return "\n".join(lines)[:8000]
+
+
 class AttemptBugs:
     def __init__(self, database): self.db = database
 
@@ -44,7 +62,7 @@ class AttemptBugs:
         prefix = "Blocked" if row["verdict"] == "blocked" else "Failure"
         return BugDraft(title=f"{prefix}: {case['title']}"[:240], summary=f"Human-reported {row['verdict']} result; review reproduction details before sharing.",
             steps=[s["instruction"] for s in case["procedure"]],
-            expected_result="\n".join([s["expected"] for s in case["procedure"]] + case.get("assertions", []))[:8000],
+            expected_result=report_expectations(case),
             actual_result=row["actual_result"], environment=(row.get("environment") or {}).get("name") or (row.get("environment") or {}).get("env_id") or "", context="\n".join(context)[:4000], missing_information=missing).model_dump()
 
     async def links(self, project, run):
