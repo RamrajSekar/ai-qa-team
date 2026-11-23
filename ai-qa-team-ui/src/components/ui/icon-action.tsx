@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Eye, Pencil, Trash2, Video } from "lucide-react";
+import { Eye, Pencil, Play, Trash2, Video } from "lucide-react";
 import styles from "./icon-action.module.css";
 
 type Action = "view" | "review" | "edit" | "delete" | "remove" | "record" | "recording";
-const icons = { view: Eye, review: Eye, edit: Pencil, delete: Trash2, remove: Trash2, record: Pencil, recording: Video };
+const icons = { view: Eye, review: Eye, edit: Pencil, delete: Trash2, remove: Trash2, record: Play, recording: Video };
 
 export function IconAction({ action, label, href, onClick, disabled = false }: {
   action: Action; label: string; href?: string; onClick?: () => void; disabled?: boolean;

@@ -120,8 +120,27 @@ class TestResults:
 
     async def executions(self, project, skip):
         rows = await self.db["manual_test_executions"].find({"project_id": project}).sort([("created_at", -1), ("_id", -1)]).skip(skip).limit(21).to_list(21)
-        return {"records": [{"execution_id": row["execution_id"], "title": row["manifest"]["title"], "release_cycle": row["manifest"]["release_cycle"],
-                             "mode": "manual", "case_count": len(row["manifest"]["cases"]), "created_at": row["created_at"]} for row in rows[:20]], "has_more": len(rows) > 20}
+        page = rows[:20]
+        ids = [row["execution_id"] for row in page]
+        # At most 20 executions x 10 selected cases; one scoped, projected read.
+        results = await self.db["test_results"].find(
+            {"project_id": project, "execution_id": {"$in": ids}, "mode": "manual"},
+            {"execution_id": 1, "testcase_id": 1, "verdict": 1}).limit(200).to_list(200) if ids else []
+        records = []
+        for row in page:
+            cases = {item["testcase_id"] for item in row["manifest"]["cases"]}
+            outcomes = {item["testcase_id"]: item["verdict"] for item in results
+                        if item["execution_id"] == row["execution_id"] and item["testcase_id"] in cases}
+            counts = {verdict: sum(value == verdict for value in outcomes.values())
+                      for verdict in ("passed", "failed", "blocked", "needs_review", "cancelled")}
+            counts["not_run"] = len(cases) - len(outcomes)
+            count = len(outcomes)
+            records.append({"execution_id": row["execution_id"], "title": row["manifest"]["title"],
+                            "release_cycle": row["manifest"]["release_cycle"], "mode": "manual",
+                            "case_count": len(cases), "completed_count": count, "result_counts": counts,
+                            "lifecycle": "completed" if count == len(cases) else "in_progress" if count else "not_started",
+                            "created_at": row["created_at"]})
+        return {"records": records, "has_more": len(rows) > 20}
 
     async def record_manual(self, project, case, actor, payload, *, actor_name=None):
         await self.case_exists(project, case)

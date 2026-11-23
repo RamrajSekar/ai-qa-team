@@ -162,3 +162,16 @@ class ManualResultTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(again.json()['executor_display_name'],'Fixture Tester')
         rejected=await self.record(idempotency_key='0'*32,executor_display_name='Spoof')
         self.assertEqual(rejected.status_code,422)
+
+    async def test_execution_list_counts_are_scoped_and_completion_is_not_pass(self):
+        execution = (await self.create_execution()).json()['execution_id']
+        before = (await self.client.get(self.base+'/executions')).json()['records'][0]
+        self.assertEqual(before['lifecycle'], 'not_started')
+        self.assertEqual(before['result_counts']['not_run'], 1)
+        await self.record(execution_id=execution, environment_id=None, verdict='failed')
+        foreign = deepcopy(self.db['test_results'].docs[0]); foreign.update({'_id':'foreign', 'project_id':'P2', 'verdict':'passed'})
+        self.db['test_results'].docs.append(foreign)
+        after = (await self.client.get(self.base+'/executions')).json()['records'][0]
+        self.assertEqual(after['lifecycle'], 'completed')
+        self.assertEqual(after['completed_count'], 1)
+        self.assertEqual(after['result_counts'], {'passed':0,'failed':1,'blocked':0,'needs_review':0,'cancelled':0,'not_run':0})
