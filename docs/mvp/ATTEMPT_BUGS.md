@@ -175,8 +175,8 @@ visible; detailed steps/results/missing-information editing is under an optional
 foldout. A large read-only report follows the current draft fields, with numbered
 steps to reproduce, Environment, Expected result and Actual result (plus title and
 summary). Copy report is an explicit clipboard action, not an external issue write
-or save. Environment is required for the copy button; manual selection remains
-available if clipboard access fails. Hidden context is excluded from the report.
+or save. Copy works with incomplete drafts; Environment is required only for
+saving. Manual selection remains available if clipboard access fails. Hidden context is excluded from the report.
 The two verbose provenance/AI-success notices were removed. Review and save guards
 remain unchanged; no automatic AI call or publication was introduced.
 
@@ -185,3 +185,19 @@ checks passed, including copied content, required Environment and retention afte
 AI for Failed/Blocked. Clipboard was a browser double, not the user's clipboard.
 Desktop/mobile captures were inspected. Scoped lint passed with the existing
 effect-rule finding excluded. No backend contract or data migration changes.
+
+
+## Expected outcomes and incomplete copy (2026-11-23)
+
+Bug preview Expected result uses explicit overall assertions when present, otherwise
+all per-step expectations. Blank lines and duplicate lines (whitespace/case/terminal
+period variants) are omitted without inventing new expectations. Pinned approved
+specifications and historical bug records are unchanged. AI drafting reuses these
+same supplied outcome facts. Copy report no longer checks mandatory field values;
+review and Environment requirements still apply to saving a bug draft.
+
+Production UI build/TypeScript, eight isolated attempt-bug backend tests and seven
+intercepted-API manual execution checks passed. Tests verify outcome preference,
+fallback, deduplication, source immutability and copying before Environment/review
+are supplied. Scoped lint passed with the existing effect-rule finding excluded.
+No live model, production data or migration used.

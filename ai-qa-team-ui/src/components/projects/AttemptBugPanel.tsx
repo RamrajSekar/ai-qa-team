@@ -61,7 +61,7 @@ ${draft.expected_result}`,
 ${draft.actual_result}`,
   ].join("\n\n") : "";
   async function copyReport() {
-    if (!draft?.environment?.trim() || busy) return;
+    if (!draft || busy) return;
     try { await navigator.clipboard.writeText(report); setCopyNotice("Report copied."); }
     catch { setCopyNotice("Select the report and copy it manually."); }
   }
@@ -81,11 +81,11 @@ ${draft.actual_result}`,
           {([['steps','Reproduction steps (one per line)'],['expected_result','Expected result'],['actual_result','Actual result'],['missing_information','Missing information (one per line)']] as const).map(([key,label]) => <label className="block" key={key}>{label}<textarea aria-label={label} className="block w-full border rounded p-2" value={Array.isArray(draft[key]) ? draft[key].join("\n") : draft[key]} onChange={event => edit(key,event.target.value)} /></label>)}
         </div></details>
         <label className="block">Report to copy<textarea aria-label="Report to copy" readOnly rows={16} className="block w-full border rounded p-2" value={report} /></label>
-        <button type="button" className="workspace-button" disabled={busy || !draft.environment?.trim()} onClick={() => void copyReport()}>Copy report</button>
+        <button type="button" className="workspace-button" disabled={busy} onClick={() => void copyReport()}>Copy report</button>
         {copyNotice && <p role="status">{copyNotice}</p>}
       </fieldset>}
       {mode === "external" && <label>Existing bug HTTPS URL<input aria-label="Existing bug HTTPS URL" type="url" maxLength={2000} disabled={busy} value={url} onChange={event => {setUrl(event.target.value);setReviewed(false);}} /></label>}
-      {mode !== "links" && <><label className="manual-expectation"><input type="checkbox" disabled={busy} checked={reviewed} onChange={event => setReviewed(event.target.checked)} />I reviewed this bug information and its link to this attempt.</label>{mode === "draft" && !draft.environment?.trim() && <p className="workspace-metadata">Enter an environment to copy or save.</p>}<button type="button" className="workspace-button workspace-primary" disabled={busy || !reviewed || (mode === "draft" && !draft.environment?.trim()) || (mode === "external" && !url.startsWith("https://"))} onClick={() => void save()}>{mode === "draft" ? "Save bug draft" : "Save bug link"}</button></>}
+      {mode !== "links" && <><label className="manual-expectation"><input type="checkbox" disabled={busy} checked={reviewed} onChange={event => setReviewed(event.target.checked)} />I reviewed this bug information and its link to this attempt.</label>{mode === "draft" && !draft.environment?.trim() && <p className="workspace-metadata">Enter an environment before saving.</p>}<button type="button" className="workspace-button workspace-primary" disabled={busy || !reviewed || (mode === "draft" && !draft.environment?.trim()) || (mode === "external" && !url.startsWith("https://"))} onClick={() => void save()}>{mode === "draft" ? "Save bug draft" : "Save bug link"}</button></>}
       <h4>Linked bugs</h4>{!links.length && <p>No bugs linked yet.</p>}{links.map(bug => <div key={bug.bug_id}>{bug.url ? <a className="design-back-link" href={bug.url} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">Open linked bug</a> : <details><summary>{bug.draft?.title} · Local draft</summary><pre className="whitespace-pre-wrap">{JSON.stringify(Object.fromEntries(Object.entries(bug.draft || {}).filter(([key]) => key !== "context")),null,2)}</pre></details>}</div>)}
     </>}
   </>;

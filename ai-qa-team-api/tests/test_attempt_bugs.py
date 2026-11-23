@@ -122,3 +122,15 @@ class AttemptBugTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(saved.status_code,201,saved.text)
         self.assertEqual(saved.json()['draft']['environment'],'UAT')
         self.assertEqual(saved.json()['draft']['context'],draft['context'])
+
+    async def test_report_expected_outcomes_prefer_assertions_without_mutating_test(self):
+        from app.services.attempt_bugs import report_expectations
+        case={'procedure':[{'instruction':'Open page','expected':'Page is open.'},{'instruction':'Create record','expected':'Record created.'}],
+              'assertions':['Record created.', 'Commission field is hidden.', '  commission field is hidden  ' ]}
+        before=deepcopy(case)
+        self.assertEqual(report_expectations(case),'Record created.\nCommission field is hidden.')
+        self.assertEqual(case,before)
+        case['assertions']=[]
+        self.assertEqual(report_expectations(case),'Page is open.\nRecord created.')
+        preview=await self.client.get(self.path+'/bugs')
+        self.assertEqual(preview.json()['draft']['expected_result'],'Draft saved appears')
