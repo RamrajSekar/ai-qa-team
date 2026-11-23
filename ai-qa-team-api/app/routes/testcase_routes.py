@@ -99,28 +99,15 @@ async def generate_testcases(
     if not sub:
         raise HTTPException(403, "No active subscription found.")
 
-    plan = sub["plan"]
-
-    # Plan-based complexity rules
-    if plan == "free" and complexity != "basic":
-        raise HTTPException(
-            403,
-            "Free plan supports only 'basic' test cases. Upgrade to Pro for medium/advanced.",
-        )
-
     # Testcase quotas
-    limits = sub["limits"]
-    tier_limits = {tier: limits.get(f"testcases_{tier}_limit") for tier in ("basic", "medium", "advanced")}
-    total_limit = limits.get("testcases_limit")
-    if total_limit in (None, 0) and any(value is not None for value in tier_limits.values()):
-        # Older subscriptions defaulted the unused aggregate to zero.
-        total_limit = sum(value or 0 for value in tier_limits.values())
+    caps = ResourceQuota.limits(sub, "testcases", complexity)
+    total_limit = caps["testcases_used"]
     testcase_owner = {"created_by": user_email}
     used_total = await db["testcases"].count_documents(testcase_owner)
     if sub.get("billing_scope") == "ACCOUNT":
         used_total = sub["usage"].get("testcases_used", 0)
     allowed = count if total_limit is None else min(count, max(total_limit - used_total, 0))
-    tier_limit = tier_limits[complexity]
+    tier_limit = caps[f"testcases_{complexity}_used"]
     if tier_limit is not None:
         legacy_levels = [complexity, None] if complexity == "basic" else [complexity]
         used_tier = await db["testcases"].count_documents({
@@ -137,7 +124,7 @@ async def generate_testcases(
     if allowed <= 0:
         raise HTTPException(
             403,
-            f"Test case generation limit reached for {complexity} cases.",
+            "Shared test case limit reached." if sub.get("plan") == "free" else f"Test case generation limit reached for {complexity} cases.",
         )
 
     quota = ResourceQuota(db)
@@ -149,7 +136,7 @@ async def generate_testcases(
             raise HTTPException(409, "Preserve this legacy scenario. Create and approve a coverage intent against current knowledge before generating new detailed cases.")
         if scenario.get("spec_kind") == "coverage-intent-v1":
             try:
-                knowledge_plans, _ = await KnowledgeTestDesign(db).testcases(scenario["project_id"], current_user, scenario, allowed)
+                knowledge_plans, _ = await KnowledgeTestDesign(db).testcases(scenario["project_id"], current_user, scenario, allowed, complexity=complexity)
             except AIUsageError as exc:
                 raise HTTPException(exc.status_code, exc.public_detail()) from None
             except LLMProviderError as exc:

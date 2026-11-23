@@ -59,7 +59,8 @@ class ApprovedStoryTests(unittest.IsolatedAsyncioTestCase):
         scenario={**scenarios[0], 'scenario_id':'SC1','story_id':'ST1','approved':True,'knowledge_version_id':context['knowledge']['version_id'],'story_analysis_id':context['analysis']['analysis_id'], 'requirements_context_id':context['requirements_context_id'],'requirements_context_digest':context['requirements_context_digest']}
         case={'title':'Save draft details','purpose':'Check save','role':None,'preconditions':['Draft is open'],'public_data':[],'procedure':[{'instruction':'Save draft','expected':'Show Draft saved.'}],'assertions':['Show Draft saved.'],'cleanup':[],'acceptance_criteria_refs':['Show Draft saved.'],'rule_references':[]}
         self.usage.execute.return_value=SimpleNamespace(text=json.dumps({'testcases':[case]}))
-        cases,inherited=await design.testcases('P1',self.user,scenario,1)
+        cases,inherited=await design.testcases('P1',self.user,scenario,1,complexity='advanced')
+        self.assertEqual(json.loads(self.usage.execute.call_args.args[3].prompt)['complexity'],'advanced')
         self.assertEqual(inherited['requirements_context_id'],context['requirements_context_id'])
         self.assertEqual(cases[0]['preconditions'],['Draft is open'])
         self.assertEqual(inherited['story_approval'],context['story_approval'])

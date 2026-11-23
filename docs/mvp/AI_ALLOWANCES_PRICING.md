@@ -110,3 +110,33 @@ the execution release gates remain unchanged.
   as part of the onboarding UI work. Checkout/prorated billing is not delivered.
 - UI names are now Managed AI Requests and BYOK AI Requests; historical credit field
   names and earlier migration policy remain unchanged.
+
+
+## 2026-11-23 approved Free complexity policy
+
+Free now permits Basic, Medium and Advanced test-case generation within one shared
+10-case default allowance. It is not 10 per complexity. Paid per-tier limits and
+Managed/BYOK AI request allowances are unchanged. Complexity is supplied to detailed
+AI design, constrained to approved requirements; generated drafts still need review.
+
+New Free subscriptions explicitly store total=10. Existing Free records resolve
+their stored total (or legacy Basic cap when the aggregate was unused) as the
+shared allowance. Effective response limits and quota admission use the same
+policy. Resolution copies data and never rewrites subscriptions, resets counters,
+refills AI balances or changes approvals. Custom existing totals remain respected.
+No data migration or startup write is added. UI/API should deploy together; old
+backends may still reject Medium/Advanced. Existing knowledge and quota cutover
+prerequisites remain. No checkout or paid entitlement work is included.
+
+Account usage shows used counts for all Free complexities under the shared total;
+paid plans retain per-tier allowance meters. Scenario breakdowns are explicitly
+labelled used counts. Manual creation remains Basic; this approved slice extends
+Free generation, not tier reassignment of existing cases.
+
+Verification: 92 isolated backend checks passed across Free policy, quota,
+approved context, counts, accounts, billing and separate AI allowances. Real
+loopback Mongo passed 13 quota/fault checks (including a mixed-complexity Free
+last-slot race) and 24 Test Design journey checks. All 39 intercepted-API browser
+checks passed; production UI build/TypeScript and scoped component lint passed.
+No live providers or production data were used; real-provider quality remains a
+qualification item.

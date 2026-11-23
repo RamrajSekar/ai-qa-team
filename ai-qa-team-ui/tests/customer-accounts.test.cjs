@@ -7,7 +7,7 @@ let browser;
 before(async () => { browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || 'msedge' }); });
 after(async () => browser?.close());
 
-async function fixture(t, { role = 'OWNER', pending = false, signup = false, emailDelivery = false, aiUnlimited = false, splitAI = false, resumeAI = false, missingTier = false, savedBYOK = false } = {}) {
+async function fixture(t, { role = 'OWNER', pending = false, signup = false, emailDelivery = false, aiUnlimited = false, splitAI = false, resumeAI = false, missingTier = false, savedBYOK = false, plan = 'free' } = {}) {
   const context = await browser.newContext(); t.after(() => context.close());
   await context.addCookies([{ name: 'access_token', value: 'intercepted-ui-fixture', url: base }]);
   let authenticated = !signup;
@@ -35,7 +35,7 @@ async function fixture(t, { role = 'OWNER', pending = false, signup = false, ema
       json = account;
     }
     if (url.pathname === '/account/projects') json = [project];
-    if (url.pathname === '/account/subscription') json = { billing_scope: 'ACCOUNT', subscription: { plan: 'free', status: 'active', usage: { projects_used: 1, stories_used: 1, scenarios_used: 2, testcases_used: 3, testcases_basic_used: 3, testcases_medium_used: 0, testcases_advanced_used: 0, team_members_used: 1, executions_used: 0, ai_gen_used: 1 }, limits: { ai_gen_limit: aiUnlimited ? null : 3, stories_limit: 5, scenarios_limit: 10, executions_limit: 20, projects_limit: 1, testcases_limit: 0, testcases_basic_limit: 10, testcases_medium_limit: 0, testcases_advanced_limit: 0, team_members_limit: 2 } } };
+    if (url.pathname === '/account/subscription') json = { billing_scope: 'ACCOUNT', subscription: { plan, status: 'active', usage: { projects_used: 1, stories_used: 1, scenarios_used: 2, testcases_used: 3, testcases_basic_used: 3, testcases_medium_used: 0, testcases_advanced_used: 0, team_members_used: 1, executions_used: 0, ai_gen_used: 1 }, limits: { ai_gen_limit: aiUnlimited ? null : 3, stories_limit: 5, scenarios_limit: 10, executions_limit: 20, projects_limit: 1, testcases_limit: 0, testcases_basic_limit: 10, testcases_medium_limit: 0, testcases_advanced_limit: 0, team_members_limit: 2 } } };
     if (url.pathname === '/account/subscription' && splitAI) { json.subscription.ai_allowance_version = 1; Object.assign(json.subscription.usage, { managed_ai_credits_used: 1, byok_ai_requests_used: 2 }); Object.assign(json.subscription.limits, { managed_ai_credits_limit: 25, byok_ai_requests_limit: 25 }); }
     if (url.pathname === '/account/subscription' && missingTier) delete json.subscription.limits.testcases_advanced_limit;
     if (url.pathname === '/account/members') json = [{ email: user.email, account_role: role }];
@@ -223,11 +223,23 @@ test('split AI allowances show separate Managed credits and BYOK requests', asyn
 });
 
 test('zero complexity allowances say Not included instead of 0 / 0',async t=>{
- const {page}=await fixture(t,{splitAI:true});await page.goto(base+'/settings/account');
+ const {page}=await fixture(t,{splitAI:true,plan:'pro'});await page.goto(base+'/settings/account');
  const tiers=page.getByLabel('Test case usage by complexity');await tiers.waitFor();
  assert.equal(await tiers.locator('dd').filter({hasText:/^Not included$/}).count(),2);
  assert.equal(await tiers.getByText('0 / 0',{exact:true}).count(),0);
  assert.equal(await page.getByText(/earlier AI units could not be attributed/).count(),0);
+});
+
+test('Free shows one shared ten-case allowance and used counts for every complexity',async t=>{
+ const {page,calls}=await fixture(t,{splitAI:true});await page.goto(base+'/settings/account');
+ const tiers=page.getByLabel('Test case usage by complexity');await tiers.waitFor();
+ await page.getByText('Shared across all complexities.',{exact:true}).waitFor();
+ assert.equal(await tiers.locator('dd').filter({hasText:/^3 used$/}).count(),1);
+ assert.equal(await tiers.locator('dd').filter({hasText:/^0 used$/}).count(),2);
+ assert.equal(await tiers.getByText('Not included',{exact:true}).count(),0);
+ const card=page.getByText('Test Cases',{exact:true}).locator('..').locator('..');
+ assert.match(await card.innerText(),/3 \/ 10/);
+ assert.equal(calls.filter(call=>call.method!=='GET').length,0);
 });
 test('onboarding AI Setup can be skipped without activation or connection calls',async t=>{
  const {page,calls}=await fixture(t,{pending:true,resumeAI:true});await page.goto(base+'/onboarding');
@@ -256,7 +268,7 @@ test('onboarding reuses Managed and BYOK configuration with explicit activation'
 });
 
 test('missing complexity allowance is Unavailable rather than Not included',async t=>{
- const {page}=await fixture(t,{missingTier:true});await page.goto(base+'/settings/account');
+ const {page}=await fixture(t,{missingTier:true,plan:'pro'});await page.goto(base+'/settings/account');
  const tiers=page.getByLabel('Test case usage by complexity');await tiers.waitFor();
  assert.equal(await tiers.locator('dd').filter({hasText:/^Unavailable$/}).count(),1);
  assert.equal(await tiers.locator('dd').filter({hasText:/^Not included$/}).count(),1);

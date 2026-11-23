@@ -18,6 +18,7 @@ function title(value: string) { return value.split(/[_ -]+/).map(word => word.ch
 function allowance(subscription: AccountSubscription, key: string): number | null | undefined {
   const limit = subscription.limits[key.replace(/_used$/, "_limit")];
   if (key === "testcases_used" && limit === 0) {
+    if (subscription.plan === "free" && subscription.limits.testcases_basic_limit != null) return subscription.limits.testcases_basic_limit;
     return ["basic", "medium", "advanced"].reduce((total, tier) => total + (subscription.limits[`testcases_${tier}_limit`] || 0), 0);
   }
   return limit;
@@ -62,11 +63,15 @@ export default function SubscriptionUsage({ subscription }: { subscription: Acco
           {meter("Scenarios", "scenarios_used")}
           <div className={styles.tiers} role="group" aria-label="Scenario usage by complexity">
             {["basic", "medium", "advanced"].map(tier => <div key={tier} className={styles.compactMeter}>
-              <dl className={styles.meterLine}><dt>{title(tier)}</dt><dd>{subscription.usage[`scenarios_${tier}_used`] ?? "Unavailable"}</dd></dl>
+              <dl className={styles.meterLine}><dt>{title(tier)}</dt><dd>{subscription.usage[`scenarios_${tier}_used`] === undefined ? "Unavailable" : `${subscription.usage[`scenarios_${tier}_used`]} used`}</dd></dl>
             </div>)}
           </div>
         </div>
-        <div className={`${styles.card} ${styles.testCases}`}>{meter("Test Cases", "testcases_used")}<div className={styles.tiers} role="group" aria-label="Test case usage by complexity">{["basic", "medium", "advanced"].map(tier => <div key={tier}>{meter(title(tier), `testcases_${tier}_used`, true)}</div>)}</div></div>
+        <div className={`${styles.card} ${styles.testCases}`}>{meter("Test Cases", "testcases_used")}
+          {subscription.plan === "free" && <p className={styles.note}>Shared across all complexities.</p>}
+          <div className={styles.tiers} role="group" aria-label="Test case usage by complexity">{["basic", "medium", "advanced"].map(tier => <div key={tier}>{subscription.plan === "free" ?
+            <dl className={styles.meterLine}><dt>{title(tier)}</dt><dd>{subscription.usage[`testcases_${tier}_used`] === undefined ? "Unavailable" : `${subscription.usage[`testcases_${tier}_used`]} used`}</dd></dl>
+            : meter(title(tier), `testcases_${tier}_used`, true)}</div>)}</div></div>
       </div>
     </section>
 

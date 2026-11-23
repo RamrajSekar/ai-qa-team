@@ -5,8 +5,8 @@ from fastapi import HTTPException, status
 import logging
 from app.app_config.plan_limits import PLAN_LIMITS
 from bson import ObjectId
-from copy import deepcopy
 from app.services.account_billing import billing_account
+from app.services.testcase_allowances import effective_subscription
 
 
 async def account_target(user_identifier):
@@ -52,7 +52,7 @@ async def upgrade_plan(user_id: str, new_plan: str, provider: str = "manual"):
 async def get_subscription(user_identifier: str):
     account = await account_target(user_identifier)
     if account:
-        return {**deepcopy(account["subscription"]), "billing_scope": "ACCOUNT", "account_id": account["_id"]}
+        return {**effective_subscription(account["subscription"]), "billing_scope": "ACCOUNT", "account_id": account["_id"]}
     logger.info(f"Checking subscription for user: {user_identifier}")
     query = build_user_query(user_identifier)
     user = await db["users"].find_one(query, {"subscription": 1})
@@ -109,7 +109,7 @@ async def get_subscription(user_identifier: str):
         logger.info(f"🔧 Healed subscription fields for {user_identifier}")
 
     logger.info(f"Subscription fetched for {user_identifier}: {sub.get('plan', 'unknown')}")
-    return sub
+    return effective_subscription(sub)
 
 
 async def increment_usage(user_identifier: str, field: str):

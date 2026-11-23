@@ -201,6 +201,29 @@ async def verify(db):
         await q.settle(r)
         await rejected(q.reserve(user,'P1','scenarios',1,request_id=key),409)
     await run('same_request_identity_cannot_reserve_or_generate_twice',repeat)
+
+    async def free_mixed_last_slot():
+        user,collection,owner=await fixture({'testcases_limit':0,'testcases_basic_limit':10,'testcases_medium_limit':0,'testcases_advanced_limit':0})
+        await db[collection].update_one({'_id':owner},{'$set':{'subscription.plan':'free','subscription.usage.testcases_used':9,'subscription.usage.testcases_basic_used':9}})
+        await db['testcases'].insert_many([doc(user,'testcases',index) for index in range(9)])
+        before=await db[collection].find_one({'_id':owner})
+        quota=ResourceQuota(db)
+        results=await asyncio.gather(*(quota.reserve(user,'P1','testcases',1,tier) for tier in ('medium','advanced')),return_exceptions=True)
+        admitted=[item for item in results if isinstance(item,dict)]
+        denied=[item for item in results if isinstance(item,HTTPException)]
+        assert len(admitted)==1 and len(denied)==1 and denied[0].status_code==403
+        reservation=admitted[0]
+        await quota.persist(reservation,doc(user,'testcases',9,tier=reservation['tier']),0)
+        await quota.settle(reservation)
+        after=await db[collection].find_one({'_id':owner})
+        assert after['subscription']['usage']['testcases_used']==10
+        assert after['subscription']['usage']['testcases_'+reservation['tier']+'_used']==1
+        assert await db['testcases'].count_documents({'created_by':user['email']})==10
+        assert after['subscription']['limits']==before['subscription']['limits']
+        assert all(value==0 for value in after['resource_quota_pending'].values())
+        assert [after['subscription']['usage'][key] for key in ('ai_gen_used','managed_ai_credits_used','byok_ai_requests_used')]==[10,7,3]
+        await rejected(quota.reserve(user,'P1','testcases',1,'basic'),403)
+    await run('free_medium_advanced_contend_for_one_shared_last_slot_without_usage_reset',free_mixed_last_slot)
     return checks
 
 

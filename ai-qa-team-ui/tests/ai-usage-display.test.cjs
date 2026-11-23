@@ -4,7 +4,7 @@ const {fixture,base}=require('./qa-agent-fixture.cjs');let browser;
 before(async()=>{browser=await chromium.launch({headless:true,channel:'msedge'});});after(async()=>browser?.close());
 async function setup(t,unavailable=false){
  const f=await fixture(browser,t);const calls=[];
- const subscription={plan:'free',status:'active',ai_allowance_version:1,usage:{managed_ai_credits_used:3,byok_ai_requests_used:1},limits:{managed_ai_credits_limit:25,byok_ai_requests_limit:25}};
+ const subscription={plan:'free',status:'active',ai_allowance_version:1,usage:{managed_ai_credits_used:3,byok_ai_requests_used:1,scenarios_used:3,scenarios_basic_used:1,scenarios_medium_used:2,scenarios_advanced_used:0},limits:{managed_ai_credits_limit:25,byok_ai_requests_limit:25,scenarios_limit:10}};
  await f.context.route('http://feature-api.test/**',async route=>{
   const request=route.request(),path=new URL(request.url()).pathname;
   const headers={'access-control-allow-origin':base,'access-control-allow-credentials':'true'};
@@ -37,7 +37,9 @@ test('saved project mode highlights its pool and switching display preserves bot
  assert.equal(await managed.getByText('CURRENT',{exact:true}).count(),0);
  assert.match(await page.getByRole('region',{name:'Managed AI Requests',exact:true}).innerText(),/3 \/ 25/);
  await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
- assert.deepEqual(subscription.usage,{managed_ai_credits_used:3,byok_ai_requests_used:1});
+ const breakdown=page.getByRole('group',{name:'Scenario usage by complexity'});
+ for(const text of ['1 used','2 used','0 used'])await breakdown.getByText(text,{exact:true}).waitFor();
+ assert.deepEqual(subscription.usage,{managed_ai_credits_used:3,byok_ai_requests_used:1,scenarios_used:3,scenarios_basic_used:1,scenarios_medium_used:2,scenarios_advanced_used:0});
  assert.equal(calls.filter(call=>!['GET','OPTIONS'].includes(call.method)).length,0);
  await page.reload();await page.getByRole('region',{name:'Managed AI Requests',exact:true}).waitFor();
  assert.match(await page.getByRole('region',{name:'Managed AI Requests',exact:true}).innerText(),/3 \/ 25/);
@@ -58,7 +60,7 @@ test('legal pages and footer links remain unpublished',async t=>{
 
 test('dashboard shows Test Cases without AI usage meters, charts or configuration reads',async t=>{
  const {page,context,calls}=await fixture(browser,t);
- await context.route(url=>url.hostname==='feature-api.test'&&url.pathname==='/auth/me',route=>route.fulfill({headers:{'access-control-allow-origin':base,'access-control-allow-credentials':'true'},json:{user:{email:'fixture@example.com',name:'Fixture',onboarding:{onboarding_status:'completed'},subscription:{ai_allowance_version:1,usage:{testcases_used:4},limits:{testcases_limit:0,testcases_basic_limit:10,testcases_medium_limit:0,testcases_advanced_limit:0}}}}}));
+ await context.route(url=>url.hostname==='feature-api.test'&&url.pathname==='/auth/me',route=>route.fulfill({headers:{'access-control-allow-origin':base,'access-control-allow-credentials':'true'},json:{user:{email:'fixture@example.com',name:'Fixture',onboarding:{onboarding_status:'completed'},subscription:{plan:'free',ai_allowance_version:1,usage:{testcases_used:4},limits:{testcases_limit:0,testcases_basic_limit:10,testcases_medium_limit:10,testcases_advanced_limit:10}}}}}));
  await page.goto(base+'/dashboard');await page.getByText('Test Cases',{exact:true}).waitFor();
  const card=page.getByText('Test Cases',{exact:true}).locator('..');assert.match(await card.innerText(),/4\s*\/\s*10/);
  assert.equal(await page.getByText('Other AI usage',{exact:true}).count(),0);

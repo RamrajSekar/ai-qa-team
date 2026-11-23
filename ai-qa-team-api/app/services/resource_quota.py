@@ -15,6 +15,7 @@ from pymongo.write_concern import WriteConcern
 from pymongo import ReadPreference
 
 from app.services.account_billing import billing_account
+from app.services.testcase_allowances import testcase_allowances
 
 
 def fingerprint(value):
@@ -54,14 +55,8 @@ class ResourceQuota:
         limits = subscription.get("limits", {})
         total = limits.get(kind + "_limit")
         if kind == "testcases":
-            if "testcases_limit" not in limits and not any(f"testcases_{level}_limit" in limits for level in ("basic", "medium", "advanced")):
-                raise HTTPException(503, "Test case allowance is not configured.")
-            tiers = [limits.get(f"testcases_{level}_limit") for level in ("basic", "medium", "advanced")]
-            if any(value is not None and (not isinstance(value, int) or isinstance(value, bool) or value < 0) for value in tiers):
-                raise HTTPException(503, "Test case allowance is not configured.")
-            if total in (None, 0) and any(value is not None for value in tiers):
-                total = sum(value or 0 for value in tiers)
-            result = {"testcases_used": total, f"testcases_{tier}_used": limits.get(f"testcases_{tier}_limit")}
+            effective = testcase_allowances(subscription)
+            result = {"testcases_used": effective["testcases_limit"], f"testcases_{tier}_used": effective[f"testcases_{tier}_limit"]}
         else:
             if "scenarios_limit" not in limits:
                 raise HTTPException(503, "Scenario allowance is not configured.")
@@ -86,8 +81,6 @@ class ResourceQuota:
             if (not owner or owner.get("subscription", {}).get("status") != "active"
                     or (collection == "customer_accounts" and (owner.get("status") != "ACTIVE" or owner.get("billing_version") != 1))):
                 raise HTTPException(403, "No active resource allowance.")
-            if kind == "testcases" and tier != "basic" and owner["subscription"].get("plan") == "free":
-                raise HTTPException(403, "Free plan supports only basic test cases.")
             limits = self.limits(owner["subscription"], kind, tier)
             pending = owner.get("resource_quota_pending", {})
             allowed = count
