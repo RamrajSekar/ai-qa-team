@@ -15,6 +15,7 @@ import CatalogCreation from "./CatalogCreation";
 import ScenarioViewer from "@/components/scenarios/ScenarioViewer";
 import { DesignStats, DesignToolbar, DesignState, DesignBadge, designStatusLabel } from "./DesignWorkspace";
 import { WorkspaceDialog } from "@/components/ui/workspace-dialog";
+import { IconAction } from "@/components/ui/icon-action";
 import TestDesignReview from "./TestDesignReview";
 
 export interface CatalogCase {
@@ -58,6 +59,7 @@ export default function ProjectTestCatalog({ kind }: { kind: "scenarios" | "test
   const [deleting, setDeleting] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
+  const [approvalMessage, setApprovalMessage] = useState("");
   const [selected, setSelected] = useState<Scenario | null>(null);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -170,6 +172,7 @@ export default function ProjectTestCatalog({ kind }: { kind: "scenarios" | "test
       </DesignToolbar>
       {manualEnabled && <div className="design-selection-bar"><span>{selectedCases.length}/10 approved cases selected</span><button className="workspace-button workspace-primary" disabled={!selectedCases.length} onClick={() => setCreatingExecution(true)}>Create Test Execution</button><Link className="design-back-link" href={`${projectPath}/test-execution`}>View manual executions</Link></div>}
       {summaryError && <div role="alert"><p>{summaryError}</p><button className="workspace-button" onClick={() => void loadSummaries(cases)}>Refresh result summaries</button></div>}
+      {approvalMessage && <p role="status">{approvalMessage}</p>}
       {actionError && !deleteId && <p role="alert">{actionError}</p>}
       {loading ? <p role="status">Loading {title.toLowerCase()}…</p> : error ? (
         <div role="alert"><p>{error}</p><button className="workspace-button" onClick={() => void load()}>Try again</button></div>
@@ -182,16 +185,16 @@ export default function ProjectTestCatalog({ kind }: { kind: "scenarios" | "test
             <td><span className="design-record-id">{scenario.scenario_id}</span><button className="design-title-link" onClick={() => setSelected(scenario)}>{scenario.title}</button><p className="design-excerpt">{scenario.purpose || scenario.description || "Coverage intent"}</p></td>
             <td><Link className="design-back-link" href={`${projectPath}/stories/${encodeURIComponent(scenario.story_id)}`}>Story {scenario.story_id}</Link></td>
             <td><DesignBadge tone={scenario.approved && !scenario.requirements_review_required ? "positive" : "warning"}>{scenario.requirements_review_required ? "Needs review" : scenario.approved ? "Approved" : "In Review"}</DesignBadge></td>
-            <td><div className="design-row-actions"><button className="workspace-button" onClick={() => setSelected(scenario)} aria-label="Review scenario">Review</button>{scenario.created_by === user?.email && <><button className="workspace-button" onClick={() => setEditingScenario(scenario)} aria-label="Edit scenario">Edit</button><button className="workspace-button design-danger" disabled={deleting} onClick={() => { setActionError(""); setDeleteId(scenario.scenario_id); }} aria-label="Delete scenario">Delete</button></>}</div></td>
+            <td><div className="design-row-actions"><IconAction action="review" label="Review scenario" onClick={() => setSelected(scenario)} />{scenario.created_by === user?.email && <><IconAction action="edit" label="Edit scenario" onClick={() => setEditingScenario(scenario)} /><IconAction action="delete" label="Delete scenario" disabled={deleting} onClick={() => { setActionError(""); setDeleteId(scenario.scenario_id); }} /></>}</div></td>
           </tr>) : visibleCases.map(testcase => <tr key={testcase.testcase_id}>
             {manualEnabled && <td><input type="checkbox" aria-label={`Select ${testcase.testcase_id}`} checked={selectedCases.some(item => item.testcase_id === testcase.testcase_id)} disabled={!summaries?.[testcase.testcase_id]?.approved_version_id || (selectedCases.length >= 10 && !selectedCases.some(item => item.testcase_id === testcase.testcase_id))} onChange={event => { const version = summaries?.[testcase.testcase_id]?.approved_version_id; if (version) setSelectedCases(rows => event.target.checked ? [...rows, { testcase_id: testcase.testcase_id, version_id: version, title: testcase.title }] : rows.filter(item => item.testcase_id !== testcase.testcase_id)); }} /></td>}
             <td><span className="design-record-id">{testcase.testcase_id} · {testcase.complexity || "Unspecified complexity"}</span><button className="design-title-link" onClick={() => setReviewCase(testcase)}>{testcase.title}</button>{testcase.description && <p className="design-excerpt">{testcase.description}</p>}</td>
-            <td><Link className="design-back-link" href={`${projectPath}/scenarios`}>Scenario {testcase.scenario_id}</Link></td>
+            <td><Link className="design-back-link" href={`${projectPath}/scenarios?review=${encodeURIComponent(testcase.scenario_id)}`}>{testcase.scenario_id}</Link></td>
             <td><DesignBadge>{designStatusLabel(designStatus(testcase))}</DesignBadge></td>
             {manualEnabled && <td>{summaries ? <DesignBadge>{summaries[testcase.testcase_id]?.manual?.verdict.replaceAll("_", " ") || "Not run"}</DesignBadge> : (summaryError ? "Unavailable" : "Loading…")}{summaries?.[testcase.testcase_id]?.manual?.execution_id && <Link className="design-result-link" title={summaries[testcase.testcase_id].manual!.execution_id!} aria-label={`Open test execution ${summaries[testcase.testcase_id].manual!.execution_id}`} href={`${projectPath}/test-execution?execution=${encodeURIComponent(summaries[testcase.testcase_id].manual!.execution_id!)}`}>Execution {summaries[testcase.testcase_id].manual!.execution_id!.slice(0, 8)}</Link>}</td>}
             {automationEnabled && <td>{summaries?.[testcase.testcase_id]?.automated?.verdict.replaceAll("_", " ") || "Not recorded in this result system"}</td>}
-            <td><div className="design-row-actions"><button className="workspace-button" onClick={() => setReviewCase(testcase)} aria-label="Review test case">Review</button>
-              {testcase.created_by === user?.email && <><button className="workspace-button" onClick={() => setEditingCase(testcase)} aria-label="Edit test case">Edit</button><button className="workspace-button design-danger" disabled={deleting} onClick={() => { setActionError(""); setDeleteId(testcase.testcase_id); }} aria-label="Delete test case">Delete</button></>}
+            <td><div className="design-row-actions"><IconAction action="review" label="Review test case" onClick={() => setReviewCase(testcase)} />
+              {testcase.created_by === user?.email && <><IconAction action="edit" label="Edit test case" onClick={() => setEditingCase(testcase)} /><IconAction action="delete" label="Delete test case" disabled={deleting} onClick={() => { setActionError(""); setDeleteId(testcase.testcase_id); }} /></>}
             </div></td>
           </tr>)}</tbody></table>
         </div>}
@@ -206,7 +209,12 @@ export default function ProjectTestCatalog({ kind }: { kind: "scenarios" | "test
         <div className="design-page"><header><p className="workspace-eyebrow">{reviewCase.testcase_id} · Test design</p><h2 className="text-xl font-semibold">{reviewCase.title}</h2><p>{reviewCase.description || reviewCase.purpose}</p></header>
           <details open><summary>Steps and expected results</summary><ol className="list-decimal pl-6 space-y-2">{reviewCase.steps.map((step, i) => <li key={i}><p>{step.description || step.action}</p><p>Expected result — {step.expected || "No explicit expected result recorded"}</p></li>)}</ol></details>
           {(reviewCase.knowledge_version_id || reviewCase.requirements_context_id) && <details><summary>Purpose, data and approved context</summary><p>Basis: {["story_only_provisional","approved_story_only"].includes(reviewCase.design_basis || "") ? "Story requirements only. Product knowledge was not used." : reviewCase.design_basis === "approved_story_with_knowledge" ? "Approved story with independent product knowledge" : reviewCase.requirements_context_id ? "Explicitly approved release requirements" : "Current approved knowledge"}</p><p>Release: {reviewCase.target_release || "Current"}</p><p>Purpose: {reviewCase.purpose}</p><p>Role: {reviewCase.role || "Not specified"}</p><p>Preconditions: {reviewCase.preconditions?.join("; ")}</p><p>Public data: {Object.entries(reviewCase.public_data || {}).map(([key, value]) => `${key}: ${value}`).join("; ")}</p><p>Assertions: {reviewCase.assertions?.join("; ")}</p><p>Cleanup: {reviewCase.cleanup?.join("; ") || "None specified"}</p><p>Acceptance criteria: {reviewCase.acceptance_criteria_refs?.join("; ")}</p><p>Rules: {reviewCase.rule_references?.join(", ")}</p><p>Knowledge version: {reviewCase.knowledge_version_id}</p></details>}
-          {(manualEnabled || enabled("product_knowledge", "story_analysis")) && <TestDesignReview key={`${reviewCase.testcase_id}:${reviewCase.updated_at || ""}`} testcase={reviewCase} projectId={projectId} canApprove={canApprove} />}
+          {(manualEnabled || enabled("product_knowledge", "story_analysis")) && <TestDesignReview key={`${reviewCase.testcase_id}:${reviewCase.updated_at || ""}`} testcase={reviewCase} projectId={projectId} canApprove={canApprove} onApproved={() => {
+            setReviewCase(null);
+            setApprovalMessage("Test case approved.");
+            setCases(rows => rows.map(row => row.testcase_id === reviewCase.testcase_id ? { ...row, status: "approved" } : row));
+            void loadSummaries(cases);
+          }} />}
         </div>
       </WorkspaceDialog>}
       {deleteId && <WorkspaceDialog open title="Delete record" onClose={() => setDeleteId(null)} busy={deleting}>

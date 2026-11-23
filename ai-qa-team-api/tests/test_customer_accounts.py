@@ -106,6 +106,8 @@ class AccountsTests(unittest.IsolatedAsyncioTestCase):
         owner = await self.owner(); client = self.client(owner)
         self.assertEqual(client.patch('/account', json={"name": "Customer One"}).status_code, 200)
         self.assertEqual(client.get('/account').json()["name"], "Customer One")
+        self.assertEqual(client.patch('/account', json={"name": "x" * 16}).status_code, 422)
+        self.assertEqual(client.get('/account').json()["name"], "Customer One")
         with patch.object(project_routes, "get_next_sequence", AsyncMock(return_value="PRJ020")), patch.object(project_routes, "create_creator_membership", AsyncMock()):
             result = await project_routes.create_project(ProjectCreate(name="Module", created_by="forged@example.com"), dict(owner), None)
         self.assertEqual(result.account_id, owner["account_id"])

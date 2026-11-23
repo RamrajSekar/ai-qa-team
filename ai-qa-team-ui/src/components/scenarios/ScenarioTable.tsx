@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { IconAction } from "@/components/ui/icon-action";
 import type { Scenario } from "@/types/scenario";
 
 interface Props {
@@ -39,29 +39,11 @@ export default function ScenarioTable({ scenarios, onEdit, onDelete, onView }: P
               <td className="p-3">{s.requirements_review_required ? `Needs review (${s.requirements_review_release})` : s.approved ? "Approved" : "Pending approval"}{["story_only_provisional","approved_story_only"].includes(s.design_basis || "") && <p>Provisional · story-only</p>}{s.target_release && <p>{s.target_release}</p>}</td>
               <td className="p-3 text-center">
                 <div className="flex items-center justify-center gap-3">
-                  <button
-                    onClick={() => onView(s)}
-                    className="text-blue-600 hover:text-blue-800"
-                    title="View"
-                  >
-                    <Eye size={16} />
-                  </button>
+                  <IconAction action="view" label="View" onClick={() => onView(s)} />
 
-                  <button
-                    onClick={() => onEdit(s)}
-                    className="text-purple-600 hover:text-purple-800"
-                    title="Edit"
-                  >
-                    <Pencil size={16} />
-                  </button>
+                  <IconAction action="edit" label="Edit" onClick={() => onEdit(s)} />
 
-                  <button
-                    onClick={() => onDelete(s)}
-                    className="text-red-600 hover:text-red-800"
-                    title="Delete"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <IconAction action="delete" label="Delete" onClick={() => onDelete(s)} />
                 </div>
               </td>
             </tr>

@@ -15,7 +15,7 @@ router = APIRouter(prefix="/account", tags=["Customer account"], route_class=Saf
 
 class AccountName(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
-    name: str = Field(min_length=2, max_length=160)
+    name: str = Field(min_length=2, max_length=15)
 
 
 class Invitation(BaseModel):

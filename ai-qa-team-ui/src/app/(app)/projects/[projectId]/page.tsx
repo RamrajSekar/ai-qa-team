@@ -1,4 +1,5 @@
 'use client';
+import { IconAction } from "@/components/ui/icon-action";
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -206,7 +207,7 @@ export default function ProjectPage() {
           <p className="workspace-metadata">{project.display_id || project.project_id} · Created {new Date(project.created_at).toLocaleDateString()}</p>
         </div>
         {canManage && <div className="workspace-actions">
-          <button onClick={() => setOpenEditModal(true)} className="workspace-button" aria-label="Edit Project">Edit</button>
+          <IconAction action="edit" label="Edit Project" onClick={() => setOpenEditModal(true)} />
           <DropdownMenu>
             <DropdownMenuTrigger asChild><button className="workspace-button" aria-label="Project actions"><MoreHorizontal size={18} /></button></DropdownMenuTrigger>
             <DropdownMenuContent align="end">

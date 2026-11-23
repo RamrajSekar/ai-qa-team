@@ -5,7 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "@/utils/api";
-import { Plus, Eye, Edit, Video } from "lucide-react";
+import { Plus } from "lucide-react";
+import { IconAction } from "@/components/ui/icon-action";
 import type { Story } from "@/types/story";
 import StoryReviewStatus, {type StoryReviewSummary} from "@/components/story/StoryReviewStatus";
 import StoryModal from "@/components/story/StoryModal";
@@ -159,37 +160,10 @@ export default function StoriesPage() {
                 <td className="p-3 border text-center">
                   <div className="flex items-center justify-center gap-2">
 
-                    {/* VIEW */}
-                    <Link
-                      href={`/projects/${projectId}/stories/${story.story_id}`}
-                      className="workspace-button"
-                    >
-                      <Eye size={14} /> View
-                    </Link>
-
-                    {/* EDIT */}
-                    <button
-                      onClick={() => handleEdit(story)}
-                      className="workspace-button"
-                    >
-                      <Edit size={14} /> Edit
-                    </button>
-                    
-                    {/* DELETE */}
-                    <button
-                      onClick={() => { setDeleteError(""); setDeleteStory(story); }}
-                      className="workspace-button design-danger"
-                    >
-                      Delete
-                    </button>
-
-                    {/* RECORD */}
-                    <FeatureGate names={["recorder"]}><button
-                      onClick={() => handleRecord(story.story_id)}
-                      className="px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 flex gap-1 items-center"
-                    >
-                      <Video size={14} /> Record
-                    </button></FeatureGate>
+                    <IconAction action="view" label="View" href={`/projects/${projectId}/stories/${story.story_id}`} />
+                    <IconAction action="edit" label="Edit" onClick={() => handleEdit(story)} />
+                    <IconAction action="delete" label="Delete" onClick={() => { setDeleteError(""); setDeleteStory(story); }} />
+                    <FeatureGate names={["recorder"]}><IconAction action="recording" label="Record" onClick={() => handleRecord(story.story_id)} /></FeatureGate>
 
                   </div>
                 </td>
