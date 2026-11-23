@@ -10,10 +10,10 @@ Test Cases retains design review/approval and selected-case execution creation.
 It no longer offers Record manual result. Test Execution is the result-entry
 location. Existing standalone result records and APIs remain intact for compatibility.
 
-Open a manual execution, record a Failed result, then choose Create bug or Link
-existing bug in that case's Actions cell. The same actions appear in the failed
+Open a manual execution, record a Failed or Blocked result, then choose Create bug
+or Link existing bug in that case's Bugs column. The same actions appear in the
 attempt's expanded result history. Other verdicts do not offer bug actions; the
-backend also rejects nonfailed attempts.
+backend enforces the same Failed/Blocked allowlist.
 
 Create bug prefills an editable local draft with pinned steps, expected results,
 human-reported actual results, environment name, role/preconditions and Release/Cycle
@@ -121,3 +121,26 @@ node --test --test-concurrency=1 tests/manual-test-execution.test.cjs
 Focused changed-component lint, TypeScript and whitespace checks passed. Real
 development integration and production qualification remain NOT RUN. No push,
 deployment, migrations, external publication or real model/browser calls occurred.
+
+
+## Failed and Blocked usability amendment (2026-11-23)
+
+Bug actions are available for Failed and Blocked saved attempts. The execution table
+has separate Actions (view/record result) and Bugs columns. Compact bug/link/list
+icons open a shared review dialog; other verdicts and unrecorded cases show no bug
+actions. Attempt history retains its existing bug section for both eligible outcomes.
+
+The API enforces the same Failed/Blocked allowlist. Blocked previews retain the
+blocked verdict and supplied actual result; they are not relabelled as failures.
+Project access, explicit human review, append-only attempt/version identity, HTTPS
+validation, local-only drafting, metered opt-in AI and no external publication remain
+unchanged. Existing historical bug records and source facts are not rewritten.
+
+
+Verification: production UI build/TypeScript, six isolated attempt-bug API tests
+and 20 intercepted-API browser checks passed. Coverage includes both eligible
+outcomes, unsupported verdict rejection, explicit human review, idempotency,
+local draft/HTTPS linking and opt-in AI with doubles. Desktop Failed/Blocked
+layouts and existing mobile execution checks passed. Scoped lint passed with the
+existing set-state-in-effect findings excluded. No migration, external bug
+publication, live model or production-data test occurred.

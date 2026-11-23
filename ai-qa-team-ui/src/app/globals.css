@@ -527,3 +527,9 @@ html[data-workspace-theme="dark"] .design-badge-warning { color: #fde68a; }
 .design-table a.design-source-link { color: var(--ws-accent); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .design-source-link:hover { text-decoration-thickness: 2px; }
 .design-source-link:focus-visible { outline: 2px solid var(--ws-accent); outline-offset: 4px; border-radius: 2px; }
+
+/* Text links stay identifiable without changing button or navigation treatments. */
+.workspace-main a:not(.workspace-button):not(:has(> h3, > h4)), html[data-workspace-theme] .workspace-dialog a:not(.workspace-button) { color: var(--ws-accent); text-decoration: underline; text-underline-offset: 3px; }
+.workspace-main a > :is(h3,h4) { color: var(--ws-accent); text-decoration: underline; text-underline-offset: 3px; }
+.workspace-main a:not(.workspace-button):hover, html[data-workspace-theme] .workspace-dialog a:not(.workspace-button):hover { text-decoration-thickness: 2px; }
+.workspace-shell th, .workspace-shell .design-table th, html[data-workspace-theme] [data-slot="dialog-content"] th { font-weight: 700; }

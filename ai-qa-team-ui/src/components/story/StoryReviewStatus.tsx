@@ -9,7 +9,7 @@ export interface StoryReviewSummary {
 export default function StoryReviewStatus({projectId,storyId,summary,loading,error}:{projectId:string;storyId:string;summary?:StoryReviewSummary;loading:boolean;error:boolean}){
  const unavailable=error||(!loading&&!summary);
  const state=summary?.story_approval?.state||(summary?.state==="reviewed"?"approved":summary?.state==="stale"?"needs_review":"in_review");
- const label=loading?"Loading":unavailable?"Unavailable":state==="approved"?(summary?.story_approval?.basis==="manual_review"?"Approved · Manual review":"Approved"):state==="needs_review"?"Needs review":"In review";
+ const label=loading?"Loading":unavailable?"Unavailable":state==="approved"?"Approved":state==="needs_review"?"Needs review":"In review";
  const comparison=loading?"Loading":unavailable?"Unavailable":summary?.comparison_state==="needs_refresh"||(!summary?.comparison_state&&summary?.state==="stale")?"Needs refresh":summary?.comparison_state==="current"?"Current":"Not compared";
  const findings=summary?.unresolved_finding_count??(summary?.state==="needs_review"?summary.finding_count:0);
  const blockers=summary?.unresolved_blocker_count??(summary?.state==="needs_review"?summary.blocker_count:0);

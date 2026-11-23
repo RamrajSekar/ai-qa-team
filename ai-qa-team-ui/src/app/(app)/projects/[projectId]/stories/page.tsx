@@ -129,7 +129,7 @@ export default function StoriesPage() {
               <th className="p-3 border">Story ID</th>
               <th className="p-3 border">Title</th>
               <th className="p-3 border">Acceptance Criteria</th>
-              <th className="p-3 border">Created At</th>{analysisEnabled && <><th className="p-3 border">Story approval</th><th className="p-3 border">Knowledge comparison</th></>}
+              <th className="p-3 border">Created At</th>{analysisEnabled && <><th className="p-3 border">Status</th><th className="p-3 border">Knowledge comparison</th></>}
               <th className="p-3 border w-40 text-center">Actions</th>
             </tr>
           </thead>

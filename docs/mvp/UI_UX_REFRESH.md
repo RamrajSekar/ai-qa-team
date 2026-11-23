@@ -218,3 +218,18 @@ which were inspected along with Account typography. Scoped ESLint passed with th
 existing set-state-in-effect rule findings excluded; unchanged Overview/Stories
 and earlier Account/knowledge/review effects still require separate cleanup.
 No live customer data, model calls or production qualification was used.
+
+
+## Concise links and table labels (2026-11-23)
+
+Workspace content text links use an underline and accent colour; button, sidebar
+and topbar treatments remain intact. Table headers are bold in workspace pages
+and dialogs. Test Case result links display Execution without an internal ID;
+Scenario Source displays only the linked story ID. Stories labels use Status and
+Approved, retaining manual-review basis and approver information in the review.
+No approval, data, authorization or navigation target changes.
+
+Production build/TypeScript and 19 intercepted-API browser checks passed across
+story manual approval/status consistency, catalogs and execution results. Scoped
+lint passed with the existing set-state-in-effect findings excluded. Desktop/mobile
+captures were inspected. No production data or model calls used.

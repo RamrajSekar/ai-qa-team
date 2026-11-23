@@ -72,7 +72,7 @@ export default function StoryAnalysisPanel({ projectId, storyId }: { projectId: 
     {canReview&&approvalState!=="approved"&&<button className="workspace-button" disabled={busy||!loaded} onClick={async()=>{
       setBusy(true);setError("");try{setManual(await knowledgeRequest<ManualReadiness>(base+"/manual-approval"));setConfirmed(false);setNote("");setManualOpen(true);}catch(e){setError(e instanceof Error?e.message:"Could not load story review.");}finally{setBusy(false);}
     }}>Approve manually</button>}</div>
-    <p role="status"><DesignBadge>{!loaded?"Loading":error&&!analysis?"Unavailable":approvalState==="approved"?(manualBasis?"Approved · Manual review":"Approved"):approvalState==="needs_review"?"Needs review":"In review"}</DesignBadge></p>
+    <p role="status"><DesignBadge>{!loaded?"Loading":error&&!analysis?"Unavailable":approvalState==="approved"?"Approved":approvalState==="needs_review"?"Needs review":"In review"}</DesignBadge></p>
     {approvalState==="approved"&&<p className="text-sm text-emerald-700">Story review completed · {reviewer}</p>}
     {!analysis&&manualBasis&&<p className="text-sm">Not analyzed. Approved through manual review.</p>}
     <WorkspaceDialog open={manualOpen} title="Approve manually" onClose={()=>{if(!busy)setManualOpen(false);}}>

@@ -22,7 +22,7 @@ class AttemptBugs:
     async def attempt(self, project, run):
         row = await self.db["test_results"].find_one({"project_id": project, "run_id": run})
         if not row: raise HTTPException(404, "Attempt not found in this project.")
-        if row["verdict"] != "failed": raise HTTPException(409, "Bug actions require a failed attempt.")
+        if row["verdict"] not in ("failed", "blocked"): raise HTTPException(409, "Bug actions require a failed or blocked attempt.")
         return row
 
     @staticmethod
@@ -31,7 +31,7 @@ class AttemptBugs:
     async def preview(self, project, run):
         row = await self.attempt(project, run)
         case = row["specification"]["case"]
-        context = [f"Test: {case['title']}", f"Mode: {row['mode']}", f"Recorded: {row['recorded_at']}"]
+        context = [f"Result: {row['verdict']}", f"Test: {case['title']}", f"Mode: {row['mode']}", f"Recorded: {row['recorded_at']}"]
         if case.get("role"): context.append(f"Application role: {case['role']}")
         if case.get("preconditions"): context.append("Preconditions: " + "; ".join(case["preconditions"]))
         missing = ["Reproduction frequency and severity have not been supplied."]
@@ -41,7 +41,8 @@ class AttemptBugs:
         if row.get("execution_id"):
             execution = await self.db["manual_test_executions"].find_one({"project_id": project, "execution_id": row["execution_id"]})
             if execution: context.append(f"Release / Cycle: {execution['manifest']['release_cycle']}")
-        return BugDraft(title=f"Failure: {case['title']}"[:240], summary="Human-reported failure; review reproduction details before sharing.",
+        prefix = "Blocked" if row["verdict"] == "blocked" else "Failure"
+        return BugDraft(title=f"{prefix}: {case['title']}"[:240], summary=f"Human-reported {row['verdict']} result; review reproduction details before sharing.",
             steps=[s["instruction"] for s in case["procedure"]],
             expected_result="\n".join([s["expected"] for s in case["procedure"]] + case.get("assertions", []))[:8000],
             actual_result=row["actual_result"], context="\n".join(context)[:4000], missing_information=missing).model_dump()

@@ -8,7 +8,7 @@ test('story list and detail keep approval separate from an outdated comparison',
  const headers={'access-control-allow-origin':base,'access-control-allow-credentials':'true','access-control-allow-headers':'content-type','access-control-allow-methods':'GET,POST,OPTIONS'};
  await f.context.route(url=>url.pathname===root+'/analysis-summaries',route=>route.fulfill({headers,json:{ST1:summary}}));
  await f.context.route(url=>url.pathname===root+'/stories/ST1/analysis',route=>route.fulfill({headers,json:{...summary,analysis_id:'a'.repeat(32),status:'reviewed',analysis_mode:'knowledge_aware',stale:true,summary:'Old comparison',findings:[{finding_id:'F1',category:'missing_detail',severity:'blocker',description:'Old missing detail',question:'Previous question'}]}}));
- await f.page.goto(base+'/projects/P1/stories');await f.page.getByRole('columnheader',{name:'Story approval',exact:true}).waitFor();
+ await f.page.goto(base+'/projects/P1/stories');await f.page.getByRole('columnheader',{name:'Status',exact:true}).waitFor();
  await f.page.getByRole('link',{name:'Approved',exact:true}).waitFor();await f.page.getByRole('link',{name:'Needs refresh',exact:true}).waitFor();
  await f.page.getByText('0 unresolved findings · 0 blockers',{exact:true}).waitFor();
  await f.page.getByRole('link',{name:'Save draft',exact:true}).click();await f.page.getByRole('status').filter({hasText:/^Approved$/}).waitFor();
