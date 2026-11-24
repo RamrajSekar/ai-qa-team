@@ -1,5 +1,20 @@
 # Test Design UI/UX refresh
 
+## Overview and prompt refinements (2026-11-24)
+
+Prompt and Overview Environment rows link only their title/description. Titles use
+the accent color and underline on hover or keyboard focus; descriptions are muted,
+and metadata/badges remain outside the link. These scoped styles override the
+general underlined-link rule without changing other workspace links.
+
+Account names render without a surrounding box, with the pencil beside the name;
+existing validation, permissions and blur/Enter autosave remain. Project names
+offer an adjacent pencil and inline blur/Enter save; Escape cancels, failed saves
+retain the draft and only the name field is submitted. Project description editing
+remains under Project actions > Edit project details. Agent Settings is hidden in
+the Overview menu for MVP; the underlying component, backend and stored identities
+remain preserved. No API, data migration, AI or execution behavior changes.
+
 2026-11-13 superseding catalog amendment: Scenarios and Test Cases now use tables
 with on-demand review; manual result and Release/Cycle execution UI is documented in
 [MANUAL_TEST_EXECUTION](MANUAL_TEST_EXECUTION.md). The automated Lab/execution/history

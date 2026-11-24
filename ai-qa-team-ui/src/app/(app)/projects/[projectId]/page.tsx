@@ -1,17 +1,15 @@
 'use client';
-import { IconAction } from "@/components/ui/icon-action";
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { MoreHorizontal, Plus, ArrowUpRight, History, Globe } from 'lucide-react';
+import { MoreHorizontal, Plus, ArrowUpRight, History, Globe, Pencil } from 'lucide-react';
 import EnvironmentModal from '@/components/environment/EnvironmentModal';
 import PendingReviews from '@/components/projects/PendingReviews';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { apiFetch } from '@/utils/api';
 import EditProjectModal from '@/components/projects/EditProjectModal';
-import AgentSettingsModal from '@/components/projects/AgentSettingsModal';
 import DeleteProjectModal from '@/components/projects/DeleteProjectModal';
 
 // ---------------------- Types ----------------------
@@ -81,7 +79,6 @@ export default function ProjectPage() {
   const storiesEnabled = enabled("story_management");
   const scenariosEnabled = storiesEnabled && enabled("scenario_generation");
   const testsEnabled = enabled("test_generation");
-  const agentsEnabled = enabled("recorder") || enabled("scenario_generation") || enabled("test_generation") || enabled("native_execution");
   const params = useParams();
   const router = useRouter();
   const projectId = params.projectId as string;
@@ -89,6 +86,12 @@ export default function ProjectPage() {
   const [loading, setLoading] = useState(true);
   const [detailStates,setDetailStates]=useState({stories:"loading",testcases:"loading",environments:"loading"});
   const [project, setProject] = useState<Project | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [projectName, setProjectName] = useState('');
+  const [savingName, setSavingName] = useState(false);
+  const [nameError, setNameError] = useState('');
+  const nameSavePending = useRef(false);
+  const nameEditCancelled = useRef(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [historyError, setHistoryError] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
@@ -99,7 +102,6 @@ export default function ProjectPage() {
 
   const [openEnvironmentModal, setOpenEnvironmentModal] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
-  const [openAgentModal, setOpenAgentModal] = useState(false);
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
 
   const [stories, setStories] = useState<Story[]>([]);
@@ -197,21 +199,44 @@ export default function ProjectPage() {
   }
 
   const canManage = project.current_user_role === "ADMIN";
+  async function saveProjectName() {
+    if (nameSavePending.current || nameEditCancelled.current) return;
+    const value = projectName.trim();
+    if (!value) { setNameError('Enter a project name.'); return; }
+    if (value === project!.name) { setEditingName(false); return; }
+    nameSavePending.current = true; setSavingName(true); setNameError('');
+    try {
+      const response = await apiFetch(`/projects/${encodeURIComponent(projectId)}`, {method:'PATCH',body:JSON.stringify({name:value})});
+      if (!response.ok) throw new Error(typeof response.data?.detail === 'string' ? response.data.detail : 'Could not save project name.');
+      setProject(current => current?.project_id === projectId ? {...current,name:value} : current);
+      setEditingName(false);
+      window.dispatchEvent(new Event('projects-updated'));
+    } catch (failure) { setNameError(failure instanceof Error ? failure.message : 'Could not save project name.'); }
+    finally { nameSavePending.current = false; setSavingName(false); }
+  }
   return (
     <div>
       <div className="workspace-page-header">
         <div>
           <p className="workspace-eyebrow">Project overview</p>
-          <h1>{project.name}</h1>
+          <div className="workspace-name-row">
+            {editingName ? <input className="project-name-input" aria-label="Project name" autoFocus value={projectName} disabled={savingName}
+              onChange={event=>setProjectName(event.target.value)} onBlur={()=>void saveProjectName()}
+              onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();event.currentTarget.blur();}if(event.key==='Escape'){event.preventDefault();nameEditCancelled.current=true;setEditingName(false);setNameError('');}}} /> : <>
+              <h1>{project.name}</h1>
+              {canManage && <button type="button" className="workspace-name-pencil" aria-label="Edit project name" title="Edit project name" onClick={()=>{nameEditCancelled.current=false;setProjectName(project.name);setNameError('');setEditingName(true);}}><Pencil size={16} aria-hidden="true" /></button>}
+            </>}
+          </div>
+          {savingName && <p role="status" className="workspace-metadata">Saving...</p>}
+          {nameError && <p role="alert">{nameError}</p>}
           <p className="workspace-description">{project.description || "Manage your environments and review your execution history."}</p>
           <p className="workspace-metadata">{project.display_id || project.project_id} · Created {new Date(project.created_at).toLocaleDateString()}</p>
         </div>
         {canManage && <div className="workspace-actions">
-          <IconAction action="edit" label="Edit Project" onClick={() => setOpenEditModal(true)} />
           <DropdownMenu>
             <DropdownMenuTrigger asChild><button className="workspace-button" aria-label="Project actions"><MoreHorizontal size={18} /></button></DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {agentsEnabled && <DropdownMenuItem onSelect={() => setOpenAgentModal(true)}>Agent Settings</DropdownMenuItem>}
+              <DropdownMenuItem onSelect={() => setOpenEditModal(true)}>Edit project details</DropdownMenuItem>
               <DropdownMenuItem variant="destructive" onSelect={() => setOpenDeleteModal(true)} aria-label="Delete project">Delete</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -230,10 +255,10 @@ export default function ProjectPage() {
           {canManage && <button className="workspace-button workspace-primary" onClick={() => setOpenEnvironmentModal(true)}><Plus size={15} />Add environment</button>}
         </div>
         {detailStates.environments==="loading"?<p role="status">Loading environments…</p>:detailStates.environments==="unavailable"?<p>Project summaries unavailable. Reload to try again.</p>:environments.length ? <div className="workspace-panel-body">
-          {environments.map((env) => <Link className="workspace-row" key={env.env_id || env.id} href={`/projects/${projectId}/environments`}>
-            <div><div className="workspace-row-title">{env.name || env.env_type?.toUpperCase() || "Environment"}</div><div className="workspace-row-subtitle">{env.base_url || env.url || env.env_id}</div></div>
+          {environments.map((env) => <div className="workspace-row" key={env.env_id || env.id}><Link className="workspace-summary-link min-w-0" href={`/projects/${projectId}/environments`}>
+            <div className="workspace-row-title">{env.name || env.env_type?.toUpperCase() || "Environment"}</div><div className="workspace-row-subtitle">{env.base_url || env.url || env.env_id}</div></Link>
             <span className="workspace-badge">{env.env_type}</span><ArrowUpRight size={16} aria-hidden="true" />
-          </Link>)}
+          </div>)}
         </div> : <div className="workspace-empty"><Globe size={24} /><strong>No environments configured</strong>{canManage ? "Add your first environment to keep project settings in one place." : "A Project Admin can add an environment."}</div>}
       </section>
       {canManage && <EnvironmentModal open={openEnvironmentModal} onClose={() => setOpenEnvironmentModal(false)} mode="create" projectId={projectId} onSaved={loadAll} />}
@@ -254,13 +279,6 @@ export default function ProjectPage() {
         onUpdated={loadAll}
       />}
 
-      {canManage && agentsEnabled && <AgentSettingsModal
-        open={openAgentModal}
-        onClose={() => setOpenAgentModal(false)}
-        projectId={project.project_id}
-        initialAgents={project.agent_identities}
-        onUpdated={loadAll}
-      />}
 
       {canManage && <DeleteProjectModal
         open={openDeleteModal}
