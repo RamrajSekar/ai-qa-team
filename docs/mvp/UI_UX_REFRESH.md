@@ -15,6 +15,15 @@ remains under Project actions > Edit project details. Agent Settings is hidden i
 the Overview menu for MVP; the underlying component, backend and stored identities
 remain preserved. No API, data migration, AI or execution behavior changes.
 
+Verification: production UI build/TypeScript and scoped lint passed (the existing
+effect rule is excluded). Five new intercepted-API browser checks passed for
+desktop/mobile link styling, inline saves/cancellation, account name layout and
+member restrictions. Existing account-name save/error and appearance regressions
+also passed. Captured desktop/mobile layouts were inspected. The first browser
+attempt used an overly broad route fixture that intercepted page navigation; the
+corrected fixture restricts interception to the synthetic API origin. No live
+account, model or production data was exercised.
+
 2026-11-13 superseding catalog amendment: Scenarios and Test Cases now use tables
 with on-demand review; manual result and Release/Cycle execution UI is documented in
 [MANUAL_TEST_EXECUTION](MANUAL_TEST_EXECUTION.md). The automated Lab/execution/history

@@ -12,21 +12,21 @@ async function setup(t,{member=false}={}){
  const user={email:'fixture@example.com',name:'Fixture',platform_role:'ADMIN',account_role:member?'MEMBER':'OWNER',account_id:'ACC_one',onboarding:{onboarding_status:'completed'},subscription:{usage:{},limits:{}}};
  const project={project_id:'P1',name:'Customer portal',description:'Project details',created_at:'2026-11-01',current_user_role:member?'TESTER':'ADMIN',agent_identities:{}};
  const account={account_id:'ACC_one',name:'Customer One',current_user_role:member?'MEMBER':'OWNER',setup_status:'COMPLETE'};
- await f.context.route(url=>url.pathname==='/auth/me',r=>r.fulfill({headers,json:{user}}));
- await f.context.route(url=>url.pathname==='/features',r=>r.fulfill({headers,json:{customer_accounts:true}}));
- await f.context.route(url=>url.pathname==='/projects/P1',r=>{
+ await f.context.route(url=>url.origin==='http://feature-api.test'&&url.pathname==='/auth/me',r=>r.fulfill({headers,json:{user}}));
+ await f.context.route(url=>url.origin==='http://feature-api.test'&&url.pathname==='/features',r=>r.fulfill({headers,json:{customer_accounts:true}}));
+ await f.context.route(url=>url.origin==='http://feature-api.test'&&url.pathname==='/projects/P1',r=>{
   if(r.request().method()==='OPTIONS')return r.fulfill({headers,status:204});
   if(r.request().method()==='PATCH'){const body=r.request().postDataJSON();writes.push(body);Object.assign(project,body);}
   return r.fulfill({headers,json:project});
  });
- await f.context.route(url=>url.pathname==='/account',r=>{
+ await f.context.route(url=>url.origin==='http://feature-api.test'&&url.pathname==='/account',r=>{
   if(r.request().method()==='OPTIONS')return r.fulfill({headers,status:204});
   if(r.request().method()==='PATCH'){const body=r.request().postDataJSON();writes.push(body);Object.assign(account,body);}
   return r.fulfill({headers,json:account});
  });
- await f.context.route(url=>url.pathname==='/account/subscription',r=>r.fulfill({headers,json:{billing_scope:'ACCOUNT',subscription:{plan:'free',status:'active',usage:{},limits:{}}}}));
- await f.context.route(url=>url.pathname==='/environments',r=>r.fulfill({headers,json:[{env_id:'ENV1',name:'QA',env_type:'qa',base_url:'https://qa.example.com'}]}));
- await f.context.route(url=>url.pathname==='/platform-admin/prompts',r=>r.fulfill({headers,json:[{prompt_key:'KNOWLEDGE_ASK_V1',name:'Ask Your QA Agent',description:'Answer from approved knowledge.',output_contract:'KnowledgeAnswer',source:'CODE_FALLBACK',resolved_version:'CODE_DEFAULT_V1'}]}));
+ await f.context.route(url=>url.origin==='http://feature-api.test'&&url.pathname==='/account/subscription',r=>r.fulfill({headers,json:{billing_scope:'ACCOUNT',subscription:{plan:'free',status:'active',usage:{},limits:{}}}}));
+ await f.context.route(url=>url.origin==='http://feature-api.test'&&url.pathname==='/environments',r=>r.fulfill({headers,json:[{env_id:'ENV1',name:'QA',env_type:'qa',base_url:'https://qa.example.com'}]}));
+ await f.context.route(url=>url.origin==='http://feature-api.test'&&url.pathname==='/platform-admin/prompts',r=>r.fulfill({headers,json:[{prompt_key:'KNOWLEDGE_ASK_V1',name:'Ask Your QA Agent',description:'Answer from approved knowledge.',output_contract:'KnowledgeAnswer',source:'CODE_FALLBACK',resolved_version:'CODE_DEFAULT_V1'}]}));
  return {...f,writes,headers};
 }
 for(const width of [1280,390])test(`summary links have clean title/description styling at ${width}px`,async t=>{
