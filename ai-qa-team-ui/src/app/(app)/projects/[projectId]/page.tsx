@@ -5,12 +5,14 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MoreHorizontal, Plus, ArrowUpRight, History, Globe, Pencil } from 'lucide-react';
-import EnvironmentModal from '@/components/environment/EnvironmentModal';
+import dynamic from "next/dynamic";
 import PendingReviews from '@/components/projects/PendingReviews';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { apiFetch } from '@/utils/api';
-import EditProjectModal from '@/components/projects/EditProjectModal';
-import DeleteProjectModal from '@/components/projects/DeleteProjectModal';
+
+const EnvironmentModal = dynamic(() => import('@/components/environment/EnvironmentModal'), {ssr:false});
+const EditProjectModal = dynamic(() => import('@/components/projects/EditProjectModal'), {ssr:false});
+const DeleteProjectModal = dynamic(() => import('@/components/projects/DeleteProjectModal'), {ssr:false});
 
 // ---------------------- Types ----------------------
 interface Project {
@@ -261,7 +263,7 @@ export default function ProjectPage() {
           </div>)}
         </div> : <div className="workspace-empty"><Globe size={24} /><strong>No environments configured</strong>{canManage ? "Add your first environment to keep project settings in one place." : "A Project Admin can add an environment."}</div>}
       </section>
-      {canManage && <EnvironmentModal open={openEnvironmentModal} onClose={() => setOpenEnvironmentModal(false)} mode="create" projectId={projectId} onSaved={loadAll} />}
+      {canManage && openEnvironmentModal && <EnvironmentModal open={openEnvironmentModal} onClose={() => setOpenEnvironmentModal(false)} mode="create" projectId={projectId} onSaved={loadAll} />}
       {automationEnabled && <section id="execution-history" className="workspace-panel" aria-labelledby="history-title">
         <div className="workspace-panel-header"><h2 id="history-title">Execution history</h2><Link href={`/projects/${projectId}/execution-history`}>View history →</Link>{!historyError && !historyLoading && <span className="workspace-badge">{executions.length} recorded</span>}</div>
         {historyLoading ? <p className="workspace-empty" role="status">Loading execution history…</p>
@@ -272,7 +274,7 @@ export default function ProjectPage() {
 
       {/* --- Modals --- */}
 
-      {canManage && <EditProjectModal
+      {canManage && openEditModal && <EditProjectModal
         open={openEditModal}
         onClose={() => setOpenEditModal(false)}
         project={project}
@@ -280,7 +282,7 @@ export default function ProjectPage() {
       />}
 
 
-      {canManage && <DeleteProjectModal
+      {canManage && openDeleteModal && <DeleteProjectModal
         open={openDeleteModal}
         onClose={() => setOpenDeleteModal(false)}
         projectId={project.project_id}

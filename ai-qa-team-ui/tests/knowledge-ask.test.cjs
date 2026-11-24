@@ -42,11 +42,12 @@ test('Ask is gated and never sends a question on navigation',async t=>{
  assert.equal(f.calls.filter(c=>c.path.endsWith('/ask')).length,0);
 });
 
-test('Ask is initially selected when enabled without consuming an AI request',async t=>{
+test('Teach is first and initially selected even when Ask is enabled',async t=>{
  const {page,calls}=await fixture(browser,t,{ask:true});await page.goto(base+'/projects/P1/knowledge');
- const tab=page.getByRole('tab',{name:'Ask',exact:true});await tab.waitFor();
+ const tab=page.getByRole('tab',{name:'Teach',exact:true});await tab.waitFor();
  assert.equal(await tab.getAttribute('aria-selected'),'true');
- assert.equal(await page.getByLabel('Your question',{exact:true}).inputValue(),'');
+ assert.deepEqual(await page.getByRole('tablist',{name:'QA Agent workflow'}).getByRole('tab').allTextContents(),['Teach','Ask','Review (0)','Approved']);
+ assert.equal(await page.getByLabel('Your question',{exact:true}).count(),0);
  assert.equal(calls.filter(call=>call.path.endsWith('/ask')).length,0);
 });
 

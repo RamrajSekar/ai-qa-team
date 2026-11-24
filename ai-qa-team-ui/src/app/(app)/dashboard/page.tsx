@@ -4,11 +4,13 @@ import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 
 import { useState } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
-import CreateProjectModal from "@/components/projects/CreateProjectModal";
-import ExecutionTrendChart from "@/components/dashboard/ExecutionTrendChart";
-import OnboardingModal from "@/components/onboarding/OnboardingModal";
+import dynamic from "next/dynamic";
 import { useProjects } from "@/hooks/useProjects";
 import Link from "next/link";
+
+const CreateProjectModal = dynamic(() => import("@/components/projects/CreateProjectModal"), {ssr:false});
+const ExecutionTrendChart = dynamic(() => import("@/components/dashboard/ExecutionTrendChart"), {ssr:false});
+const OnboardingModal = dynamic(() => import("@/components/onboarding/OnboardingModal"), {ssr:false});
 
 export default function DashboardPage() {
   const { enabled } = useFeatures();
@@ -114,12 +116,12 @@ export default function DashboardPage() {
       </div>
 
       {/* CREATE PROJECT MODAL */}
-      <CreateProjectModal
+      {openProjectModal && <CreateProjectModal
         open={openProjectModal}
         onClose={() => setOpenProjectModal(false)}
         onCreated={async () => { await Promise.all([loadProjects(), refreshSubscription()]); }}
         createdBy={user.email}
-      />
+      />}
     </div>
   );
 }

@@ -1,5 +1,13 @@
 # Test Design UI/UX refresh
 
+## QA Agent and Admin Dashboard follow-up (2026-11-24)
+
+Teach is the initial QA Agent tab and appears first, followed by Ask (when enabled),
+Review and Approved. Explicit review and approved-evidence links retain their
+destination. Navigation still does not submit a question or start extraction.
+Admin Dashboard prompt management uses the same scoped title/description link
+styling as the prompt catalogue; its decorative arrow is outside the link.
+
 ## Overview and prompt refinements (2026-11-24)
 
 Prompt and Overview Environment rows link only their title/description. Titles use
