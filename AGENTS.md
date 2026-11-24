@@ -273,3 +273,13 @@ existing gateway, and never auto-retry uncertain questions. Questions/answers ar
 not persisted. Envelope/KMS code is disabled preparation, not encrypted Mongo
 storage. `knowledge_encryption_required` fails closed pending cutover; keep false
 until storage integration/migration is reviewed. No confidential-customer readiness.
+
+Jira story import (2026-11-15): see `docs/mvp/JIRA_STORY_IMPORT.md`. Default-off
+`jira_story_import` uses Atlassian OAuth sign-in, encrypted project connections and fixed Jira Cloud GET endpoints
+and explicit reviewed snapshots. No sync, AI call or write-back. Real Jira and Mongo
+transaction qualification remain prerequisites before enabling.
+
+Jira OAuth (2026-11-16): user-bound single-use consent, expiring encrypted selection
+grants and discovered site/project choices. No offline access/refresh token yet;
+expired access requires reconnect. Keep disabled pending app provisioning and live
+qualification. New connections are OAuth-only; token setup and its flag are removed. Preserve reads of existing encrypted token connections.

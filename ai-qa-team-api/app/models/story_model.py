@@ -16,6 +16,8 @@ class StoryCreate(BaseModel):
         from_attributes = True
 
 class StoryResponse(BaseModel):
+    jira_issue_key: Optional[str] = None
+    jira_url: Optional[str] = None
     id: Optional[str] = None
     project_id: str
     story_id: str

@@ -55,6 +55,11 @@ async def init_indexes():
     ])
     add("ai_usage_records", [("billing_owner", 1), ("billing_period_start", 1)])
     add("ai_usage_records", [("account_id", 1), ("billing_period_start", 1)])
+    add("jira_import_previews", "expires_at", expireAfterSeconds=0)
+
+    for collection in ("jira_oauth_flows", "jira_oauth_grants"):
+        add(collection, "expires_at", expireAfterSeconds=0)
+
     add("requirement_contexts", [("project_id", 1), ("story_id", 1), ("record_type", 1), ("created_at", -1)])
 
     add("product_knowledge_versions", [("scope_project_id", 1), ("record_type", 1)])

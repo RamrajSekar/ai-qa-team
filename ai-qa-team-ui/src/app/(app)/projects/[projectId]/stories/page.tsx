@@ -8,6 +8,7 @@ import { apiFetch } from "@/utils/api";
 import { Plus } from "lucide-react";
 import { IconAction } from "@/components/ui/icon-action";
 import type { Story } from "@/types/story";
+import JiraImport from "@/components/story/JiraImport";
 import StoryReviewStatus, {type StoryReviewSummary} from "@/components/story/StoryReviewStatus";
 import StoryModal from "@/components/story/StoryModal";
 import { WorkspaceDialog } from "@/components/ui/workspace-dialog";
@@ -25,6 +26,7 @@ export default function StoriesPage() {
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [jiraOpen,setJiraOpen]=useState(false);
   const [openModal, setOpenModal] = useState(false);
   const [editStory, setEditStory] = useState<Story | null>(null);
   const [openRecorder, setOpenRecorder] = useState(false);
@@ -112,6 +114,8 @@ export default function StoriesPage() {
         </button>
       </div>
 
+      {enabled("jira_story_import","story_management")&&<button className="workspace-button" onClick={()=>setJiraOpen(true)}>Import from Jira</button>}
+      {jiraOpen&&<JiraImport projectId={projectId} onClose={()=>setJiraOpen(false)} onImported={loadStories} />}
       {!loading && !loadError && <DesignStats items={[{ label: "Stories loaded", value: stories.length }, { label: "With acceptance criteria", value: stories.filter(item => item.acceptance_criteria?.trim()).length }, { label: "Need acceptance criteria", value: stories.filter(item => !item.acceptance_criteria?.trim()).length }]} />}
       <div className="design-guide"><strong>Start with a clear requirement</strong><p>Add acceptance criteria, review story analysis, then generate scenarios and detailed test cases.</p></div>
       <DesignToolbar query={query} onQuery={setQuery} placeholder="Search stories" />

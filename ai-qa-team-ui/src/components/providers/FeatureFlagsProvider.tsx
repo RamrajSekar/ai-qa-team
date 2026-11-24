@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { apiFetch } from "@/utils/api";
 
 export type FeatureName =
+  | "jira_story_import"
   | "knowledge_ask"
   | "knowledge_uploads" | "knowledge_media_processing" | "knowledge_image_interpretation"
   | "manual_test_results" | "automation_execution_ui" | "separate_ai_allowances" | "test_execution_ui" | "account_invitation_email" | "customer_accounts" | "account_subscriptions" | "story_management" | "scenario_generation" | "test_generation" | "recorder"
