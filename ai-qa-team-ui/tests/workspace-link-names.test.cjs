@@ -70,3 +70,11 @@ test('members cannot edit either name',async t=>{
  await page.goto(base+'/settings/account');await page.getByText('Customer One',{exact:true}).waitFor();
  assert.equal(await page.getByRole('button',{name:'Edit account name',exact:true}).count(),0);assert.deepEqual(writes,[]);
 });
+test('Admin Dashboard links only the prompt title and description',async t=>{
+ const {page}=await setup(t);await page.goto(base+'/platform-admin');
+ const link=page.locator('a.workspace-summary-link');await link.waitFor();
+ assert.equal(await link.getAttribute('href'),'/platform-admin/prompts');
+ assert.equal(await link.evaluate(el=>getComputedStyle(el).textDecorationLine),'none');
+ assert.equal(await link.locator('.workspace-row-subtitle').evaluate(el=>getComputedStyle(el).textDecorationLine),'none');
+ assert.equal(await link.locator('..').locator('span[aria-hidden="true"]').evaluate(el=>el.closest('a')===null),true);
+});

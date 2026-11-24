@@ -28,7 +28,7 @@ function QAAgentWorkspace({projectId}:{projectId:string}) {
   const [ready,setReady] = useState(false);
   const [sessions,setSessions] = useState<TrainingSession[]>([]);
   const [selected,setSelected] = useState<TrainingSession | null>(null);
-  const [tab,setTab] = useState<"ask"|"teach"|"review"|"approved">(enabled("knowledge_ask") ? "ask" : "teach");
+  const [tab,setTab] = useState<"ask"|"teach"|"review"|"approved">("teach");
   const [epoch,setEpoch] = useState(0);
   const [title,setTitle] = useState(""); const [text,setText] = useState("");
   const [kind,setKind] = useState<Source["kind"]>("document");
@@ -86,7 +86,7 @@ function QAAgentWorkspace({projectId}:{projectId:string}) {
 
   return <div className="design-page">
     <header><p className="workspace-eyebrow">QA Agent</p><h1>Your QA Agent</h1><p className="workspace-description">Teach and approve project knowledge. The underlying AI model is not trained.</p></header>
-    <div className="workspace-actions" role="tablist" aria-label="QA Agent workflow">{((enabled("knowledge_ask") ? ["ask","teach","review","approved"] : ["teach","review","approved"]) as ("ask"|"teach"|"review"|"approved")[]).map(value=><button key={value} id={`tab-${value}`} role="tab" aria-selected={tab===value} aria-controls={`panel-${value}`} className={`workspace-button ${tab===value ? "workspace-primary" : ""}`} disabled={reviewPending || busy || (!ready && value!=="teach")} onClick={()=>setTab(value)}>{value === "ask" ? "Ask" : value === "teach" ? "Teach" : value === "review" ? `Review (${sessions.filter(item=>item.state!=="rejected"&&item.saved_version?.status!=="approved").length})` : "Approved"}</button>)}</div>
+    <div className="workspace-actions" role="tablist" aria-label="QA Agent workflow">{((enabled("knowledge_ask") ? ["teach","ask","review","approved"] : ["teach","review","approved"]) as ("ask"|"teach"|"review"|"approved")[]).map(value=><button key={value} id={`tab-${value}`} role="tab" aria-selected={tab===value} aria-controls={`panel-${value}`} className={`workspace-button ${tab===value ? "workspace-primary" : ""}`} disabled={reviewPending || busy || (!ready && value!=="teach")} onClick={()=>setTab(value)}>{value === "ask" ? "Ask" : value === "teach" ? "Teach" : value === "review" ? `Review (${sessions.filter(item=>item.state!=="rejected"&&item.saved_version?.status!=="approved").length})` : "Approved"}</button>)}</div>
     <DesignStats items={[{label:"Approved rules",value:ready?(current?.claims.length||0):"Loading…"},{label:"Pending reviews",value:ready?sessions.filter(item=>item.state!=="rejected"&&item.saved_version?.status!=="approved").length:"Loading…"}]} />
     {enabled("knowledge_ask")&&<div id="panel-ask" role="tabpanel" aria-labelledby="tab-ask" hidden={tab!=="ask"}>{tab==="ask"&&<AskKnowledge key={base} base={base} onInspect={id=>void inspect(id)} onCorrect={id=>void revise(id,"correction")} />}</div>}
     {!ready&&<p role={error?"alert":"status"}>{error||"Loading saved knowledge and reviews…"}{error&&<button className="workspace-button" onClick={()=>void act(async()=>{await load();})}>Reload knowledge</button>}</p>}

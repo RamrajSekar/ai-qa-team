@@ -86,6 +86,45 @@ class AccountsTests(unittest.IsolatedAsyncioTestCase):
     async def owner(self, email="owner@example.com"):
         return await self.service.register({"email": email, "name": "Customer", "role": "admin", "password": "hash", "platform_role": "NONE", "subscription": {"sentinel": "unchanged"}})
 
+    async def test_project_list_reuses_active_memberships_without_per_project_reads(self):
+        owner = await self.owner()
+        for index in range(25):
+            identity = f'PRJ{index}'
+            self.db['projects'].docs.append({'_id':ObjectId(),'account_id':owner['account_id'],'project_id':identity,
+                'name':identity,'created_by':owner['email'],'created_at':'2026-11-24','agent_identities':{}})
+            self.db['project_memberships'].docs.append({'project_id':identity,'email':owner['email'],
+                'status':'ACTIVE','role':'ADMIN','account_id':owner['account_id']})
+        self.db['projects'].docs.append({'_id':ObjectId(),'project_id':'FOREIGN','created_by':owner['email'],'account_id':'ACC_other'})
+        with patch.object(project_routes,'require_project_member',new=AsyncMock(side_effect=AssertionError('Repeated authorization read'))), \
+             patch.object(self.db['projects'],'find',wraps=self.db['projects'].find) as projects, \
+             patch.object(self.db['project_memberships'],'find',wraps=self.db['project_memberships'].find) as memberships:
+            rows = await project_routes.list_projects(dict(owner))
+        self.assertEqual(len(rows),25)
+        self.assertTrue(all(row.current_user_role=='ADMIN' for row in rows))
+        self.assertEqual(projects.call_count,2)
+        self.assertEqual(memberships.call_count,1)
+
+    async def test_project_list_preserves_legacy_creator_backfill(self):
+        settings.features=FeatureFlags(customer_accounts=False)
+        user={'_id':ObjectId(),'email':'legacy@example.com'}
+        self.db['projects'].docs.append({'_id':ObjectId(),'project_id':'P1','name':'Legacy',
+            'created_by':user['email'],'created_at':'2026-11-24','agent_identities':{}})
+        with patch.object(project_authorization,'get_next_sequence',new=AsyncMock(return_value='MEM1')):
+            rows=await project_routes.list_projects(user)
+        self.assertEqual([row.project_id for row in rows],['P1'])
+        self.assertEqual(rows[0].current_user_role,'ADMIN')
+        self.assertEqual(len(self.db['project_memberships'].docs),1)
+
+    async def test_project_list_does_not_restore_revoked_creator_membership(self):
+        owner=await self.owner()
+        self.db['projects'].docs.append({'_id':ObjectId(),'project_id':'P1','account_id':owner['account_id'],
+            'name':'Revoked','created_by':owner['email'],'created_at':'2026-11-24','agent_identities':{}})
+        self.db['project_memberships'].docs.append({'project_id':'P1','email':owner['email'],'status':'INACTIVE','role':'ADMIN'})
+        with self.assertRaises(HTTPException) as error:
+            await project_routes.list_projects(dict(owner))
+        self.assertEqual(error.exception.status_code,404)
+        self.assertEqual(self.db['project_memberships'].docs[0]['status'],'INACTIVE')
+
     def client(self, user):
         app = FastAPI(); app.include_router(account_routes.router)
         app.dependency_overrides[account_routes.get_current_user] = lambda: dict(user)

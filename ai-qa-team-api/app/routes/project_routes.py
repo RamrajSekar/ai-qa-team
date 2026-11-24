@@ -102,12 +102,18 @@ async def list_projects(current_user=Depends(get_current_user)):
     account_scope = {"account_id": account["_id"]} if account else {}
     account_email = current_user.get("email", "")
     email = account_email.lower()
-    # Backfill only projects whose legacy creator is unambiguous.
-    owned = await db["projects"].find({"created_by": account_email, **account_scope}).to_list(500)
-    for project in owned:
-        await require_project_member(project["project_id"], current_user)
     memberships = await db["project_memberships"].find({"email": email, "status": "ACTIVE"}).to_list(500)
     roles = {membership["project_id"]: membership["role"] for membership in memberships}
+    # Backfill only projects whose legacy creator is unambiguous.
+    owned = await db["projects"].find({"created_by": account_email, **account_scope}).to_list(500)
+    backfilled = False
+    for project in owned:
+        if project["project_id"] not in roles:
+            await require_project_member(project["project_id"], current_user)
+            backfilled = True
+    if backfilled:
+        memberships = await db["project_memberships"].find({"email": email, "status": "ACTIVE"}).to_list(500)
+        roles = {membership["project_id"]: membership["role"] for membership in memberships}
     cursor = db["projects"].find({"project_id": {"$in": list(roles)}, **account_scope})
     projects = []
 

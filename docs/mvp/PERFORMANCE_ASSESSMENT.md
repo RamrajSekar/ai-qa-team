@@ -1,5 +1,31 @@
 # Navigation performance — 2026-11-13
 
+## Dashboard/Overview follow-up — 2026-11-24
+
+Code review found that /projects called require_project_member serially for every
+owned project even when an active membership already existed. The list now loads
+active memberships once and invokes the existing authorization/backfill path only
+for owned projects missing from that set. Account authority is still reloaded and
+the final project query remains account-scoped. Legacy creator backfill and revoked
+creator denial are preserved. An isolated 25-project fixture verifies two project
+finds and one membership find with no per-project authorization calls.
+
+Dashboard's chart/onboarding/create dialogs and Overview's environment/edit/delete
+dialogs are now dynamically imported. Dialogs mount on explicit open; execution
+charts remain behind existing feature gates. This reduces eager dependencies on
+normal navigation without caching private records or changing API/AI side effects.
+
+Verification: 32 account integration and 25 feature-policy fixture tests passed;
+44 intercepted-API browser tests passed across account/onboarding, existing design
+navigation, Ask/tab defaults, inline names and Admin links. Production UI
+build/TypeScript, scoped lint (existing effect rule excluded) and whitespace checks
+passed. No dependency, counter policy or database index changes were introduced.
+
+These are verified code/query-shape contributors, not measured production page
+percentiles. Signed-in production navigation timing is unavailable because the
+Windows browser tool could not confidently identify the active browser URL. No
+production load test, index change or service configuration change is performed.
+
 Priority: resolve slow login/workspace navigation before further product features.
 Assessment baseline: `dev`, `e3519d095364fa3c603df59b5ed4ce1450b371e6`.
 The changes described below are local and have not been deployed or measured in production.
