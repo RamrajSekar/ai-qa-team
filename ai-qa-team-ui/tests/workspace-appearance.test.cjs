@@ -52,7 +52,8 @@ test('appearance persists, follows system, styles dialogs, and keeps disabled fe
   await page.waitForFunction(()=>getComputedStyle(document.querySelector('.workspace-shell')).display === 'flex');
   assert.equal(await page.evaluate(()=>localStorage.getItem('qa-workspace-appearance')),'dark');
   await page.screenshot({path:process.env.WORKSPACE_DARK_SCREENSHOT || 'tests/workspace-dark.png',fullPage:true});
-  await page.getByRole('button',{name:'Edit Project',exact:true}).click();
+  await page.getByRole('button',{name:'Project actions',exact:true}).click();
+  await page.getByRole('menuitem',{name:'Edit project details',exact:true}).click();
   const dialog = page.getByRole('dialog');
   await dialog.waitFor();
   assert.equal(await dialog.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(28, 32, 42)');
