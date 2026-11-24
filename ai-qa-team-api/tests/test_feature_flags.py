@@ -89,6 +89,57 @@ class FeatureFlagTests(unittest.TestCase):
         db["users"].find_one.return_value = self.user
         self.client.headers["Authorization"] = "Bearer " + create_access_token({"email": self.email})
 
+    def enable_quota_transactions(self):
+        """Run real quota callbacks against isolated async session/receipt doubles.
+
+        This models one-request persistence, not Mongo concurrency or rollback.
+        """
+        self.quota_receipts = {}
+        session = MagicMock()
+        session.__aenter__ = AsyncMock(return_value=session)
+        session.__aexit__ = AsyncMock(return_value=False)
+
+        async def transact(work, **options):
+            self.assertEqual(options["read_concern"].level, "snapshot")
+            return await work(session)
+
+        session.with_transaction = AsyncMock(side_effect=transact)
+        db.client.start_session = AsyncMock(return_value=session)
+        receipts = db["resource_quota_reservations"]
+
+        async def find_receipt(query, **kwargs):
+            return copy.deepcopy(self.quota_receipts.get(query["_id"]))
+
+        async def insert_receipt(record, **kwargs):
+            self.quota_receipts[record["_id"]] = copy.deepcopy(record)
+
+        def apply_update(record, update):
+            for operator, fields in update.items():
+                self.assertIn(operator, ("$inc", "$set"))
+                for path, value in fields.items():
+                    target = record
+                    parts = path.split(".")
+                    for part in parts[:-1]:
+                        target = target.setdefault(part, {})
+                    target[parts[-1]] = target.get(parts[-1], 0) + value if operator == "$inc" else copy.deepcopy(value)
+
+        async def update_receipt(query, update, **kwargs):
+            apply_update(self.quota_receipts[query["_id"]], update)
+            return MagicMock(matched_count=1)
+
+        async def update_owner(query, update, **kwargs):
+            if "_id" in query:
+                self.assertEqual(query["_id"], self.user["_id"])
+            else:
+                self.assertIn("$or", query)  # Legacy subscription healing query.
+            apply_update(self.user, update)
+            return MagicMock(matched_count=1)
+
+        receipts.find_one.side_effect = find_receipt
+        receipts.insert_one.side_effect = insert_receipt
+        receipts.update_one.side_effect = update_receipt
+        db["users"].update_one.side_effect = update_owner
+
     def test_defaults_and_environment_overrides_preserve_core_settings(self):
         with patch.dict(os.environ, TEST_ENV):
             baseline = Settings(_env_file=None)
@@ -169,12 +220,14 @@ class FeatureFlagTests(unittest.TestCase):
     def test_free_basic_generation_uses_existing_tier_allowance(self):
         settings.features.test_generation = True
         self.authenticate()
+        self.enable_quota_transactions()
         db["scenarios"].find_one.return_value = {
             "project_id": "P", "scenario_id": "SC1", "title": "Save draft", "approved": True,
             "steps": [{"step_id": "S1", "action": "Click Save draft", "expected": "Draft saved"}],
         }
         testcases = db["testcases"]
-        testcases.count_documents.side_effect = [0, 0, 10, 10]
+        # Preflight and transactional recount each check total and tier usage.
+        testcases.count_documents.side_effect = [0, 0, 0, 0, 10, 10]
         testcases.insert_one.return_value = MagicMock(inserted_id=ObjectId())
         url = "/testcases/generate?scenario_id=SC1&project_id=P"
         with patch.object(testcase_routes, "get_subscription", new=AsyncMock(return_value={
@@ -190,7 +243,12 @@ class FeatureFlagTests(unittest.TestCase):
         self.assertEqual(member.await_count, 2)
         self.assertEqual(self.collections["scenarios"].find_one.call_args.args[0]["project_id"], "P")
         testcases.insert_one.assert_awaited_once()
-        increment.assert_awaited_once()
+        # ResourceQuota persists usage atomically; the old increment must not run.
+        increment.assert_not_awaited()
+        self.assertEqual(self.user["subscription"]["usage"]["testcases_used"], 1)
+        self.assertEqual(self.user["subscription"]["usage"]["testcases_basic_used"], 1)
+        self.assertEqual(self.user["resource_quota_pending"], {"testcases_used": 0, "testcases_basic_used": 0})
+        self.assertEqual(next(iter(self.quota_receipts.values()))["state"], "SETTLED")
 
     def test_project_scenario_overview_uses_one_bounded_project_query(self):
         settings.features.scenario_generation = True
@@ -217,16 +275,22 @@ class FeatureFlagTests(unittest.TestCase):
         settings.features.story_management = True
         settings.features.scenario_generation = True
         self.authenticate()
+        self.enable_quota_transactions()
         db["stories"].find_one.return_value = {"story_id": "ST1", "project_id": "P", "title": "Draft"}
         db["projects"].find_one.return_value = {"project_id": "P", "created_by": self.email}
         db["project_memberships"].find_one.return_value = {"project_id": "P", "status": "ACTIVE", "role": "ADMIN"}
         db["scenarios"].count_documents.return_value = 0
         error = LLMProviderError("AUTHENTICATION_ERROR", "The provider credentials could not be authenticated.")
-        with patch.object(scenario_routes, "generate_scenarios_from_prompt", new=AsyncMock(side_effect=error)):
+        with patch.object(scenario_routes, "generate_scenarios_from_prompt", new=AsyncMock(side_effect=error)) as provider:
             response = self.client.post("/scenarios/generate-from-story?story_id=ST1&count=1")
         self.assertEqual(response.status_code, 400, response.text)
         self.assertEqual(response.json()["detail"]["code"], "AUTHENTICATION_ERROR")
         db["scenarios"].insert_one.assert_not_awaited()
+        provider.assert_awaited_once()
+        self.assertEqual(self.user["resource_quota_pending"], {"scenarios_used": 0})
+        receipt = next(iter(self.quota_receipts.values()))
+        self.assertEqual(receipt["state"], "SETTLED")
+        self.assertEqual(receipt["saved"], {})
 
     def test_project_catalogs_require_membership_and_bound_queries(self):
         self.authenticate()
@@ -291,6 +355,7 @@ class FeatureFlagTests(unittest.TestCase):
 
     def test_manual_catalog_draft_checks_scope_and_quota(self):
         self.authenticate()
+        self.enable_quota_transactions()
         settings.features = FeatureFlags(test_generation=True)
         db["scenarios"].find_one.return_value = {"project_id": "P", "scenario_id": "SC1"}
         db["testcases"].count_documents.return_value = 0
@@ -305,6 +370,26 @@ class FeatureFlagTests(unittest.TestCase):
             self.assertEqual(db["scenarios"].find_one.await_args.args[0]["project_id"], "P")
             db["testcases"].count_documents.return_value = 10
             self.assertEqual(self.client.post("/testcases/draft?project_id=P&scenario_id=SC1", json={"title": "Over quota", "steps": []}).status_code, 403)
+            db["testcases"].insert_one.assert_awaited_once()
+            self.assertEqual(self.user["resource_quota_pending"], {"testcases_used": 0, "testcases_basic_used": 0})
+            self.assertEqual(next(iter(self.quota_receipts.values()))["state"], "SETTLED")
+
+    def test_manual_draft_transaction_recount_rejects_exhausted_capacity(self):
+        self.authenticate()
+        self.enable_quota_transactions()
+        settings.features = FeatureFlags(test_generation=True)
+        db["scenarios"].find_one.return_value = {"project_id": "P", "scenario_id": "SC1"}
+        # Preflight sees room; the authoritative transaction sees the last slot taken.
+        db["testcases"].count_documents.side_effect = [0, 0, 10, 10]
+        with patch.object(testcase_routes, "require_project_member", new=AsyncMock()), \
+             patch.object(testcase_routes, "get_next_sequence", new=AsyncMock(return_value="TC1")), \
+             patch.object(testcase_routes, "get_subscription", new=AsyncMock(return_value={"limits": {"testcases_limit": 10, "testcases_basic_limit": 10}})):
+            response = self.client.post("/testcases/draft?project_id=P&scenario_id=SC1", json={"title": "Last slot", "steps": []})
+        self.assertEqual(response.status_code, 403, response.text)
+        db.client.start_session.assert_awaited_once()
+        db["testcases"].insert_one.assert_not_awaited()
+        db["resource_quota_reservations"].insert_one.assert_not_awaited()
+        self.assertNotIn("resource_quota_pending", self.user)
 
     def test_profile_bootstrap_skips_usage_recount_and_default_still_refreshes(self):
         self.authenticate()
