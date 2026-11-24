@@ -231,6 +231,34 @@ Mongo database, ingestion or execution was used for verification.
 
 ## Approved story knowledge proposals — 2026-11-18
 
+### Simplified story entries (2026-11-24)
+
+New story proposals contain one literal acceptance-criteria statement, preserving
+internal line breaks. The source is titled with the story name and contains only
+the title and criteria. Description, analysis findings, reviewer clarifications
+and approval notes are excluded. The existing 1500-character statement and
+1200-character evidence-quote bounds remain; the full criteria source is retained.
+Larger criteria are rejected explicitly, never truncated or split; larger-source
+training remains available in QA Agent. Review, exact evidence, immutable approval,
+source freshness and no-AI behavior remain required. Existing pending reviews and
+approved history are not rewritten. This supersedes the older multi-card behavior
+below for newly created proposals.
+
+Story actions first read scoped proposal state: Add knowledge appears only when
+there is no current story-linked rule or pending request; Review knowledge resumes
+a pending request; Update knowledge offers only current rules whose source belongs
+to the story. Unrelated project knowledge does not enable Update. A repeated Add
+resumes existing pending work or rejects a new addition after story-linked knowledge
+is approved. Update retains the selected rule identity and publishes only through
+the existing explicit knowledge approval flow. No migration or feature activation.
+
+Verification: 11 story-proposal, 18 training and 15 story-change backend checks
+passed with isolated doubles. 13 intercepted-API browser checks passed, including
+manual/AI-reviewed Add/Update, pending-resume-only, review autosave and explicit
+approval. Production UI build/TypeScript, scoped lint (existing effect rule
+excluded), and whitespace checks passed. No live AI, production data or migration
+was used.
+
 Approved stories (manual or AI-assisted) show Add knowledge and Update knowledge.
 Add needs no further form: it faithfully copies approved requirements and reviewed
 clarifications into completed-but-undecided QA Agent training review cards, without
