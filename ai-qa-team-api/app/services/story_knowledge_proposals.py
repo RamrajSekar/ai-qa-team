@@ -70,8 +70,23 @@ class StoryKnowledgeProposals:
     async def options(self, project, story):
         await self.approved_source(project, story)
         active = await self.knowledge.active(project)
+        claims = (active or {}).get("claims", [])
+        source_ids = list({c["source_id"] for c in claims})
+        sources = await self.db["product_knowledge_sources"].find({"project_id": project, "source_id": {"$in": source_ids}}).to_list(100) if source_ids else []
+        linked = {s["source_id"] for s in sources if s.get("origin", {}).get("story_id") == story}
+        pending = await self.training.rows.find({"project_id": project, "source_origin.story_id": story,
+            "state": {"$ne": "rejected"}}).sort("created_at", -1).to_list(51)
+        if len(pending) > 50:
+            raise HTTPException(409, "Review existing knowledge requests in QA Agent first.")
+        review_id = None
+        for row in pending:
+            view = await self.training.get(project, row["review_id"])
+            if (view.get("saved_version") or {}).get("status") != "approved":
+                review_id = row["review_id"]
+                break
         return {"version_id": (active or {}).get("version_id"), "rules": [
-            {"claim_id": c["claim_id"], "statement": c["statement"]} for c in (active or {}).get("claims", [])]}
+            {"claim_id": c["claim_id"], "statement": c["statement"]} for c in claims if c["source_id"] in linked],
+            "pending_review_id": review_id}
 
     @staticmethod
     def chunks(text):
@@ -86,14 +101,19 @@ class StoryKnowledgeProposals:
             text = text[end:].lstrip()
 
     async def start(self, project, story_id, actor, payload):
-        story, text, fragments, fingerprint = await self.approved_source(project, story_id)
-        fragments=fragments[payload.change_type]
+        story, _, _, fingerprint = await self.approved_source(project, story_id)
         identity = self.identity(project, digest([story_id, fingerprint, payload.change_type, payload.claim_id]))
         existing = await self.training.rows.find_one({"_id": self.training.key(project, identity), "project_id": project})
         if existing:
             if existing["state"] == "rejected":
                 raise HTTPException(409, "This proposal was discarded. Start intentional new training in QA Agent.")
             return await self.training.get(project, identity)
+        if payload.change_type == "add":
+            options = await self.options(project, story_id)
+            if options["pending_review_id"]:
+                return await self.training.get(project, options["pending_review_id"])
+            if options["rules"]:
+                raise HTTPException(409, "This story already has approved knowledge. Update its knowledge instead.")
         active = await self.knowledge.active(project)
         selected = None
         if payload.change_type == "update":
@@ -103,29 +123,23 @@ class StoryKnowledgeProposals:
             if not selected: raise HTTPException(409, "Select a rule from current approved knowledge.")
         source_id = self.identity(project, identity + ":source")
         draft_id = self.identity(project, identity + ":draft")
+        # A story contributes one literal criteria entry, never review commentary.
+        statement = (story.get("acceptance_criteria") or "").strip()
+        if not statement:
+            raise HTTPException(409, "Add acceptance criteria to the story before proposing knowledge.")
+        if len(statement) > 1500:
+            raise HTTPException(413, "A single knowledge entry supports 1500 characters. Shorten the story criteria or use QA Agent for a larger source.")
+        text = f"Title:\n{story['title']}\n\nAcceptance criteria:\n{statement}"
         if len(text)>60000:raise HTTPException(413,"Keep the complete story source within 60000 characters.")
         source = KnowledgeSourceInput(title=("Story: " + story["title"])[:240], kind="document", text=text)
         origin = {"kind": "story", "story_id": story_id, "story_digest": digest(story), "training_review_id": identity,
                   "approved_story_copy": True, "approved_source_digest": fingerprint}
-        statements = []
-        seen_fragments=set()
-        for fragment in fragments:
-            if fragment.strip() in seen_fragments:continue
-            seen_fragments.add(fragment.strip())
-            statements.extend(self.chunks(fragment))
-        if selected and (len("\n\n".join(fragments)) > 1200):
-            raise HTTPException(413, "This story exceeds one rule's size. Use QA Agent to review a focused correction with its source evidence.")
-        if selected: statements = ["\n\n".join(fragments).strip()]
-        if not statements or len(statements) > 60:
-            raise HTTPException(413, "Keep the story within the supported knowledge review size.")
+        statements = [statement]
         proposals = [{"claim": KnowledgeClaim(claim_id=selected["claim_id"] if selected else "K_"+self.identity(project,identity+":"+str(index)),
             category=selected["category"] if selected else "business_rule", statement=statement, epistemic_status="expected",
-            source_id=source_id, quote=statement).model_dump(), "decision": "pending"} for index, statement in enumerate(statements)]
+            source_id=source_id, quote=statement[:1200]).model_dump(), "decision": "pending"} for index, statement in enumerate(statements)]
         if not selected and {p["claim"]["claim_id"] for p in proposals}&{c["claim_id"] for c in (active or {}).get("claims",[])}:
             raise HTTPException(409,"An addition cannot replace an existing knowledge rule.")
-        # The correction's combined statement must have a single exact source excerpt.
-        if selected and statements[0] not in text:
-            proposals[0]["claim"]["quote"] = next(self.chunks(fragments[0]))
         timestamp = now()
         document = {**source.model_dump(), "_id": source_id, "source_id": source_id, "project_id": project,
                     "origin": origin, "created_by": actor, "created_at": timestamp}

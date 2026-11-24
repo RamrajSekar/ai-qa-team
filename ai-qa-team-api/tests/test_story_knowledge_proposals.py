@@ -11,11 +11,25 @@ from app.services.story_knowledge_proposals import StoryKnowledgeProposals
 from app.services.knowledge_training import KnowledgeTraining
 from app.services.manual_story_review import ManualStoryReview
 
+class StoryReviewCollection(context_fixtures.MongoCollection):
+    @staticmethod
+    def matches(doc, query):
+        query = dict(query)
+        story = query.pop('source_origin.story_id', None)
+        if story is not None and doc.get('source_origin', {}).get('story_id') != story:
+            return False
+        state = query.get('state')
+        if isinstance(state, dict) and '$ne' in state:
+            query.pop('state')
+            if doc.get('state') == state['$ne']:
+                return False
+        return context_fixtures.MongoCollection.matches(doc, query)
+
 class StoryProposalTests(unittest.IsolatedAsyncioTestCase):
     approved=fixtures.KnowledgeTests.approved
     async def asyncSetUp(self):
         await context_fixtures.RequirementTests.asyncSetUp(self)
-        self.db['knowledge_training_reviews']=context_fixtures.MongoCollection()
+        self.db['knowledge_training_reviews']=StoryReviewCollection()
         self.proposals=StoryKnowledgeProposals(self.db)
         self.training=KnowledgeTraining(self.db,self.service)
 
@@ -33,7 +47,8 @@ class StoryProposalTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first['extraction_state'],'completed');self.assertEqual(first['clarification_questions'],[])
         self.assertTrue(all(p['decision']=='pending' for p in first['proposals']))
         self.assertIn('Show Draft saved.',[p['claim']['statement'] for p in first['proposals']])
-        self.assertIn(self.db['stories'].docs[0]['description'],[p['claim']['statement'] for p in first['proposals']])
+        self.assertEqual(len(first['proposals']),1)
+        self.assertNotIn(self.db['stories'].docs[0]['description'],first['proposals'][0]['claim']['statement'])
         self.assertEqual(len(self.db['knowledge_training_reviews'].docs),1)
         self.assertEqual(sum(s.get('origin',{}).get('approved_story_copy',False) for s in self.db['product_knowledge_sources'].docs),1)
         self.assertEqual(await self.service.active('P1'),before)
@@ -95,19 +110,70 @@ class StoryProposalTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(HTTPException):await self.start()
         self.usage.execute.assert_not_called()
 
-    async def test_long_addition_keeps_literal_excerpts_without_silent_truncation(self):
+    async def test_oversized_single_entry_is_rejected_without_truncation(self):
         from app.services.approved_visual_run import digest
         text=('Approved requirement text with exact punctuation. '*60).strip()
         self.db['stories'].docs[0].update(acceptance_criteria=text,description=None)
         raw=self.db['story_analyses'].docs[-1]
         raw['story_digest']=digest(await self.service.story('P1','ST1'))
-        row=await self.start()
-        self.assertGreater(len(row['proposals']),1)
-        self.assertEqual(' '.join(p['claim']['statement'] for p in row['proposals']),text)
-        source=await self.service.record('product_knowledge_sources','P1',row['source_id'])
-        self.assertTrue(all(p['claim']['quote'] in source['text'] for p in row['proposals']))
-        with self.assertRaises(HTTPException):await self.start(update=True)
+        for update in (False, True):
+            with self.assertRaises(HTTPException) as error:await self.start(update=update)
+            self.assertEqual(error.exception.status_code,413)
+        self.assertEqual(self.db['knowledge_training_reviews'].docs,[])
         self.usage.execute.assert_not_called()
+
+    async def test_full_single_entry_bound_survives_review_and_approval(self):
+        from app.services.approved_visual_run import digest
+        criteria = 'A' * 1500
+        self.db['stories'].docs[0]['acceptance_criteria'] = criteria
+        self.db['story_analyses'].docs[-1]['story_digest'] = digest(await self.service.story('P1','ST1'))
+        row = await self.start()
+        self.assertEqual(len(row['proposals']), 1)
+        self.assertEqual(row['proposals'][0]['claim']['statement'], criteria)
+        saved = await self.save(row)
+        approved = await self.service.approve('P1','admin',saved['saved_version']['version_id'])
+        self.assertIn(criteria, [claim['statement'] for claim in approved['claims']])
+
+    async def test_one_entry_excludes_description_and_review_comments(self):
+        from app.services.approved_visual_run import digest
+        criteria='Show Agent.\nHide Add Agency for Guest.\nHide Add Agency for Employee.'
+        self.db['stories'].docs[0]['acceptance_criteria']=criteria
+        raw=self.db['story_analyses'].docs[-1]
+        raw['story_digest']=digest(await self.service.story('P1','ST1'))
+        raw['resolutions']=[{'finding_id':'F1','decision':'clarified','rationale':'Handled by Salesforce admin'}]
+        row=await self.start()
+        self.assertEqual([p['claim']['statement'] for p in row['proposals']],[criteria])
+        source=await self.service.record('product_knowledge_sources','P1',row['source_id'])
+        self.assertNotIn('Handled by Salesforce admin',source['text'])
+        self.assertNotIn('Synthetic',source['text'])
+        self.assertIn(criteria,source['text'])
+        self.assertEqual(row['proposals'][0]['claim']['quote'],criteria)
+
+    async def test_options_new_pending_approved_and_unrelated_rules(self):
+        options=await self.proposals.options('P1','ST1')
+        self.assertEqual(options['rules'],[])
+        self.assertIsNone(options['pending_review_id'])
+        row=await self.start()
+        options=await self.proposals.options('P1','ST1')
+        self.assertEqual(options['pending_review_id'],row['review_id'])
+        saved=await self.save(row)
+        await self.service.approve('P1','admin',saved['saved_version']['version_id'])
+        options=await self.proposals.options('P1','ST1')
+        self.assertIsNone(options['pending_review_id'])
+        self.assertEqual([r['claim_id'] for r in options['rules']],[row['proposals'][0]['claim']['claim_id']])
+        self.assertNotIn('K1',[r['claim_id'] for r in options['rules']])
+        from app.services.approved_visual_run import digest
+        self.db['stories'].docs[0]['acceptance_criteria'] = 'Show the revised saved message.'
+        self.db['story_analyses'].docs[-1]['story_digest'] = digest(await self.service.story('P1','ST1'))
+        with self.assertRaises(HTTPException) as duplicate:
+            await self.start()
+        self.assertEqual(duplicate.exception.status_code, 409)
+        before = deepcopy(await self.service.active('P1'))
+        update = await self.proposals.start('P1','ST1','member',StoryKnowledgeProposal(
+            change_type='update',claim_id=options['rules'][0]['claim_id'],base_version_id=options['version_id']))
+        self.assertEqual(update['proposals'][0]['claim']['claim_id'],options['rules'][0]['claim_id'])
+        self.assertEqual(update['proposals'][0]['claim']['statement'],'Show the revised saved message.')
+        self.assertEqual(await self.service.active('P1'), before)
 
     async def test_http_permissions_validation_and_no_remove_action(self):
         path=self.base+'/stories/ST1/knowledge-proposals'
