@@ -113,7 +113,7 @@ export default function StoriesPage() {
         >
           <Plus size={18} /> New Story
         </button>
-        {enabled("jira_story_import","story_management") && <button type="button" className="workspace-button" onClick={() => setJiraOpen(true)}>Import from Jira</button>}
+        {enabled("jira_story_import","story_management") && <button type="button" className="workspace-button workspace-primary" onClick={() => setJiraOpen(true)}>Import from Jira</button>}
         </div>
       </div>
 
