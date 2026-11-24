@@ -19,7 +19,7 @@ TEST_ENV = {
     "JWT_SECRET_KEY": "jwt-test-only", "OPENAI_API_KEY": "", "FEATURES": "{}",
 }
 # Override all feature env values, even if a developer enables them locally.
-OFF = ["knowledge_ask", "knowledge_uploads", "knowledge_media_processing", "knowledge_image_interpretation", "test_design_admin_review", "manual_test_results", "automation_execution_ui", "separate_ai_allowances", "account_invitation_email", "test_execution_ui", "account_subscriptions", "customer_accounts", "visual_runner_lab", "visual_runner_batches", "approved_visual_run_admission", "approved_visual_run_execution", "approved_workflow_worker", "bug_reproduction_ui", "repository_ui", "reusable_workflows", "product_knowledge", "story_analysis", "story_management", "scenario_generation", "test_generation", "recorder",
+OFF = ["jira_story_import", "knowledge_ask", "knowledge_uploads", "knowledge_media_processing", "knowledge_image_interpretation", "test_design_admin_review", "manual_test_results", "automation_execution_ui", "separate_ai_allowances", "account_invitation_email", "test_execution_ui", "account_subscriptions", "customer_accounts", "visual_runner_lab", "visual_runner_batches", "approved_visual_run_admission", "approved_visual_run_execution", "approved_workflow_worker", "bug_reproduction_ui", "repository_ui", "reusable_workflows", "product_knowledge", "story_analysis", "story_management", "scenario_generation", "test_generation", "recorder",
        "native_execution", "jira_trigger", "failure_diagnostics", "self_healing",
        "playwright_repo_adapter", "selenium_repo_adapter"]
 ON = ["repository_discovery", "test_registry", "test_data_generation"]
@@ -130,7 +130,7 @@ class FeatureFlagTests(unittest.TestCase):
         cases = []
         for route in app.routes:
             path = getattr(route, "path", "")
-            if path.startswith(("/stories", "/scenarios", "/recorder")) or path in {
+            if path.startswith(("/stories", "/scenarios", "/recorder", "/projects/{project_id}/jira")) or path in {
                 "/testcases/generate", "/execute/testcase/{testcase_id}",
                 "/execute/batch", "/integrations/{provider}/import",
             }:
@@ -434,6 +434,9 @@ class FeatureFlagTests(unittest.TestCase):
         self.assertTrue(db["users"].update_one.called)  # Existing onboarding/usage behavior retained.
 
     def test_enabled_story_route_is_restored(self):
+        self.authenticate()
+        db["projects"].find_one.return_value = {"_id": ObjectId(), "project_id": "P", "created_by": self.email}
+        db["project_memberships"].find_one.return_value = {"role": "TESTER", "status": "ACTIVE"}
         settings.features.story_management = True
         self.authenticate()
         cursor = MagicMock()
@@ -446,7 +449,24 @@ class FeatureFlagTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(db["stories"].find.call_count, 2)
 
+    def test_story_list_is_project_shared_and_rejects_non_members(self):
+        self.authenticate()
+        settings.features.story_management = True
+        db["projects"].find_one.return_value = {"project_id": "P", "created_by": "teammate@example.com"}
+        db["project_memberships"].find_one.return_value = {"role": "TESTER", "status": "ACTIVE"}
+        cursor = MagicMock()
+        cursor.skip.return_value = cursor
+        cursor.limit.return_value = cursor
+        db["stories"].find.return_value = cursor
+        self.assertEqual(self.client.get("/stories?project_id=P").status_code, 200)
+        self.assertEqual(db["stories"].find.call_args.args[0], {"project_id": "P"})
+        db["project_memberships"].find_one.return_value = None
+        db["stories"].find.reset_mock()
+        self.assertEqual(self.client.get("/stories?project_id=P").status_code, 404)
+        db["stories"].find.assert_not_called()
+
     def test_create_story_accepts_both_collection_paths_without_redirect(self):
+        db["project_memberships"].find_one.return_value = {"role": "TESTER", "status": "ACTIVE"}
         settings.features.story_management = True
         self.authenticate()
         db["projects"].find_one.return_value = {"_id": ObjectId(), "project_id": "P", "created_by": self.email}

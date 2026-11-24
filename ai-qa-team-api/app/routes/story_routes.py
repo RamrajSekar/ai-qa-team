@@ -8,6 +8,7 @@ from app.services.story_service import get_next_sequence
 from datetime import datetime, timezone
 from typing import List
 from bson import ObjectId
+from app.utils.project_authorization import require_project_member
 
 
 router = APIRouter(prefix="/stories", tags=["Stories"])
@@ -22,10 +23,7 @@ async def create_story(
     try:
         user_email = current_user["email"]
         # 0️⃣ Validate the incoming project_id (business ID, not ObjectId)
-        project = await db["projects"].find_one({
-            "project_id": story.project_id,
-            "created_by": current_user["email"]
-        })
+        project,_ = await require_project_member(story.project_id,current_user)
 
         if not project:
             raise HTTPException(
@@ -54,7 +52,6 @@ async def create_story(
 
         # 3️⃣ Insert into Mongo
         result = await db["stories"].insert_one(story_data)
-        print(f"Debug Create story: {result}")
         story_data["id"] = str(result.inserted_id)
         # Update usage counter (important!)
         await increment_usage(user_email, "stories_used")
@@ -84,10 +81,8 @@ async def list_stories(
     """Fetch all stories for a specific project."""
     user_id = current_user.get("email") or current_user.get("_id")
 
-    query = {
-        "created_by": user_id,
-        "project_id": project_id
-    }
+    await require_project_member(project_id,current_user)
+    query = {"project_id": project_id}
     cursor = db["stories"].find(query).skip(skip).limit(limit)
     stories = []
     async for doc in cursor:
@@ -96,7 +91,6 @@ async def list_stories(
         doc.setdefault("tags", [])
         doc.setdefault("scenarios", [])
         stories.append(StoryResponse(**doc))
-    print(f'Debug from list Stories{stories}')
     return stories
 
 
@@ -108,11 +102,11 @@ async def get_story(
 ):
     try:
         user_email = current_user["email"]
+        await require_project_member(project_id,current_user)
 
         story = await db["stories"].find_one({
             "story_id": story_id,
             "project_id": project_id, 
-            "created_by": user_email
         })
 
         if not story:
@@ -142,15 +136,14 @@ async def update_story(
     try:
         # user_id = current_user.get("_id") or current_user.get("id") or current_user.get("email")
         user_email = current_user["email"]
+        await require_project_member(project_id,current_user)
 
         # Find story by sequential ID
         update_data = {k: v for k, v in payload.model_dump().items() if v is not None}
-        print(f"Story to update {update_data}")
         result = await db["stories"].update_one(
             {
                 "story_id": story_id,
                 "project_id": project_id,
-                "created_by": user_email
             },
             {"$set": update_data}
         )
@@ -162,7 +155,6 @@ async def update_story(
             {
                 "story_id": story_id,
                 "project_id": project_id,
-                "created_by": user_email
             }
         )
 
@@ -170,8 +162,9 @@ async def update_story(
         updated.pop("_id", None)
 
         return StoryResponse(**updated)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update story: {str(e)}")
+    except HTTPException:raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to update story.") from None
 
     
 @router.delete("/{story_id}")
@@ -181,17 +174,18 @@ async def delete_story(
     current_user=Depends(get_current_user)
 ):
     user_email = current_user["email"]
+    await require_project_member(project_id,current_user)
+    existing=await db["stories"].find_one({"story_id":story_id,"project_id":project_id})
 
     deleted = await db["stories"].delete_one({
         "story_id": story_id,
         "project_id": project_id,
-        "created_by": user_email
     })
 
     if deleted.deleted_count == 0:
         raise HTTPException(404, "Story not found or access denied.")
 
     # NEW: decrement story usage
-    await decrement_usage(user_email, "stories_used")
+    await decrement_usage((existing or {}).get("created_by",user_email), "stories_used")
 
     return {"message": "Story deleted"}

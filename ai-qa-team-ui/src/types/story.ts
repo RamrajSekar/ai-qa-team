@@ -1,4 +1,6 @@
 export interface Story {
+  jira_issue_key?: string | null;
+  jira_url?: string | null;
   id: string;
   story_id: string;
   project_id: string;

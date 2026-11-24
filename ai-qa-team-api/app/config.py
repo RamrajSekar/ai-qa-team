@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field, SecretStr, EmailStr
 
 
 class FeatureFlags(BaseModel):
+    jira_story_import: bool = False
     knowledge_ask: bool = False
     knowledge_uploads: bool = False
     knowledge_media_processing: bool = False
@@ -87,6 +88,10 @@ class KnowledgeIngestionSettings(BaseModel):
 
 
 class Settings(BaseSettings):
+    jira_secret_master_key: str | None = None
+    jira_oauth_client_id: str | None = None
+    jira_oauth_client_secret: str | None = None
+    jira_oauth_redirect_uri: str | None = None
     # Reserved fail-closed gate: enable only after the encrypted storage cutover.
     knowledge_encryption_required: bool = False
     knowledge_ingestion: KnowledgeIngestionSettings = Field(default_factory=KnowledgeIngestionSettings)
