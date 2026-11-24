@@ -1,5 +1,21 @@
 # Scenario and test-case capacity reservations
 
+## Feature-policy fixture repair (2026-11-24)
+
+The three previously failing feature-policy tests now use asynchronous Mongo
+session/receipt doubles while executing the real ResourceQuota callbacks. The
+generation test accounts for transactional total/tier recounts and verifies usage
+is written once by quota persistence, without the former separate increment.
+Successful saves and provider authentication failures verify settled reservations
+and zero pending slots. An additional test rejects a manual draft when preflight
+sees capacity but the transactional recount sees exhaustion, with no resource or
+reservation insert. No application behavior, entitlement, migration or usage reset
+changed.
+
+Verification: all 25 feature-policy tests, four resource-quota contract tests and
+eight Free test-case allowance tests passed in isolation. These doubles do not
+qualify real Mongo rollback, concurrency or production behavior.
+
 Development checkpoint: 2026-11-21. Resolves the last-slot races recorded in
 [qualification](TEST_DESIGN_QUALIFICATION.md); historical failure evidence is retained.
 
