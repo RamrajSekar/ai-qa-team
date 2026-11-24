@@ -103,6 +103,7 @@ export default function StoriesPage() {
       <div className="workspace-page-header">
         <div><p className="workspace-eyebrow">Test design</p><h1>Stories</h1><p className="workspace-description">Define acceptance criteria, resolve ambiguity and design coverage.</p></div>
 
+        <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={() => {
             setEditStory(null);
@@ -112,9 +113,10 @@ export default function StoriesPage() {
         >
           <Plus size={18} /> New Story
         </button>
+        {enabled("jira_story_import","story_management") && <button type="button" className="workspace-button" onClick={() => setJiraOpen(true)}>Import from Jira</button>}
+        </div>
       </div>
 
-      {enabled("jira_story_import","story_management")&&<button className="workspace-button" onClick={()=>setJiraOpen(true)}>Import from Jira</button>}
       {jiraOpen&&<JiraImport projectId={projectId} onClose={()=>setJiraOpen(false)} onImported={loadStories} />}
       {!loading && !loadError && <DesignStats items={[{ label: "Stories loaded", value: stories.length }, { label: "With acceptance criteria", value: stories.filter(item => item.acceptance_criteria?.trim()).length }, { label: "Need acceptance criteria", value: stories.filter(item => !item.acceptance_criteria?.trim()).length }]} />}
       <div className="design-guide"><strong>Start with a clear requirement</strong><p>Add acceptance criteria, review story analysis, then generate scenarios and detailed test cases.</p></div>
