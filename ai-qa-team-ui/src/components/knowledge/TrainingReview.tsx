@@ -80,10 +80,7 @@ export default function TrainingReview({ initial, base, canApprove, onSession, o
   const noChanges = !session.removed_claim_ids.length && proposals.every(item => item.decision === "rejected");
   return <section aria-label="Training review" className="workspace-card p-5 space-y-4">
     <div><h2>{session.mode === "removal" ? "Review removal" : session.mode === "correction" ? "Review correction" : "Review knowledge"}</h2>{session.mode === "training" && <p>{session.title}</p>}</div>
-    {session.state === "reviewing" && session.extraction_state !== "running" && <button className="workspace-button" disabled={dirty || saving || autoSaving} onClick={()=>{
-      if(!window.confirm("Discard this pending request? Current approved knowledge will not change."))return;
-      void perform(()=>knowledgeRequest(path+"/discard",{expected_revision:session.revision}));
-    }}>Discard request</button>}
+
     {session.state !== "rejected" && session.base_version_id !== currentVersionId && session.saved_version?.status !== "approved" && <div className="design-state">
       <p>Knowledge changed. Review your saved proposals against the current version; no new AI request is needed.</p>
       <button className="workspace-button" disabled={dirty || saving} onClick={() => void perform(() => knowledgeRequest(path + "/rebase", {
@@ -103,7 +100,13 @@ export default function TrainingReview({ initial, base, canApprove, onSession, o
       <h3>Affected scenarios and test cases</h3><p>Affected designs need review. Execution history stays unchanged.</p>
       {Object.entries(session.removal_impact || {}).map(([kind,rows])=><div key={kind}><strong>{kind === "scenarios" ? "Scenarios" : "Test cases"}</strong>{rows.length ? rows.map(row=><p key={row.id}>{row.title}</p>) : <p>No linked items found.</p>}</div>)}
     </div>}
-    {editable && proposals.length > 0 && <div className="workspace-actions">{(["confirmed","rejected"] as const).map(decision=><button key={decision} className="workspace-button" disabled={saving} onClick={()=>{edits.current++;setProposals(items=>items.map(item=>item.decision === "pending" ? {...item,decision} : item));setDirty(true);setError("");}}>{decision === "confirmed" ? "Confirm all undecided" : "Reject all undecided"}</button>)}</div>}
+    <div className="flex flex-wrap items-center gap-2">
+    {session.state === "reviewing" && session.extraction_state !== "running" && <button className="workspace-button" disabled={dirty || saving || autoSaving} onClick={()=>{
+      if(!window.confirm("Discard this pending request? Current approved knowledge will not change."))return;
+      void perform(()=>knowledgeRequest(path+"/discard",{expected_revision:session.revision}));
+    }}>Discard request</button>}
+      {editable && proposals.length > 0 && <>{(["confirmed","rejected"] as const).map(decision=><button key={decision} className="workspace-button" disabled={saving} onClick={()=>{edits.current++;setProposals(items=>items.map(item=>item.decision === "pending" ? {...item,decision} : item));setDirty(true);setError("");}}>{decision === "confirmed" ? "Confirm all undecided" : "Reject all undecided"}</button>)}</>}
+    </div>
     {proposals.length > 0 && <h3>{session.mode === "correction" ? "Corrections" : "Additions"}</h3>}
     <fieldset disabled={saving} className="space-y-4 border-0 p-0 m-0">
       {proposals.map((item, index) => <article className="border rounded p-4 space-y-3" key={item.claim.claim_id} aria-label={`Proposal ${index + 1}`}>
@@ -111,7 +114,7 @@ export default function TrainingReview({ initial, base, canApprove, onSession, o
         <p className="whitespace-pre-wrap">{item.claim.statement}</p>
         <details><summary>Source excerpt</summary><blockquote>{item.claim.quote}</blockquote><button className="workspace-button" type="button" onClick={() => onInspect(item.claim.source_id)}>Inspect source</button></details>
         {item.claim.segment_index !== null && <p>Transcript segment {item.claim.segment_index + 1}</p>}
-        {editable && <div className="workspace-actions">
+        {editable && <div className="flex flex-wrap items-center gap-2">
           <button type="button" className="workspace-button" onClick={() => update(item.claim.claim_id, { decision: "confirmed" })}>Confirm</button>
           <button type="button" className="workspace-button" onClick={() => setEditId(editId === item.claim.claim_id ? null : item.claim.claim_id)}>Edit</button>
           <button type="button" className="workspace-button" onClick={() => update(item.claim.claim_id, { decision: "rejected" }, session.proposals.find(proposal => proposal.claim.claim_id === item.claim.claim_id)?.claim)}>Reject</button>
@@ -145,7 +148,7 @@ export default function TrainingReview({ initial, base, canApprove, onSession, o
         const changes=(session.saved_version!.changes || []).filter(change=>change.action===action);
         return changes.length ? <section key={action}><h4>{label}</h4>{changes.map(change=><div key={change.claim_id} className="border rounded p-3">{change.before&&<p>Before: {change.before.statement}</p>}{change.after&&<p>After: {change.after.statement}</p>}{action==='remove'&&<p>Reason: {reason}</p>}</div>)}</section> : null;
       })}
-      <p>{session.saved_version.claims.length} rules in this complete version, including retained knowledge.</p>
+      <p>{session.saved_version.claims.length} rules after approval.</p>
       {session.saved_version.status === "approved" ? <p role="status">Knowledge approved and saved.</p> : canApprove ? <button className="workspace-button workspace-primary" disabled={saving} onClick={() => void perform(async () => {
         await knowledgeRequest(`${base}/versions/${session.saved_version!.version_id}/approve`, {});
         return knowledgeRequest<TrainingSession>(path);
