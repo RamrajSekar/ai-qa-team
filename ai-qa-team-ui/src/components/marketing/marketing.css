@@ -119,6 +119,34 @@
 .public-landing .lp-pricing-price { font-size:32px; font-weight:750; color:var(--lp-text); margin:0; }
 .lp-pricing-price small { display:block; font-size:12px; font-weight:400; }
 .lp-pricing-card ul { padding-left:18px; flex:1; line-height:1.8; font-size:13px; }
+.lp-pricing-v2 .lp-pricing-grid { grid-template-columns:repeat(4,minmax(0,1fr)); align-items:stretch; }
+.lp-pricing-v2 .lp-pricing-card { gap:14px; padding:22px; }
+.lp-pricing-v2 .lp-pricing-featured { border:2px solid var(--lp-accent); box-shadow:0 8px 28px rgb(112 71 185 / 9%); }
+.lp-pricing-card-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; }
+.lp-pricing-v2 .lp-pricing-card-head h2 { margin:0; }
+.lp-plan-label { border-radius:99px; padding:4px 8px; background:var(--lp-soft); color:var(--lp-accent); font-size:10px; font-weight:650; white-space:nowrap; }
+.lp-pricing-v2 .lp-pricing-summary { min-height:44px; font-size:13px; color:var(--lp-muted); }
+.lp-pricing-v2 .lp-button:disabled { cursor:not-allowed; opacity:.65; }
+.lp-pricing-comparison { margin-top:56px; }
+.lp-pricing-comparison h2,.lp-pricing-extras h2 { font-size:25px; margin-bottom:12px; }
+.lp-pricing-table-scroll { overflow-x:auto; border:1px solid var(--lp-border); border-radius:12px; margin:20px 0 12px; }
+.lp-pricing-table-scroll:focus-visible { outline:2px solid var(--lp-accent); outline-offset:3px; }
+.lp-pricing-table-scroll table { width:100%; min-width:650px; border-collapse:collapse; font-size:13px; }
+.lp-pricing-table-scroll th,.lp-pricing-table-scroll td { padding:15px 18px; border-bottom:1px solid var(--lp-border); text-align:right; white-space:nowrap; }
+.lp-pricing-table-scroll th:first-child { text-align:left; }
+.lp-pricing-table-scroll thead { background:var(--lp-soft); }
+.lp-pricing-table-scroll tbody th { font-weight:500; }
+.lp-pricing-table-scroll tr:last-child th,.lp-pricing-table-scroll tr:last-child td { border-bottom:0; }
+.lp-pricing-extras { margin-top:48px; padding:28px; border-radius:14px; background:var(--lp-soft); }
+.lp-pricing-extra-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; margin-top:24px; }
+.lp-pricing-extra-grid article { min-width:0; }
+.lp-pricing-extra-grid h3 { font-size:15px; margin-bottom:12px; }
+.lp-pricing-extra-grid p { font-size:13px; color:var(--lp-muted); }
+.public-landing .lp-extra-price { font-size:26px; font-weight:700; color:var(--lp-text); margin-bottom:10px; }
+.lp-extra-price small { display:block; font-size:12px; font-weight:400; margin-top:4px; }
+.lp-pricing-state { padding:24px 0; }
+@media(max-width:1100px) { .lp-pricing-v2 .lp-pricing-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:600px) { .lp-pricing-v2 .lp-pricing-grid,.lp-pricing-extra-grid { grid-template-columns:minmax(0,1fr); } .lp-pricing-v2 .lp-pricing-summary { min-height:0; } .lp-pricing-extras { padding:20px; } }
 @media(max-width:800px) { .lp-pricing-grid { grid-template-columns:minmax(0,1fr); } }
 
 .public-landing .lp-policy { max-width: 850px; }
