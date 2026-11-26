@@ -2421,6 +2421,25 @@ anyio = ">=3.6.2,<5"
 full = ["httpx (>=0.27.0,<0.29.0)", "itsdangerous", "jinja2", "python-multipart (>=0.0.18)", "pyyaml"]
 
 [[package]]
+name = "stripe"
+version = "17.1.0"
+description = "Python bindings for the Stripe API"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "stripe-17.1.0-py3-none-any.whl", hash = "sha256:c8089bacd9f7d95b62e3f4c0fc6cb5dc719eb09b9d09c6ff330800d36bf8b6eb"},
+    {file = "stripe-17.1.0.tar.gz", hash = "sha256:767b8e0f350b2b00fae7f8fbe7e28d4c215aac23529c833f0e77ec20c5f3bb48"},
+]
+
+[package.dependencies]
+requests = ">=2.20"
+typing_extensions = ">=4.7.0"
+
+[package.extras]
+async = ["httpx"]
+
+[[package]]
 name = "tomlkit"
 version = "0.13.3"
 description = "Style preserving TOML library"
@@ -3156,4 +3175,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.14,<3.15"
-content-hash = "0288716049fbe64ee6b22fe963edace353db455707978a456c3d34d2812d933d"
+content-hash = "72da96fa23657b12a1def2befd2e0897591458a6e3a7a08d7b1cc6337576cde7"

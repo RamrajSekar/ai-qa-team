@@ -31,7 +31,8 @@ class OpenAIProvider(BaseAIProvider):
             )
             input_tokens, output_tokens, total_tokens = normalized_token_usage(response)
             return LLMResponse(
-                text=response.choices[0].message.content or "", provider_id=self.provider_id, model=model,
+                text=response.choices[0].message.content or "", provider_id=self.provider_id,
+                model=(getattr(response, "model", "") or "") if request.spend_reservation_id else model,
                 input_tokens=input_tokens, output_tokens=output_tokens, total_tokens=total_tokens,
             )
         except Exception as exc:

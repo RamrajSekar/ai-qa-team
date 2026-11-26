@@ -33,6 +33,8 @@ class LLMGateway:
         return ResolvedLLMContext(mode=mode, provider_id=provider_id, model=model or request.model, provider=provider)
 
     async def generate_resolved(self, context: ResolvedLLMContext, request: LLMRequest) -> LLMResponse:
+        from app.services.ai.managed_spend import claim_call
+        await claim_call(db, context, request)
         return await context.provider.generate(request)
 
     async def generate(self, project_id: str, request: LLMRequest) -> LLMResponse:

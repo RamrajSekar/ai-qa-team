@@ -37,3 +37,7 @@
 .aiTileHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 .aiTileHeader h4 { margin: 0; font-size: 14px; font-weight: 650; }
 .currentBadge { display: inline-flex; padding: 4px 8px; border-radius: 6px; background: var(--ws-accent); color: white; font-size: 10px; font-weight: 750; letter-spacing: .06em; }
+
+.notices { display: grid; gap: 10px; padding: 0; margin: 4px 0; list-style: none; }
+.usageNotice { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 14px 16px; border: 1px solid var(--ws-border); border-left: 3px solid var(--ws-accent); border-radius: 10px; background: var(--ws-soft); }
+.usageNotice p { margin: 0 0 4px; font-size: 13px; font-weight: 600; }

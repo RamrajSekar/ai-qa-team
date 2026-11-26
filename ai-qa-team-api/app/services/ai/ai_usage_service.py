@@ -64,15 +64,39 @@ class AIUsageService:
         concurrency_key = await self._take_concurrency(policy, project_id, user_id)
 
         reservation = None
+        spend_record = None
+        spend = None
         usage_id = f"AIU-{uuid4().hex}"
         started_at = self.now()
         try:
+            from app.services.ai.managed_spend import guard_active
+            guarded = context.mode == "MANAGED" and (await guard_active(self.db)
+                or bool((account or {}).get("billing", {}).get("managed_spend_required")))
+            if guarded:
+                if context.provider_id != "openai":
+                    raise AIUsageError("MANAGED_MODEL_UNSUPPORTED", 503, "Managed AI cost policy does not support this provider.")
+                from app.services.ai.managed_spend import ManagedSpend
+                spend = ManagedSpend(self.db)
+                owner = account["subscription"] if account else (await self.db["users"].find_one({"email": billing_owner}))["subscription"]
+                resolved_model = context.model or getattr(context.provider, "default_model", None)
+                spend_record = await spend.reserve(usage_id, billing_owner, owner.get("plan", "free"), resolved_model,
+                    bounded_request.max_tokens, now=started_at)
+                context = replace(context, model=spend_record["model"])
+                bounded_request = replace(bounded_request, model=spend_record["model"],
+                    max_tokens=spend_record["output_bound"], max_retries=0, spend_reservation_id=usage_id)
             reservation = await self._reserve(billing_owner, policy, started_at, mode=context.mode)
             record = self._record(usage_id, project_id, user_id, email, billing_owner, policy, context, request, started_at, reservation)
             await self.db["ai_usage_records"].insert_one(record)
+            if spend_record:
+                await spend.submitted(spend_record)
             try:
                 response = await self.gateway.generate_resolved(context, bounded_request)
             except Exception as exc:
+                if spend_record:
+                    if isinstance(exc, LLMProviderError) and exc.status_code in (400, 401, 403, 404, 422, 429):
+                        await spend.settle(spend_record, rejected=True)
+                    else:
+                        await spend.unknown(spend_record)
                 consume = self._consume_failed_attempt(exc)
                 if not consume:
                     await self._release_reservation(billing_owner, policy, reservation)
@@ -81,6 +105,9 @@ class AIUsageService:
                 if isinstance(exc, LLMProviderError):
                     raise
                 raise AIUsageError("AI_PROVIDER_FAILED", 502, "The AI provider could not complete the request.") from None
+            if spend_record:
+                await spend.settle(spend_record, input_tokens=response.input_tokens, output_tokens=response.output_tokens,
+                    response_model=response.model)
             await self.db["ai_usage_records"].update_one(
                 {"usage_id": usage_id},
                 {"$set": {
@@ -100,6 +127,13 @@ class AIUsageService:
                 await self._release_reservation(billing_owner, policy, reservation)
             raise
         finally:
+            if spend_record:
+                # A confirmed pre-submission failure is releasable. Submitted/unknown
+                # work retains capacity across process restarts, outages and periods.
+                try:
+                    await spend.settle(spend_record, release_unsubmitted=True)
+                except Exception:
+                    logger.warning("Managed spend reservation requires reconciliation usage_id=%s", usage_id)
             await self._release_concurrency(concurrency_key)
 
     async def _authorize(self, project_id: str, user: dict) -> tuple[dict, str, str]:
@@ -132,6 +166,10 @@ class AIUsageService:
         owner = await collection.find_one(identity)
         if not owner or owner.get("subscription", {}).get("status") != "active":
             raise AIUsageError("AI_USAGE_LIMIT_EXCEEDED", 403, "No active AI allowance is available.")
+        if account_mode:
+            from app.services.billing.access import consumption_allowed
+            if not consumption_allowed(owner, now=now):
+                raise AIUsageError("BILLING_ATTENTION_REQUIRED", 403, "Billing needs attention. Manual work stays available.")
         separate = account_mode and owner.get("subscription", {}).get("ai_allowance_version") == 1
         if settings.features.separate_ai_allowances and not separate:
             raise AIUsageError("AI_ALLOWANCE_MIGRATION_REQUIRED", 409, "Separate AI allowance migration is required.")
@@ -149,10 +187,16 @@ class AIUsageService:
         owner = await collection.find_one(identity)
         if not owner or owner.get("subscription", {}).get("status") != "active":
             raise AIUsageError("AI_USAGE_LIMIT_EXCEEDED", 403, "No active AI allowance is available.")
+        if account_mode:
+            from app.services.billing.access import consumption_allowed
+            if not consumption_allowed(owner, now=now):
+                raise AIUsageError("BILLING_ATTENTION_REQUIRED", 403, "Billing needs attention. Manual work stays available.")
         allowance = owner.get("subscription", {}).get("limits", {}).get(limit_field)
         if separate and (not isinstance(allowance, int) or isinstance(allowance, bool) or allowance < 0):
             raise AIUsageError("AI_ALLOWANCE_NOT_CONFIGURED", 503, "The AI allowance is not configured.")
         query = {**identity, "subscription.status": "active", "subscription.ai_usage_period_start": start_value}
+        if account_mode and owner.get("billing", {}).get("managed_spend_required"):
+            query["billing"] = owner["billing"]
         if separate:
             query["subscription.ai_allowance_version"] = 1
             query["subscription.limits." + limit_field] = allowance

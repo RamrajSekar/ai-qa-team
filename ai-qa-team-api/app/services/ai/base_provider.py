@@ -17,6 +17,7 @@ class LLMRequest:
     prompt_version: str | None = None
     # Server-only per-request override; None preserves existing provider behavior.
     max_retries: int | None = None
+    spend_reservation_id: str | None = None  # Server-owned admission, never public input.
 
 
 @dataclass(frozen=True)

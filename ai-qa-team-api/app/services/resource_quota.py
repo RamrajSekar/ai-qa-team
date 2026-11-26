@@ -65,6 +65,8 @@ class ResourceQuota:
             sub = (owner or {}).get("subscription", {})
             if sub.get("entitlement_version") != 2 or sub.get("status") != "active":
                 raise HTTPException(403, "No active account resource allowance.")
+            from app.services.billing.access import require_consumption
+            require_consumption(owner)
             if kind == "projects":
                 if document.get("account_id") != identity or not creator_membership or creator_membership.get("project_id") != document.get("project_id") or creator_membership.get("email") != stored["email"].lower():
                     raise HTTPException(422, "Project membership scope mismatch.")
@@ -119,6 +121,9 @@ class ResourceQuota:
                     or (collection == "customer_accounts" and (owner.get("status") != "ACTIVE" or owner.get("billing_version") != 1))):
                 raise HTTPException(403, "No active resource allowance.")
             limits = self.limits(owner["subscription"], kind, tier)
+            if collection == "customer_accounts":
+                from app.services.billing.access import require_consumption
+                require_consumption(owner)
             pending = owner.get("resource_quota_pending", {})
             allowed = count
             for metric, limit in limits.items():

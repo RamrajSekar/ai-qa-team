@@ -56,7 +56,9 @@ async def upgrade_plan(user_id: str, new_plan: str, provider: str = "manual"):
 async def get_subscription(user_identifier: str):
     account = await account_target(user_identifier)
     if account:
-        return {**effective_subscription(account["subscription"]), "billing_scope": "ACCOUNT", "account_id": account["_id"]}
+        from app.services.billing.access import consumption_allowed
+        return {**effective_subscription(account["subscription"]), "billing_scope": "ACCOUNT", "account_id": account["_id"],
+            "paid_consumption_allowed": consumption_allowed(account)}
     logger.info(f"Checking subscription for user: {user_identifier}")
     query = build_user_query(user_identifier)
     user = await db["users"].find_one(query, {"subscription": 1})

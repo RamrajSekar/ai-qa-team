@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import AIPoolUsage from "./AIPoolUsage";
+import UsageExperience, {type AccountUsageExperience} from "./UsageExperience";
 import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 import styles from "./SubscriptionUsage.module.css";
 
@@ -37,17 +38,18 @@ function Meter({ label, used, limit, compact = false }: { label: string; used: n
   </div>;
 }
 
-export default function SubscriptionUsage({ subscription }: { subscription: AccountSubscription }) {
+export default function SubscriptionUsage({ subscription, experience, onRefresh }: { subscription: AccountSubscription; experience?: AccountUsageExperience; onRefresh?: () => void }) {
   const { enabled } = useFeatures();
   const sharedComplexity = subscription.plan === "free" || subscription.testcase_complexity_policy === "SHARED_TOTAL" || ["team", "business"].includes(subscription.plan);
   const meter = (label: string, key: string, compact = false) => <Meter label={label} used={subscription.usage[key] ?? 0} limit={allowance(subscription, key)} compact={compact} />;
   return <section className={styles.section} aria-labelledby="subscription-usage-title">
     <header className={styles.header}>
       <div><p className="workspace-eyebrow">Account subscription</p><h2 id="subscription-usage-title">Subscription &amp; usage</h2><p className={styles.description}>One shared allowance for your account’s users and projects.</p></div>
-      <div><Link href="/settings/account/plans" className="workspace-button">View plans</Link><p className={styles.note}>Paid upgrades are not yet available online.</p></div>
+      <div><Link href="/settings/account/plans" className="workspace-button">View plans</Link></div>
       <dl className={styles.plan}><div><dt>Plan</dt><dd><strong>{title(subscription.plan)}</strong></dd></div><div><dt>Status</dt><dd><strong className={styles.status}>{title(subscription.status)}</strong></dd></div></dl>
     </header>
 
+    {experience && <UsageExperience experience={experience} onRefresh={onRefresh} />}
     {subscription.ai_allowance_version === 1 ? <section className={styles.group} aria-labelledby="ai-credit-title">
       <h3 id="ai-credit-title">AI Usage</h3><p className={styles.description}>Usage is shared across the account. One request uses one unit; switching modes keeps both balances.</p>
       <AIPoolUsage usage={subscription.usage} limits={subscription.limits} />
@@ -80,7 +82,7 @@ export default function SubscriptionUsage({ subscription }: { subscription: Acco
     </section>
 
     <div className={styles.grid}>
-      <section className={styles.card} aria-labelledby="team-capacity-title"><h3 id="team-capacity-title">Team Capacity</h3><Meter label="Team Members" used={(subscription.usage.team_members_used ?? 0) + 1} limit={subscription.limits.team_members_limit == null ? subscription.limits.team_members_limit : subscription.limits.team_members_limit + 1} /><p className={styles.note}>Includes owner, members and pending invitations. Each person counts once.</p></section>
+      <section className={styles.card} aria-labelledby="team-capacity-title"><h3 id="team-capacity-title">Team Capacity</h3>{experience && <p className={styles.note}>Included users: {experience.seats.included === null ? "Unlimited" : experience.seats.included}. Extra-user purchases are planned.</p>}<Meter label="Team Members" used={(subscription.usage.team_members_used ?? 0) + 1} limit={subscription.limits.team_members_limit == null ? subscription.limits.team_members_limit : subscription.limits.team_members_limit + 1} /><p className={styles.note}>Includes owner, members and pending invitations. Each person counts once.</p></section>
       {enabled("automation_execution_ui") && <section className={styles.card} aria-labelledby="execution-usage-title"><h3 id="execution-usage-title">Execution Usage</h3>{meter("Executions", "executions_used")}<p className={styles.note}>Separate from AI usage. Synthetic runs are unbilled.</p></section>}
     </div>
   </section>;

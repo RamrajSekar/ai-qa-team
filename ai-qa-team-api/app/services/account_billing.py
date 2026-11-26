@@ -29,6 +29,8 @@ def initial_subscription(subscription):
     if settings.features.separate_ai_allowances:
         from app.services.ai_allowances import initialize_allowances
         initialize_allowances(result)
+    if settings.features.billing_checkout and settings.features.separate_ai_allowances:
+        result.update(entitlement_version=2, testcase_complexity_policy="SHARED_TOTAL")
     return result
 
 
@@ -36,6 +38,10 @@ async def change_seats(database, account, delta):
     """Additional account users + pending/claimed invites, never project assignments."""
     query = {"_id": account["_id"], "billing_version": 1, "status": "ACTIVE"}
     if delta > 0:
+        from app.services.billing.access import require_consumption
+        require_consumption(account)
+        if account.get("billing", {}).get("managed_spend_required"):
+            query["billing"] = account["billing"]
         query["subscription.status"] = "active"
         if account["subscription"].get("status") != "active":
             raise HTTPException(403, "No active account subscription.")

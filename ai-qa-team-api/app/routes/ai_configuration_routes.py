@@ -25,7 +25,7 @@ async def read_configuration(project_id: str, current_user=Depends(get_current_u
 async def test_connection(project_id: str, payload: AIConfigurationInput, current_user=Depends(get_current_user)):
     await require_project_admin(project_id, current_user)
     try:
-        await validate_configuration(project_id, payload)
+        await validate_configuration(project_id, payload, actor=current_user)
         return {"success": True, "code": "CONNECTED"}
     except Exception as exc:
         raise public_error(exc) from None

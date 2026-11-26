@@ -34,6 +34,7 @@ dependencies = [
     "itsdangerous (>=2.2.0,<3.0.0)",
     "playwright (>=1.56.0,<2.0.0)",
     "poetry-plugin-export (>=1.9.0,<2.0.0)",
+    "stripe (==17.1.0)",
 ]
 
 [tool.uv]

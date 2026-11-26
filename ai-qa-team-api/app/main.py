@@ -19,6 +19,7 @@ from app.routes import visual_batch_routes
 from app.routes import approved_visual_runs, visual_specification_routes, product_knowledge_routes
 from app.routes import test_design_routes, account_routes, test_result_routes
 from app.routes import jira_routes
+from app.routes import billing_routes
 from app.services import approved_visual_execution
 from app.services.visual_batch_service import visual_batches
 
@@ -64,6 +65,7 @@ async def lifespan(app: FastAPI):
 
 # === Initialize App ===
 app = FastAPI(title="AI QA Team API", lifespan=lifespan)
+app.include_router(billing_routes.router)
 app.include_router(jira_routes.router)
 
 

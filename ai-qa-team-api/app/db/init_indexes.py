@@ -55,6 +55,10 @@ async def init_indexes():
     ])
     add("ai_usage_records", [("billing_owner", 1), ("billing_period_start", 1)])
     add("ai_usage_records", [("account_id", 1), ("billing_period_start", 1)])
+    add("account_usage_notice_dismissals", [("account_id", 1), ("user_id", 1), ("notice_id", 1)])
+    add("billing_checkout_operations", [("provider", 1), ("session_id", 1), ("state", 1)])
+    add("ai_spend_reservations", [("owner", 1), ("state", 1), ("period", 1)])
+    # Financial/admission receipts deliberately have no TTL.
     add("jira_import_previews", "expires_at", expireAfterSeconds=0)
 
     for collection in ("jira_oauth_flows", "jira_oauth_grants"):

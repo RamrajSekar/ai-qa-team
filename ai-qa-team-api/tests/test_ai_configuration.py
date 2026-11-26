@@ -59,6 +59,7 @@ class AIConfigurationTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.db = DB(); self.key = base64.urlsafe_b64encode(b"k" * 32).decode()
         self.patches = [patch.object(ai_configuration_service, "db", self.db), patch.object(encrypted_mongo, "db", self.db),
+            patch("app.services.ai.llm_gateway.db", self.db),
             patch.object(ai_configuration_service.settings, "llm_secret_master_key", self.key), patch.object(ai_configuration_service.settings, "openai_api_key", "managed-test-key")]
         for item in self.patches: item.start()
 
