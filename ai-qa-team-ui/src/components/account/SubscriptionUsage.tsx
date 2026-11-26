@@ -5,6 +5,8 @@ import { useFeatures } from "@/components/providers/FeatureFlagsProvider";
 import styles from "./SubscriptionUsage.module.css";
 
 export interface AccountSubscription {
+  entitlement_version?: number;
+  testcase_complexity_policy?: "SHARED_TOTAL";
   ai_allowance_version?: number | null;
   ai_allowance_migration?: {unknown_units?: number};
   plan: string;
@@ -18,6 +20,7 @@ function title(value: string) { return value.split(/[_ -]+/).map(word => word.ch
 function allowance(subscription: AccountSubscription, key: string): number | null | undefined {
   const limit = subscription.limits[key.replace(/_used$/, "_limit")];
   if (key === "testcases_used" && limit === 0) {
+    if (subscription.entitlement_version === 2 || ["team", "business"].includes(subscription.plan)) return 0;
     if (subscription.plan === "free" && subscription.limits.testcases_basic_limit != null) return subscription.limits.testcases_basic_limit;
     return ["basic", "medium", "advanced"].reduce((total, tier) => total + (subscription.limits[`testcases_${tier}_limit`] || 0), 0);
   }
@@ -36,6 +39,7 @@ function Meter({ label, used, limit, compact = false }: { label: string; used: n
 
 export default function SubscriptionUsage({ subscription }: { subscription: AccountSubscription }) {
   const { enabled } = useFeatures();
+  const sharedComplexity = subscription.plan === "free" || subscription.testcase_complexity_policy === "SHARED_TOTAL" || ["team", "business"].includes(subscription.plan);
   const meter = (label: string, key: string, compact = false) => <Meter label={label} used={subscription.usage[key] ?? 0} limit={allowance(subscription, key)} compact={compact} />;
   return <section className={styles.section} aria-labelledby="subscription-usage-title">
     <header className={styles.header}>
@@ -68,8 +72,8 @@ export default function SubscriptionUsage({ subscription }: { subscription: Acco
           </div>
         </div>
         <div className={`${styles.card} ${styles.testCases}`}>{meter("Test Cases", "testcases_used")}
-          {subscription.plan === "free" && <p className={styles.note}>Shared across all complexities.</p>}
-          <div className={styles.tiers} role="group" aria-label="Test case usage by complexity">{["basic", "medium", "advanced"].map(tier => <div key={tier}>{subscription.plan === "free" ?
+          {sharedComplexity && <p className={styles.note}>Shared across all complexities.</p>}
+          <div className={styles.tiers} role="group" aria-label="Test case usage by complexity">{["basic", "medium", "advanced"].map(tier => <div key={tier}>{sharedComplexity ?
             <dl className={styles.meterLine}><dt>{title(tier)}</dt><dd>{subscription.usage[`testcases_${tier}_used`] === undefined ? "Unavailable" : `${subscription.usage[`testcases_${tier}_used`]} used`}</dd></dl>
             : meter(title(tier), `testcases_${tier}_used`, true)}</div>)}</div></div>
       </div>

@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Literal
-from app.app_config.plan_limits import PLAN_LIMITS
+from app.app_config.plan_limits import plan_limits
 
 class UsageModel(BaseModel):
     projects_used: int = 0
@@ -34,7 +34,7 @@ class LimitModel(BaseModel):
     testcases_advanced_limit: int = 0
 
 class Subscription(BaseModel):
-    plan: Literal["free", "pro", "enterprise"] = "free"
+    plan: Literal["free", "pro", "enterprise", "team", "business"] = "free"
     start_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     expiry_date: Optional[datetime] = Field(
         default_factory=lambda: datetime.now(timezone.utc) + timedelta(days=30)
@@ -42,6 +42,8 @@ class Subscription(BaseModel):
     status: Literal["active", "expired", "cancelled"] = "active"
     provider: Optional[str] = "Manual"
     payment_id: Optional[str] = None
+    entitlement_version: Optional[int] = None
+    testcase_complexity_policy: Optional[Literal["SHARED_TOTAL"]] = None
     ai_allowance_version: Optional[int] = None
     ai_usage_period_start: Optional[datetime] = None
     ai_usage_period_end: Optional[datetime] = None
@@ -57,7 +59,9 @@ class Subscription(BaseModel):
         Automatically apply plan defaults only when limits are empty (all zeros).
         This prevents uninitialized limit values at signup.
         """
-        plan_data = PLAN_LIMITS.get(self.plan, PLAN_LIMITS["free"])
+        if self.entitlement_version == 2 or (self.plan in ("team", "business") and (self.limits.projects_limit != 0 or self.limits.scenarios_limit != 0)):
+            return  # Stored policy snapshots are changed only by explicit adoption.
+        plan_data = plan_limits(self.plan)
 
         # Detect empty limits model
         if self.limits.projects_limit == 0 and self.limits.scenarios_limit == 0:
@@ -73,6 +77,10 @@ class Subscription(BaseModel):
                 testcases_medium_limit=plan_data.get("testcases_medium_limit", 0),
                 testcases_advanced_limit=plan_data.get("testcases_advanced_limit", 0),
             )
+
+        if self.plan in ("team", "business"):
+            self.entitlement_version = 2
+            self.testcase_complexity_policy = "SHARED_TOTAL"
 
         from app.services.ai_allowances import configured_limits
         limits = configured_limits(self.plan)

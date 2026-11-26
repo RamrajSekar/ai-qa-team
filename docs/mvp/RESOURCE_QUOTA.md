@@ -98,3 +98,14 @@ Four adapter contract tests and 13 existing configuration tests passed with mock
 
 Account Subscription exposes View plans. Pricing remains indicative; online paid
 upgrades, checkout and automatic entitlement changes are not delivered.
+
+
+## Account entitlements v2 (2026-11-26)
+
+Reviewed v2 adoption adds transactional project/story creation with account counter
+updates; project creator membership commits in the same transaction. Team/Business
+use a shared case total across complexities. Pre-adoption project/story behavior
+is retained. The default-off legacy repository importer is explicitly blocked for
+v2 accounts because its direct writes have no qualified quota admission. See
+[Phase 2 policy and verification](PRICING_ENTITLEMENTS_V2.md). No account was migrated
+in production, and no paid activation or new worker is enabled by this code.

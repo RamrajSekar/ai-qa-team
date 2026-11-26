@@ -1,5 +1,12 @@
 # Central account team and shared subscription
 
+2026-11-26 Phase 2 refinement: explicitly adopted v2 accounts use transactional
+project/story creation including creator membership. Scenario/test-case admission
+retains its transactional path. Legacy pre-adoption behavior is preserved.
+See [versioned entitlements](PRICING_ENTITLEMENTS_V2.md) for policy, development
+migration and current qualification; no production cutover was performed.
+
+
 2026-11-12 development slice on `dev`; extends [customer ownership](CUSTOMER_ACCOUNTS.md). This is an additive change, not a new payment provider or account-local display-ID migration.
 
 ## User journey and permissions

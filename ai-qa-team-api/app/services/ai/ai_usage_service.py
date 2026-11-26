@@ -155,6 +155,7 @@ class AIUsageService:
         query = {**identity, "subscription.status": "active", "subscription.ai_usage_period_start": start_value}
         if separate:
             query["subscription.ai_allowance_version"] = 1
+            query["subscription.limits." + limit_field] = allowance
         if allowance is not None:
             query["subscription.usage." + usage_field] = {"$lte": max(allowance - units, -1)}
         increments = {"subscription.usage." + usage_field: units}

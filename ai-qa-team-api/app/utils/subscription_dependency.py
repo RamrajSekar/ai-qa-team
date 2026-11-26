@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from app.utils.auth_dependency import get_current_user
 from app.services.subscription_services import get_subscription, increment_usage
 from datetime import datetime, timezone
@@ -13,7 +13,7 @@ def subscription_required(resource_type: str):
     Returns a dependency function bound to a specific action
     (stories/scenarios/executions)
     """
-    async def _dependency(current_user=Depends(get_current_user)):
+    async def _dependency(current_user=Depends(get_current_user), request: Request = None):
         user_id = current_user.get("_id") or current_user.get("id") or current_user.get("email")
         sub = await get_subscription(user_id)
 
@@ -22,6 +22,12 @@ def subscription_required(resource_type: str):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No active subscription.")
         if sub.get("billing_scope") == "ACCOUNT" and sub.get("status") != "active":
             raise HTTPException(403, "No active account subscription.")
+
+        if (sub.get("entitlement_version") == 2 and resource_type in ("projects", "stories", "scenarios")
+                and request is not None and request.method in ("GET", "HEAD", "PATCH", "PUT", "DELETE")):
+            # Capacity governs creation, never reading/editing/reviewing saved records.
+            # Route-level membership and immutable approval checks still apply.
+            return current_user
 
         # Versioned account AI pools are reserved atomically by AIUsageService
         # after provider resolution. The retained aggregate is not a third quota.

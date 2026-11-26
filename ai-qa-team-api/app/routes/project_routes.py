@@ -54,25 +54,28 @@ async def create_project(
     else:
         data["agent_identities"] = {}
 
-    # Insert the project and its creator membership as one logical operation.
-    # Standalone Mongo installations may not support transactions, so compensate
-    # by removing the project if membership creation fails.
-    result = await db["projects"].insert_one(data)
-    data["id"] = str(result.inserted_id)
-    try:
-        await create_creator_membership(new_project_id, current_user)
-    except Exception:
-        await db["projects"].delete_one({"project_id": new_project_id})
-        raise
-    data["current_user_role"] = "ADMIN"
-
-    # ðŸ”¥ Increment project usage (FIXES DASHBOARD & /projects)
     from app.services.account_billing import billing_account
+    from app.services.resource_quota import ResourceQuota
     billing = await billing_account(db, current_user)
-    if billing:
-        await db["customer_accounts"].update_one({"_id": billing["_id"]}, {"$inc": {"subscription.usage.projects_used": 1}})
+    if billing and billing["subscription"].get("entitlement_version") == 2:
+        from app.services.project_team_service import creator_membership_document
+        membership = await creator_membership_document(new_project_id, current_user)
+        saved = await ResourceQuota(db).create_account_resource(current_user, "projects", data, creator_membership=membership)
+        data["id"] = str(saved["_id"])
     else:
-        await db["users"].update_one({"email": current_user["email"]}, {"$inc": {"subscription.usage.projects_used": 1}})
+        # Preserve the legacy flow until explicit entitlement adoption.
+        result = await db["projects"].insert_one(data)
+        data["id"] = str(result.inserted_id)
+        try:
+            await create_creator_membership(new_project_id, current_user)
+        except Exception:
+            await db["projects"].delete_one({"project_id": new_project_id})
+            raise
+        if billing:
+            await db["customer_accounts"].update_one({"_id": billing["_id"]}, {"$inc": {"subscription.usage.projects_used": 1}})
+        else:
+            await db["users"].update_one({"email": current_user["email"]}, {"$inc": {"subscription.usage.projects_used": 1}})
+    data["current_user_role"] = "ADMIN"
 
     # ðŸ”¥ Update onboarding steps
     await db["users"].update_one(

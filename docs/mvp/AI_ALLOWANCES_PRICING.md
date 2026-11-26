@@ -1,5 +1,12 @@
 # Account AI allowances and experimental pricing
 
+2026-11-26 Phase 2: Team/Business canonical defaults and explicit v2 account
+policy adoption are prepared; usage and periods are preserved. Paid activation
+remains unavailable. Planned capacity settings become saved entitlements only
+through reviewed adoption, never automatically. See
+[versioned entitlements](PRICING_ENTITLEMENTS_V2.md) for migration and qualification.
+
+
 2026-11-26: Phase 1 adds a display-only v2 catalogue for Free, Team, Business
 and Enterprise on public pricing and account Plans. Legacy response fields and
 canonical subscription limits remain unchanged. Paid offers and add-ons cannot
@@ -11,7 +18,8 @@ Planned offers use nested environment settings such as
 `PRICING__BUSINESS__MONTHLY_USD=149`, and
 `PRICING__ADDITIONAL_USER_MONTHLY_USD=8`. All offer capacity fields are configurable.
 Optional `PRICING__CONTACT_URL` must be an HTTPS URL without credentials; omit
-it to show disabled Coming soon controls. These settings only change the preview.
+it to show disabled Coming soon controls. These settings change the preview and defaults for explicitly reviewed v2 adoption;
+they never rewrite saved account limits.
 Free AI display uses `AI_ALLOWANCES__FREE_MANAGED` and
 `AI_ALLOWANCES__FREE_BYOK`; existing account limits still require the explicit
 account policy process. See [rollout plan](PRICING_ROLLOUT_PLAN.md).

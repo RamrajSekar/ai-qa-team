@@ -50,11 +50,16 @@ async def create_story(
             "created_at": datetime.now(timezone.utc).isoformat()
         }
 
-        # 3️⃣ Insert into Mongo
-        result = await db["stories"].insert_one(story_data)
-        story_data["id"] = str(result.inserted_id)
-        # Update usage counter (important!)
-        await increment_usage(user_email, "stories_used")
+        from app.services.account_billing import billing_account
+        from app.services.resource_quota import ResourceQuota
+        billing = await billing_account(db, current_user)
+        if billing and billing["subscription"].get("entitlement_version") == 2:
+            saved = await ResourceQuota(db).create_account_resource(current_user, "stories", story_data)
+            story_data["id"] = str(saved["_id"])
+        else:
+            result = await db["stories"].insert_one(story_data)
+            story_data["id"] = str(result.inserted_id)
+            await increment_usage(user_email, "stories_used")
 
         return StoryResponse(**story_data)
 

@@ -2,15 +2,21 @@ const {test,before,after}=require('node:test');const assert=require('node:assert
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE_PATH||'playwright');
 const {fixture,base}=require('./qa-agent-fixture.cjs');let browser;
 before(async()=>{browser=await chromium.launch({headless:true,channel:'msedge'});});after(async()=>browser?.close());
-async function setup(t,unavailable=false){
+async function setup(t,unavailable=false,plan="free"){
  const f=await fixture(browser,t);const calls=[];
  const subscription={plan:'free',status:'active',ai_allowance_version:1,usage:{managed_ai_credits_used:3,byok_ai_requests_used:1,scenarios_used:3,scenarios_basic_used:1,scenarios_medium_used:2,scenarios_advanced_used:0},limits:{managed_ai_credits_limit:25,byok_ai_requests_limit:25,scenarios_limit:10}};
+ if(plan!=="free"){
+  Object.assign(subscription,{plan,entitlement_version:2,testcase_complexity_policy:'SHARED_TOTAL'});
+  Object.assign(subscription.usage,{projects_used:1,stories_used:5,testcases_used:13,testcases_basic_used:3,testcases_medium_used:4,testcases_advanced_used:6,team_members_used:2});
+  Object.assign(subscription.limits,{projects_limit:plan==='team'?5:20,stories_limit:plan==='team'?200:1000,scenarios_limit:plan==='team'?1000:5000,testcases_limit:plan==='team'?3000:15000,team_members_limit:plan==='team'?4:14,managed_ai_credits_limit:plan==='team'?500:2000,byok_ai_requests_limit:plan==='team'?500:2000});
+ }
  await f.context.route('http://feature-api.test/**',async route=>{
   const request=route.request(),path=new URL(request.url()).pathname;
   const headers={'access-control-allow-origin':base,'access-control-allow-credentials':'true'};
   if(request.method()==='OPTIONS')return route.fallback();calls.push({path,method:request.method()});
   let json;
-  if(path==='/features')json={customer_accounts:true,account_subscriptions:true,product_knowledge:true,story_management:true,scenario_generation:true,test_generation:true};
+  if(path==='/auth/me')json={user:{email:'fixture@example.com',name:'Fixture',onboarding:{onboarding_status:'completed'},subscription}};
+  else if(path==='/features')json={customer_accounts:true,account_subscriptions:true,product_knowledge:true,story_management:true,scenario_generation:true,test_generation:true};
   else if(path==='/account')json={name:'Synthetic account',current_user_role:'MEMBER'};
   else if(path==='/account/members')json=[];
   else if(path==='/account/subscription')json={billing_scope:'ACCOUNT',subscription};
@@ -67,4 +73,23 @@ test('dashboard shows Test Cases without AI usage meters, charts or configuratio
  assert.equal(await page.getByText('Managed AI Requests',{exact:true}).count(),0);
  assert.equal(await page.locator('.recharts-wrapper').count(),0);
  assert.equal(calls.filter(call=>call.path.endsWith('/ai/configuration')).length,0);
+});
+
+for(const plan of ['team','business'])test(`${plan} shows actual shared account limits without separate complexity caps`,async t=>{
+ const{page,calls}=await setup(t,false,plan);await page.goto(base+'/settings/account');
+ await page.getByText(plan==='team'?'Team':'Business',{exact:true}).waitFor();
+ const cases=page.getByRole('group',{name:'Test case usage by complexity'});
+ for(const value of ['3 used','4 used','6 used'])await cases.getByText(value,{exact:true}).waitFor();
+ await page.getByText('Shared across all complexities.',{exact:true}).waitFor();
+ assert.match(await cases.locator('..').innerText(),plan==='team'?/13 \/ 3000/:/13 \/ 15000/);
+ const team=page.getByRole('heading',{name:'Team Capacity'}).locator('..');
+ assert.match(await team.innerText(),plan==='team'?/3 \/ 5/:/3 \/ 15/);
+ assert.equal(calls.filter(call=>!['GET','OPTIONS'].includes(call.method)).length,0);
+ if(plan==='business'){await page.screenshot({path:process.env.PRICING_ACCOUNT_SCREENSHOT||'../tmp/pricing-phase2-account.png',fullPage:true});await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:'../tmp/pricing-phase2-account-mobile.png',fullPage:true});}
+});
+
+test('Dashboard preserves an explicit zero v2 capacity instead of summing old tiers',async t=>{
+ const{page,context}=await fixture(browser,t);
+ await context.route('http://feature-api.test/auth/me**',route=>route.fulfill({headers:{'access-control-allow-origin':base,'access-control-allow-credentials':'true'},json:{user:{email:'fixture@example.com',onboarding:{onboarding_status:'completed'},subscription:{plan:'team',entitlement_version:2,usage:{testcases_used:4},limits:{testcases_limit:0,testcases_basic_limit:3000,testcases_medium_limit:3000,testcases_advanced_limit:3000}}}}}));
+ await page.goto(base+'/dashboard');const card=page.getByText('Test Cases',{exact:true}).locator('..');await card.waitFor();assert.match(await card.innerText(),/4\s*\/\s*0/);
 });
