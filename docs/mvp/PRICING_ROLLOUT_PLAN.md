@@ -1,6 +1,6 @@
 # Pricing redesign and commercial rollout plan
 
-Phase 1 implemented for review, 2026-11-26. Planned offers are display-only.
+Phase 1 merged; Phase 2 implemented for review, 2026-11-26. Paid offers remain planned.
 This document changes no live prices, entitlements,
 subscriptions, environment settings or billing. Begin with the pricing page;
 payment collection and automation remain later delivery stages.
@@ -121,7 +121,7 @@ capacity, action, budget and approval controls; a pricing page enables none of i
 
 ## Delivery and decision gates
 
-Sequence separate PRs by phase; start with Phase 1 only. Check the previous PR's
+Sequence separate PRs by phase; Phase 3 is next after Phase 2 review. Check the previous PR's
 merge state and current main before each PR. Run targeted API/UI regressions,
 production build/types and visual desktop/mobile checks appropriate to the change.
 Record actual results and remaining limits; do not substitute mocked billing or
@@ -132,11 +132,11 @@ existing-customer treatment; contact destination; extra-seat proration; pack
 expiry/refunds; and measured cost ceilings. These decisions do not block an
 explicitly experimental pricing-page redesign.
 
-Relevant current implementation: components/marketing/Pricing.tsx is shared by
-public /pricing and workspace /settings/account/plans. GET /auth/pricing currently
-exposes an experimental Managed/BYOK catalogue with billing disabled. Canonical
-subscription plans are free/pro/enterprise; Business, checkout, seat purchases,
-top-up balances and hard monetary budgets are not delivered.
+Current implementation: components/marketing/Pricing.tsx is shared by public
+/pricing and workspace /settings/account/plans. GET /auth/pricing exposes the v2
+account offer catalogue with billing disabled. Canonical models now accept
+free/pro/enterprise/team/business; v2 adoption is explicit and reviewed. Checkout,
+seat purchases, top-up balances and hard monetary budgets are not delivered.
 
 See AI_ALLOWANCES_PRICING.md, ACCOUNT_TEAM_BILLING.md, PRICING_COST_REVIEW.md and
 TEST_DESIGN_MVP.md for preserved billing, isolation and release boundaries.
@@ -154,5 +154,12 @@ navigation, four plans, mobile overflow, retry, configured prices/contact and
 unsafe contact rejection. Changed-component lint passed; desktop and mobile
 screenshots were inspected. No production account, payment or provider was used.
 
-Phases 2 onward remain unimplemented. These checks do not qualify paid billing
+Phases 3 onward remain unimplemented. These checks do not qualify paid billing
 or validate the proposed prices against real support/AI costs.
+
+
+## Phase 2 review status (2026-11-26)
+
+See [versioned entitlements](PRICING_ENTITLEMENTS_V2.md) for exact behavior,
+development migration instructions, current checks, compatibility and the remaining
+Phase 3–6 roadmap. No production migration or paid activation was performed.

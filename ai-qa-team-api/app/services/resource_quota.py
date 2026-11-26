@@ -50,6 +50,43 @@ class ResourceQuota:
             return "customer_accounts", account["_id"], stored
         return "users", stored["_id"], stored
 
+    async def create_account_resource(self, user, kind, document, *, creator_membership=None):
+        """Atomic immediate creation for v2 projects/stories, including project membership."""
+        if kind not in ("projects", "stories") or document.get("created_by") != user.get("email"):
+            raise HTTPException(422, "Invalid account resource.")
+        collection, identity, stored = await self.target(user)
+        if collection != "customer_accounts":
+            raise HTTPException(409, "Account entitlement adoption is required.")
+        document = deepcopy(document)
+        document.setdefault("_id", ObjectId())
+
+        async def work(session):
+            owner = await self.db[collection].find_one({"_id": identity, "billing_version": 1, "status": "ACTIVE"}, session=session)
+            sub = (owner or {}).get("subscription", {})
+            if sub.get("entitlement_version") != 2 or sub.get("status") != "active":
+                raise HTTPException(403, "No active account resource allowance.")
+            if kind == "projects":
+                if document.get("account_id") != identity or not creator_membership or creator_membership.get("project_id") != document.get("project_id") or creator_membership.get("email") != stored["email"].lower():
+                    raise HTTPException(422, "Project membership scope mismatch.")
+            else:
+                project = await self.db["projects"].find_one({"project_id": document.get("project_id"), "account_id": identity}, session=session)
+                if not project:
+                    raise HTTPException(403, "Project is outside this account.")
+            metric = kind + "_used"
+            limit = sub.get("limits", {}).get(kind + "_limit")
+            used = sub.get("usage", {}).get(metric)
+            pending = owner.get("resource_quota_pending", {}).get(metric, 0)
+            if any(not isinstance(value, int) or isinstance(value, bool) or value < 0 for value in (limit, used, pending)):
+                raise HTTPException(503, "Account resource reconciliation is required.")
+            if used + pending >= limit:
+                raise HTTPException(403, f"{kind.title()} allowance reached. Existing records remain available.")
+            await self.db[collection].update_one({"_id": identity}, {"$inc": {f"subscription.usage.{metric}": 1}}, session=session)
+            await self.db[kind].insert_one(document, session=session)
+            if creator_membership:
+                await self.db["project_memberships"].insert_one(deepcopy(creator_membership), session=session)
+            return document
+        return await self.transaction(work)
+
     @staticmethod
     def limits(subscription, kind, tier):
         limits = subscription.get("limits", {})

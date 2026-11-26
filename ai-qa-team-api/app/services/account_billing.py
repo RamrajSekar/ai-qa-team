@@ -36,9 +36,11 @@ async def change_seats(database, account, delta):
     """Additional account users + pending/claimed invites, never project assignments."""
     query = {"_id": account["_id"], "billing_version": 1, "status": "ACTIVE"}
     if delta > 0:
+        query["subscription.status"] = "active"
         if account["subscription"].get("status") != "active":
             raise HTTPException(403, "No active account subscription.")
         limit = account["subscription"].get("limits", {}).get("team_members_limit", 0)
+        query["subscription.limits.team_members_limit"] = limit
         if limit is not None:
             query["subscription.usage.team_members_used"] = {"$lt": limit}
     else:

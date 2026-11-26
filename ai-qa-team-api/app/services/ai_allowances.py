@@ -4,6 +4,9 @@ from app.app_config.plan_limits import PLAN_LIMITS
 
 
 def configured_limits(plan):
+    if plan in ("team", "business"):
+        offer = getattr(settings.pricing, plan)
+        return {"managed_ai_credits_limit": offer.managed_ai_credits_limit, "byok_ai_requests_limit": offer.byok_ai_requests_limit}
     if plan not in {"free", "pro", "enterprise"}:
         raise ValueError("Unsupported plan for AI allowances.")
     return {"managed_ai_credits_limit": getattr(settings.ai_allowances, plan + "_managed"),

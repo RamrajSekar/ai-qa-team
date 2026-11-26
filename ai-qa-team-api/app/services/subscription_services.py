@@ -3,7 +3,7 @@ from app.models.subscription import Subscription
 from app.db.connection import db
 from fastapi import HTTPException, status
 import logging
-from app.app_config.plan_limits import PLAN_LIMITS
+from app.app_config.plan_limits import PLAN_LIMITS, plan_limits
 from bson import ObjectId
 from app.services.account_billing import billing_account
 from app.services.testcase_allowances import effective_subscription
@@ -27,27 +27,31 @@ def build_user_query(user_identifier: str):
 
 async def upgrade_plan(user_id: str, new_plan: str, provider: str = "manual"):
     """Upgrade a user's plan and persist it in MongoDB."""
+    if new_plan in ("team", "business"):
+        raise HTTPException(403, "Paid activation is unavailable. Use an explicitly reviewed entitlement adoption plan.")
     if new_plan not in PLAN_LIMITS:
         raise HTTPException(400, "Invalid plan.")
     account = await account_target(user_id)
     model = Subscription(plan=new_plan); model.apply_plan_defaults()
-    new_subscription = model
-    new_subscription.provider = provider
-    # Try updating by _id; if no match, fallback to email
+    if account and account["subscription"].get("entitlement_version") == 2:
+        raise HTTPException(409, "Versioned account plan changes require a reviewed entitlement plan.")
     if account:
         # Entitlement changes preserve metered usage and period, never refill credits.
         await db["customer_accounts"].update_one({"_id": account["_id"], "billing_version": 1},
             {"$set": {"subscription.plan": new_plan, "subscription.limits": model.limits.model_dump(), "subscription.provider": provider}})
         return {**account["subscription"], "plan": new_plan, "limits": model.limits.model_dump(), "provider": provider}
+    user = await db["users"].find_one(build_user_query(user_id))
+    if not user or not user.get("subscription"):
+        raise HTTPException(404, "Subscription not found.")
+    current = user["subscription"]
     result = await db["users"].update_one(
-        {"$or": [{"_id": user_id}, {"email": user_id}]},
-        {"$set": {"subscription": new_subscription.model_dump()}}
+        {"_id": user["_id"], "subscription": current},
+        {"$set": {"subscription.plan": new_plan, "subscription.limits": model.limits.model_dump(), "subscription.provider": provider}}
     )
+    if result.matched_count != 1:
+        raise HTTPException(409, "Subscription changed. Refresh before changing plans.")
+    return {**current, "plan": new_plan, "limits": model.limits.model_dump(), "provider": provider}
 
-    if result.modified_count == 0:
-        raise Exception("No user record updated. Check user_id or email mapping.")
-
-    return new_subscription
 
 async def get_subscription(user_identifier: str):
     account = await account_target(user_identifier)
@@ -88,7 +92,7 @@ async def get_subscription(user_identifier: str):
                 healed = True
 
     # ---------- Heal LIMITS ----------
-    default_limits = PLAN_LIMITS.get(sub.get("plan", "free"))
+    default_limits = plan_limits(sub.get("plan", "free"))
 
     if "limits" not in sub or not isinstance(sub["limits"], dict):
         sub["limits"] = default_limits

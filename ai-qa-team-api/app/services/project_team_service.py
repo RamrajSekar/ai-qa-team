@@ -35,7 +35,7 @@ def public_membership(document: dict, user: dict | None = None) -> dict:
     }
 
 
-async def create_creator_membership(project_id: str, user: dict) -> dict:
+async def creator_membership_document(project_id: str, user: dict) -> dict:
     now = datetime.now(timezone.utc)
     email = user["email"].strip().lower()
     membership = {
@@ -52,6 +52,11 @@ async def create_creator_membership(project_id: str, user: dict) -> dict:
         "created_at": now,
         "updated_at": now,
     }
+    return membership
+
+
+async def create_creator_membership(project_id: str, user: dict) -> dict:
+    membership = await creator_membership_document(project_id, user)
     try:
         await db["project_memberships"].insert_one(membership)
     except DuplicateKeyError as exc:

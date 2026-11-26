@@ -100,6 +100,11 @@ async def import_playwright_route(
     if not project:
         raise HTTPException(404, "Project does not exist")
 
+    if project.get("account_id"):
+        account = await db["customer_accounts"].find_one({"_id": project["account_id"]})
+        if (account or {}).get("subscription", {}).get("entitlement_version") == 2:
+            raise HTTPException(409, "Legacy repository import is unavailable for versioned account limits. Use the reviewed Test Design workflow.")
+
     # Import tests
     try:
         summary = await import_playwright_tests(

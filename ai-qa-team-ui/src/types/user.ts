@@ -29,6 +29,8 @@ export interface UsageLimits {
 }
 
 export interface Subscription {
+  entitlement_version?: number | null;
+  testcase_complexity_policy?: "SHARED_TOTAL" | null;
   ai_allowance_version?: number | null;
   plan: string;           // "free", "pro", etc.
   start_date?: string;

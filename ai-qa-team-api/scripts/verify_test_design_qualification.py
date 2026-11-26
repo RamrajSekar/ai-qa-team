@@ -51,7 +51,8 @@ CASE = {"title":"Save draft confirmation details","purpose":"Verify saving","rol
 
 
 class Qualification:
-    def __init__(self, db):
+    def __init__(self, db, entitlements_v2=False):
+        self.entitlements_v2 = entitlements_v2
         self.db=db; self.case=deepcopy(CASE); self.intent=deepcopy(INTENT); self.report={"database":"ephemeral-loopback-only","provider":"deterministic-double",
             "checks":[],"findings":[],"ai_calls":0}; self.race_operation=None; self.race_count=0; self.race_gate=asyncio.Event()
 
@@ -101,7 +102,13 @@ class Qualification:
             transport=httpx.ASGITransport(app=app)
             async with httpx.AsyncClient(transport=transport,base_url='http://qualification.test') as owner, httpx.AsyncClient(transport=transport,base_url='http://qualification.test') as foreign:
                 await self.call(owner,'POST','/auth/signup',json={"name":"QA Owner","email":"owner@example.com","password":"fixture-password"})
-                await self.call(owner,'PATCH','/account',json={"name":"Qualification Account"})
+                await self.call(owner,'PATCH','/account',json={"name":"QA Fixture"})
+                if self.entitlements_v2:
+                    from app.services.account_entitlements import plan_entitlements, apply_entitlements
+                    row = await self.db['customer_accounts'].find_one({'status':'ACTIVE'})
+                    plan = plan_entitlements([row], {row['_id']:'free'})
+                    await apply_entitlements(self.db, plan, plan['plan_digest'], maintenance_confirmed=True)
+                    self.check('explicit_v2_adoption_before_route_journey', not plan['errors'])
                 project=await self.call(owner,'POST','/projects',json={"name":"Qualification project","created_by":"owner@example.com"})
                 project_id=project['project_id']; root=f'/projects/{project_id}/knowledge'
                 self.check('signup_account_project',project['current_user_role']=='ADMIN')
@@ -270,7 +277,7 @@ class Qualification:
 
 
 async def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--confirm-isolated-local',action='store_true',required=True);parser.add_argument('--output',type=Path,required=True);args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--confirm-isolated-local',action='store_true',required=True);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--entitlements-v2',action='store_true');args=parser.parse_args()
     name='qa_test_design_'+uuid4().hex
     assert re.fullmatch(r'qa_test_design_[0-9a-f]{32}',name)
     client=AsyncIOMotorClient('mongodb://127.0.0.1:27129/?replicaSet=qaTestDesign',serverSelectionTimeoutMS=5000,socketTimeoutMS=10000)
@@ -280,7 +287,7 @@ async def main():
         for collection,identity in (('users','email'),('projects','project_id'),('stories','story_id'),('scenarios','scenario_id'),('testcases','testcase_id')):
             await client[name][collection].create_index(identity,unique=True)
         await client[name]['project_memberships'].create_index([('project_id',1),('email',1)],unique=True)
-        result=await Qualification(client[name]).run()
+        result=await Qualification(client[name], entitlements_v2=args.entitlements_v2).run()
         result['ephemeral_database']=name
     finally:
         await client.drop_database(name)

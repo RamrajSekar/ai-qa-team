@@ -28,7 +28,8 @@ export default function DashboardPage() {
 
   const usage: Partial<UsageStats> = user.subscription?.usage || {};
   const limits: Partial<UsageLimits> = user.subscription?.limits || {};
-  const testCaseLimit = limits.testcases_limit === 0
+  const sharedCases = user.subscription?.entitlement_version === 2 || ["team", "business"].includes(user.subscription?.plan || "");
+  const testCaseLimit = limits.testcases_limit === 0 && !sharedCases
     ? user.subscription?.plan === "free" && limits.testcases_basic_limit != null ? limits.testcases_basic_limit
       : (limits.testcases_basic_limit ?? 0) + (limits.testcases_medium_limit ?? 0) + (limits.testcases_advanced_limit ?? 0)
     : limits.testcases_limit;

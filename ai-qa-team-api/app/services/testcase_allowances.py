@@ -15,16 +15,20 @@ def testcase_allowances(subscription):
            for value in (total, *tiers.values())):
         raise HTTPException(503, "Test case allowance is not configured.")
     free = subscription.get("plan") == "free"
-    if total in (None, 0) and any(value is not None for value in tiers.values()):
+    shared = free or subscription.get("entitlement_version") == 2 or subscription.get("plan") in ("team", "business")
+    versioned = subscription.get("entitlement_version") == 2 or subscription.get("plan") in ("team", "business")
+    if versioned and (not isinstance(total, int) or isinstance(total, bool) or total < 0):
+        raise HTTPException(503, "Shared test case allowance is not configured.")
+    if not versioned and total in (None, 0) and any(value is not None for value in tiers.values()):
         # Old Free subscriptions used only their Basic cap, with an unused total.
         # Do not sum three shared caps and accidentally turn 10 into 30.
         total = tiers["basic"] if free and tiers["basic"] is not None else sum(value or 0 for value in tiers.values())
-    return {"testcases_limit": total, **{f"testcases_{tier}_limit": total if free else tiers[tier] for tier in TIERS}}
+    return {"testcases_limit": total, **{f"testcases_{tier}_limit": total if shared else tiers[tier] for tier in TIERS}}
 
 
 def effective_subscription(subscription):
     result = deepcopy(subscription)
-    if result.get("plan") == "free" and any(key.startswith("testcases_") for key in result.get("limits", {})):
+    if (result.get("plan") in ("free", "team", "business") or result.get("entitlement_version") == 2) and any(key.startswith("testcases_") for key in result.get("limits", {})):
         result["limits"].update(testcase_allowances(result))
         result["testcase_complexity_policy"] = "SHARED_TOTAL"
     return result
