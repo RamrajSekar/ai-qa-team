@@ -18,7 +18,22 @@ def initialize_allowances(subscription):
 
 
 def public_pricing():
-    return {"stage": "EXPERIMENTAL", "currency": "USD", "billing_enabled": False,
+    free = PLAN_LIMITS["free"]
+    # Display-only offers. Never feed these planned limits into subscriptions.
+    offers = {
+        "free": {"monthly_usd": 0, "availability": "available", "users_limit": free["team_members_limit"] + 1,
+            **{key: free[key] for key in ("projects_limit", "stories_limit", "scenarios_limit", "testcases_limit")},
+            **configured_limits("free")},
+        "team": {**settings.pricing.team.model_dump(), "availability": "planned"},
+        "business": {**settings.pricing.business.model_dump(), "availability": "planned"},
+        "enterprise": {"monthly_usd": None, "availability": "planned"},
+    }
+    return {"catalog_version": 2, "stage": "EXPERIMENTAL", "currency": "USD", "billing_enabled": False,
+        "offers": offers, "contact_url": str(settings.pricing.contact_url) if settings.pricing.contact_url else None,
+        "add_ons": {"availability": "planned", "additional_user_monthly_usd": settings.pricing.additional_user_monthly_usd,
+            "managed_pack": {"requests": settings.pricing.ai_pack_requests, "usd": settings.pricing.managed_pack_usd},
+            "byok_pack": {"requests": settings.pricing.ai_pack_requests, "usd": settings.pricing.byok_pack_usd}},
+        # Compatibility catalogue for deployed clients; no existing plan mapping changes.
         "free": {"plan": "free", "monthly_usd": 0, "additional_members_limit": PLAN_LIMITS["free"]["team_members_limit"], **configured_limits("free")},
         "managed": {"plan": "pro", "monthly_usd": settings.pricing.managed_monthly_usd, **configured_limits("pro")},
         "byok": {"plan": "pro", "monthly_usd": settings.pricing.byok_monthly_usd, **configured_limits("pro")},

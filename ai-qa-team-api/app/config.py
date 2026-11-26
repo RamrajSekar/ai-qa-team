@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from pydantic import BaseModel, Field, SecretStr, EmailStr
+from pydantic import BaseModel, Field, SecretStr, EmailStr, HttpUrl, field_validator
 
 
 class FeatureFlags(BaseModel):
@@ -61,10 +61,46 @@ class AIAllowanceSettings(BaseModel):
     enterprise_byok: int = Field(default=5000, ge=0)
 
 
+class PricingOfferSettings(BaseModel):
+    monthly_usd: int = Field(default=49, ge=0)
+    users_limit: int = Field(default=5, ge=1)
+    projects_limit: int = Field(default=5, ge=0)
+    stories_limit: int = Field(default=200, ge=0)
+    scenarios_limit: int = Field(default=1000, ge=0)
+    testcases_limit: int = Field(default=3000, ge=0)
+    managed_ai_credits_limit: int = Field(default=500, ge=0)
+    byok_ai_requests_limit: int = Field(default=500, ge=0)
+
+
+class BusinessPricingOfferSettings(PricingOfferSettings):
+    monthly_usd: int = Field(default=149, ge=0)
+    users_limit: int = Field(default=15, ge=1)
+    projects_limit: int = Field(default=20, ge=0)
+    stories_limit: int = Field(default=1000, ge=0)
+    scenarios_limit: int = Field(default=5000, ge=0)
+    testcases_limit: int = Field(default=15000, ge=0)
+    managed_ai_credits_limit: int = Field(default=2000, ge=0)
+    byok_ai_requests_limit: int = Field(default=2000, ge=0)
+
+
 class PricingSettings(BaseModel):
     managed_monthly_usd: int = Field(default=499, ge=0)
     byok_monthly_usd: int = Field(default=349, ge=0)
     pilot_fixed_usd: int = Field(default=1000, ge=0)
+    team: PricingOfferSettings = Field(default_factory=PricingOfferSettings)
+    business: BusinessPricingOfferSettings = Field(default_factory=BusinessPricingOfferSettings)
+    additional_user_monthly_usd: int = Field(default=8, ge=0)
+    ai_pack_requests: int = Field(default=500, ge=1)
+    managed_pack_usd: int = Field(default=10, ge=0)
+    byok_pack_usd: int = Field(default=5, ge=0)
+    contact_url: HttpUrl | None = None
+
+    @field_validator("contact_url")
+    @classmethod
+    def safe_contact(cls, value):
+        if value and (value.scheme != "https" or value.username or value.password):
+            raise ValueError("Pricing contact must be an HTTPS URL without credentials.")
+        return value
 
 
 class KnowledgeIngestionSettings(BaseModel):
