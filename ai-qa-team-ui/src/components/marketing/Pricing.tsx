@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+const BillingActions = dynamic(() => import("@/components/account/BillingActions"), {ssr:false});
 import { apiFetch } from "@/utils/api";
 import { useAuth } from "@/components/providers/AuthProvider";
 
 type Capacity = "users_limit" | "projects_limit" | "stories_limit" | "scenarios_limit" | "testcases_limit" | "managed_ai_credits_limit" | "byok_ai_requests_limit";
 type Offer = { monthly_usd: number; availability: "available" | "planned" } & Record<Capacity, number>;
 type Catalog = {
-  catalog_version: 2; stage: "EXPERIMENTAL"; currency: "USD"; billing_enabled: false;
+  catalog_version: 2; stage: "EXPERIMENTAL"; currency: "USD"; billing_enabled: boolean;
   offers: {free: Offer; team: Offer; business: Offer; enterprise: {monthly_usd: null; availability: "planned"}};
   contact_url: string | null;
   add_ons: {availability: "planned"; additional_user_monthly_usd: number; managed_pack: {requests:number;usd:number}; byok_pack: {requests:number;usd:number}};
@@ -21,10 +23,10 @@ const rows: {key:Capacity;label:string}[] = [
 ];
 const whole = (value:unknown) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 function validCatalog(value:Catalog) {
-  if (!value || value.catalog_version !== 2 || value.stage !== "EXPERIMENTAL" || value.currency !== "USD" || value.billing_enabled !== false) return false;
+  if (!value || value.catalog_version !== 2 || value.stage !== "EXPERIMENTAL" || value.currency !== "USD" || typeof value.billing_enabled !== "boolean") return false;
   for (const key of ["free","team","business"] as const) {
     const offer=value.offers?.[key];
-    if (!offer || !whole(offer.monthly_usd) || rows.some(row=>!whole(offer[row.key])) || offer.users_limit < 1 || offer.availability !== (key === "free" ? "available" : "planned")) return false;
+    if (!offer || !whole(offer.monthly_usd) || rows.some(row=>!whole(offer[row.key])) || offer.users_limit < 1 || offer.availability !== (key === "free" || value.billing_enabled ? "available" : "planned")) return false;
   }
   if (value.offers?.enterprise?.monthly_usd !== null || value.offers.enterprise.availability !== "planned" || value.add_ons?.availability !== "planned" || !whole(value.add_ons.additional_user_monthly_usd)) return false;
   for (const pack of [value.add_ons.managed_pack,value.add_ons.byok_pack]) if (!pack || !whole(pack.usd) || !whole(pack.requests) || pack.requests < 1) return false;
@@ -51,18 +53,19 @@ export default function Pricing({ workspace = false }: { workspace?: boolean }) 
   const price = (amount:number) => new Intl.NumberFormat("en-US", {style:"currency",currency:"USD",maximumFractionDigits:0}).format(amount);
   const count = (amount:number) => new Intl.NumberFormat("en-US").format(amount);
   function contact(plan:string) {
+    if (catalog?.billing_enabled && plan !== "Enterprise") return <Link className="lp-button lp-secondary" href={signedIn ? "/settings/account/plans" : "/auth?mode=signup"}>View account plans</Link>;
     return catalog?.contact_url ? <a className="lp-button lp-secondary" href={catalog.contact_url} aria-label={`Contact us about ${plan}`}>Contact us</a> : <button type="button" className="lp-button lp-secondary" disabled aria-label={`${plan} coming soon`}>Coming soon</button>;
   }
   return <section id="pricing" className="lp-section lp-container lp-pricing-v2">
     <p className="lp-eyebrow">Test Design pricing</p><h1>Plans for your QA team.</h1>
     <p className="lp-intro">Turn product knowledge and stories into reviewed scenarios and test cases.</p>
-    <p className="lp-note">USD per account, billed monthly. Paid plans and add-ons are planned; online purchasing is not available yet.</p>
+    <p className="lp-note">{catalog?.billing_enabled ? "USD per account, billed monthly. Manage your subscription from your account." : "USD per account, billed monthly. Paid plans and add-ons are planned; online purchasing is not available yet."}</p>
     {error ? <div role="alert" className="lp-pricing-state"><p>Pricing details are temporarily unavailable.</p><button className="lp-button lp-secondary" onClick={() => {setError(false);setReload(value => value + 1);}}>Try again</button></div> : !catalog ? <p role="status">Loading pricing details...</p> : <>
       <div className="lp-pricing-grid">
         {(["free","team","business"] as const).map(key=>{
           const offer=catalog.offers[key];const name=key === "free" ? "Free" : key === "team" ? "Team" : "Business";
           return <article key={key} className={`lp-pricing-card ${key === "team" ? "lp-pricing-featured" : ""}`} aria-label={`${name} plan`}>
-            <div className="lp-pricing-card-head"><h2>{name}</h2>{key !== "free" && <span className="lp-plan-label">Early access</span>}</div>
+            <div className="lp-pricing-card-head"><h2>{name}</h2>{key !== "free" && !catalog.billing_enabled && <span className="lp-plan-label">Early access</span>}</div>
             <p className="lp-pricing-price">{price(offer.monthly_usd)}<small>per account / month</small></p>
             <p className="lp-pricing-summary">{key === "free" ? "Explore the full Test Design journey." : key === "team" ? "For small teams building shared coverage." : "More capacity for growing QA teams."}</p>
             <ul><li>{count(offer.users_limit)} users, including owner</li><li>{count(offer.projects_limit)} {offer.projects_limit === 1 ? "project" : "projects"}</li><li>{count(offer.testcases_limit)} saved test cases</li><li>{count(offer.managed_ai_credits_limit)} Managed requests / month</li><li>{count(offer.byok_ai_requests_limit)} BYOK requests / month</li></ul>
@@ -81,11 +84,12 @@ export default function Pricing({ workspace = false }: { workspace?: boolean }) 
         <article><h3>BYOK request pack</h3><p className="lp-extra-price">{price(catalog.add_ons.byok_pack.usd)}<small>for {count(catalog.add_ons.byok_pack.requests)} requests</small></p><p>Your AI provider bills you separately.</p></article>
       </div></section>
     </>}
+    {workspace && signedIn && <BillingActions />}
     <dl className="lp-facts">
       <div><dt>Managed or BYOK?</dt><dd>Managed uses our AI connection. BYOK uses your supported provider key, with provider charges paid separately. They are choices within an account plan.</dd></div>
       <div><dt>What counts as an AI request?</dt><dd>One generation, analysis or question can produce multiple items. Requests are not tokens; manual editing and human review use no AI request.</dd></div>
       <div><dt>Is automation included?</dt><dd>Automated browser execution is a future optional add-on. Recording uploads are not included.</dd></div>
-      <div><dt>Can I upgrade now?</dt><dd>Paid plans are in preparation. This page does not collect payment, change your subscription or update existing account limits.</dd></div>
+      <div><dt>Can I upgrade now?</dt><dd>{catalog?.billing_enabled ? "Account administrators can open checkout from account plans. Plans activate only after payment confirmation." : "Paid plans are in preparation. This page does not collect payment, change your subscription or update existing account limits."}</dd></div>
     </dl>
   </section>;
 }

@@ -33,11 +33,27 @@ def _provider_id(payload: AIConfigurationInput) -> str:
     return "openai" if payload.provider_id == "managed" else payload.provider_id
 
 
-async def validate_configuration(project_id: str, payload: AIConfigurationInput, existing: dict | None = None) -> None:
+async def validate_configuration(project_id: str, payload: AIConfigurationInput, existing: dict | None = None, *, actor=None) -> None:
     if existing is None:
         existing = await db["ai_configurations"].find_one({"project_id": project_id})
     secret = await _resolve_secret(project_id, payload, existing)
     provider = provider_registry.resolve(_provider_id(payload), secret, payload.model, payload.configuration)
+    if payload.mode == "MANAGED":
+        from app.services.ai.managed_spend import guard_active
+        if await guard_active(db):
+            from app.services.ai.llm_gateway import LLMGateway, ResolvedLLMContext
+            from app.services.ai.ai_usage_service import AIUsageService
+            from app.services.ai.ai_usage_policy import AIOperation
+            from app.services.ai.base_provider import LLMRequest
+            user = actor if isinstance(actor, dict) else await db["users"].find_one({"email": actor}) if actor else None
+            if not user:
+                raise HTTPException(403, "An authorized account member is required to test Managed AI.")
+            class ValidationGateway(LLMGateway):
+                async def resolve(self, project, request):
+                    return ResolvedLLMContext("MANAGED", "openai", payload.model or provider.default_model, provider)
+            await AIUsageService(database=db, gateway=ValidationGateway()).execute(AIOperation.CONFIGURATION_VALIDATION,
+                project_id, user, LLMRequest(prompt="Reply OK", max_tokens=2))
+            return
     try:
         await provider.validate_connection(payload.model)
     except LLMProviderError as exc:
@@ -52,7 +68,7 @@ async def validate_configuration(project_id: str, payload: AIConfigurationInput,
 async def activate_configuration(project_id: str, payload: AIConfigurationInput, actor: str) -> dict:
     existing = await db["ai_configurations"].find_one({"project_id": project_id})
     old_ref = (existing or {}).get("credential_ref")
-    await validate_configuration(project_id, payload, existing)
+    await validate_configuration(project_id, payload, existing, actor=actor)
     now = datetime.now(timezone.utc).isoformat()
     change_type = "PROVIDER_CONFIGURED" if not existing else (
         "PROVIDER_CHANGED" if existing.get("provider_id") != payload.provider_id else
@@ -96,6 +112,8 @@ async def remove_configuration(project_id: str) -> None:
 
 
 def public_error(exc: Exception) -> HTTPException:
+    from app.services.ai.ai_usage_policy import AIUsageError
+    if isinstance(exc, AIUsageError): return HTTPException(exc.status_code, exc.public_detail())
     if isinstance(exc, LLMProviderError):
         status_by_code = {
             "AUTHENTICATION_ERROR": 400,

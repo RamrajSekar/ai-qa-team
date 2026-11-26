@@ -283,3 +283,12 @@ Jira OAuth (2026-11-16): user-bound single-use consent, expiring encrypted selec
 grants and discovered site/project choices. No offline access/refresh token yet;
 expired access requires reconnect. Keep disabled pending app provisioning and live
 qualification. New connections are OAuth-only; token setup and its flag are removed. Preserve reads of existing encrypted token connections.
+
+Pricing Phases 3/4 (2026-11-26): the user authorized development of account usage
+notices, internal Managed spend admission and Stripe-first provider-adapter billing.
+See `docs/mvp/PRICING_USAGE_BILLING.md`. Both new flags default off; no production
+migration or paid launch is authorized by this delivery. Initialized spend control
+survives flag-off. Preserve uncertain reservations, checkout locks, immutable
+payment/cutover receipts and stored usage. Browser checkout return URLs never grant
+entitlements. Business-owned sandbox, delivered webhook, measured AI/support cost,
+tax/legal and operational cutover qualification remain live-launch gates.

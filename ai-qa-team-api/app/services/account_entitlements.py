@@ -34,7 +34,7 @@ async def inventory_counts(database, account, *, session=None):
     pending = await database["account_invitations"].find({"account_id": identity, "status": {"$in": ["PENDING", "CLAIMED"]}},
         {"email": 1}, **options).to_list(None)
     counts["team_members_used"] = len({str(user["_id"]) for user in members if str(user["_id"]) != account.get("owner_user_id")})
-    counts["team_members_used"] += len({invite["email"].strip().lower() for invite in pending} - emails)
+    counts["team_members_used"] += len({str(invite.get("email") or invite["_id"]).strip().lower() for invite in pending} - emails)
     return counts
 
 

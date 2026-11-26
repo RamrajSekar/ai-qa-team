@@ -29,6 +29,9 @@ def subscription_required(resource_type: str):
             # Route-level membership and immutable approval checks still apply.
             return current_user
 
+        if sub.get("paid_consumption_allowed") is False:
+            raise HTTPException(403, "Billing needs attention. Existing records and manual review remain available.")
+
         # Versioned account AI pools are reserved atomically by AIUsageService
         # after provider resolution. The retained aggregate is not a third quota.
         if (resource_type == "ai_generation" and sub.get("billing_scope") == "ACCOUNT"

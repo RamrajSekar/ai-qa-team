@@ -1,8 +1,11 @@
 from pydantic_settings import BaseSettings
 from pydantic import BaseModel, Field, SecretStr, EmailStr, HttpUrl, field_validator
+from typing import Literal
 
 
 class FeatureFlags(BaseModel):
+    managed_spend_guard: bool = False
+    billing_checkout: bool = False
     jira_story_import: bool = False
     knowledge_ask: bool = False
     knowledge_uploads: bool = False
@@ -103,6 +106,37 @@ class PricingSettings(BaseModel):
         return value
 
 
+class ManagedModelCost(BaseModel):
+    input_micro_usd_per_million: int = Field(ge=1)
+    output_micro_usd_per_million: int = Field(ge=1)
+
+
+class ManagedSpendSettings(BaseModel):
+    cutover_id: str = ""
+    pricing_revision: str = ""
+    rates_verified: bool = False
+    per_request_micro_usd: int = Field(default=0, ge=0)
+    platform_monthly_micro_usd: int = Field(default=0, ge=0)
+    account_monthly_micro_usd: dict[str, int] = Field(default_factory=dict)
+    models: dict[str, ManagedModelCost] = Field(default_factory=dict)
+
+
+class BillingSettings(BaseModel):
+    provider: Literal["stripe"] = "stripe"
+    mode: Literal["test", "live"] = "test"
+    stripe_key: SecretStr | None = None
+    stripe_webhook_secret: SecretStr | None = None
+    stripe_price_ids: dict[str, str] = Field(default_factory=dict)
+    stripe_portal_configuration: str = ""
+    app_origin: HttpUrl | None = None
+    terms_url: HttpUrl | None = None
+    privacy_url: HttpUrl | None = None
+    commercial_terms_reviewed: bool = False
+    tax_setup_verified: bool = False
+    sandbox_qualified: bool = False
+    live_mode_approved: bool = False
+
+
 class KnowledgeIngestionSettings(BaseModel):
     storage_backend: str = "unconfigured"
     private_bucket: str = ""
@@ -135,6 +169,8 @@ class Settings(BaseSettings):
     ai_allowances: AIAllowanceSettings = Field(default_factory=AIAllowanceSettings)
     pricing: PricingSettings = Field(default_factory=PricingSettings)
     ai_usage: AIUsageSettings = Field(default_factory=AIUsageSettings)
+    managed_spend: ManagedSpendSettings = Field(default_factory=ManagedSpendSettings)
+    billing: BillingSettings = Field(default_factory=BillingSettings)
     mongo_uri: str
     mongo_db: str
     mongo_tls_ca_file: str | None = None

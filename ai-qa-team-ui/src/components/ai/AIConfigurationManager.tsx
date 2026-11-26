@@ -106,6 +106,7 @@ export default function AIConfigurationManager({ projectId, onBusyChange }: { pr
         ? "Managed uses the platform’s OpenAI credentials configured on the backend. A platform administrator manages this key."
         : "Use your project’s provider key. Test Connection validates it; Save & Activate stores it encrypted. Existing keys are never returned."}</p>
       {message && <p className="repository-status"><CheckCircle2 size={15} />{message}</p>}
+      <p className="workspace-description">Connection tests and activation may use one AI request each.</p>
       <div className="repository-actions"><button className="workspace-button" disabled={busy || !loaded} onClick={() => act("/test", "POST", "Connection successful.")}><PlugZap size={15} /> Test Connection</button><button className="workspace-button workspace-primary" disabled={busy || !loaded} onClick={() => act("", "PUT", "Provider saved and activated.")}>{busy ? "Working…" : active ? "Save & Activate" : "Activate"}</button>{active && <button className="workspace-button team-remove" disabled={busy || !loaded} onClick={remove}><Trash2 size={15} /> Remove</button>}</div>
     </div>}
   </section>;

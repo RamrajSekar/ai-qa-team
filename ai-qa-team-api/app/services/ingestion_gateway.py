@@ -19,13 +19,17 @@ class IngestionGateway:
         return replace(context, model=context.model or context.provider.default_model)
 
     async def generate_resolved(self, context, request):
+        from app.db.connection import db
+        from app.services.ai.managed_spend import claim_call
+        await claim_call(db, context, request)
         client = context.provider.client.with_options(timeout=90, max_retries=0)
         try:
             result = await client.chat.completions.create(model=context.model, temperature=0, max_tokens=min(request.max_tokens or 1000,1000),
                 messages=[{"role":"system","content":request.system_prompt or ""}, {"role":"user","content":[{"type":"text","text":request.prompt},
                     {"type":"image_url","image_url":{"url":"data:image/png;base64,"+base64.b64encode(self.payload).decode(),"detail":"low"}}]}])
             counts = normalized_token_usage(result)
-            return LLMResponse(text=result.choices[0].message.content or "", provider_id=context.provider_id, model=context.model,
+            return LLMResponse(text=result.choices[0].message.content or "", provider_id=context.provider_id,
+                model=(getattr(result, "model", "") or "") if request.spend_reservation_id else context.model,
                 input_tokens=counts[0],output_tokens=counts[1],total_tokens=counts[2])
         except LLMProviderError: raise
         except Exception as failure:

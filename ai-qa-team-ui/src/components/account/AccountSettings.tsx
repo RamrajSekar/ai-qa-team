@@ -9,6 +9,8 @@ import SubscriptionUsage, { type AccountSubscription } from "./SubscriptionUsage
 import TeamManager from "@/components/team/TeamManager";
 import { apiFetch } from "@/utils/api";
 
+import type { AccountUsageExperience } from "./UsageExperience";
+
 interface Account { account_id: string; name: string | null; current_user_role: string; setup_status: string }
 interface Member { email: string; name?: string; account_role: string }
 interface Invitation { invitation_id: string; email: string; role: string; expires_at: string }
@@ -21,7 +23,7 @@ export default function AccountSettings({ team = false }: { team?: boolean }) {
   const teamAdmin = admin && team;
   const [projects, setProjects] = useState<{project_id: string; name: string}[]>([]);
   const [projectId, setProjectId] = useState("");
-  const [billing, setBilling] = useState<{ billing_scope?: string; subscription?: AccountSubscription } | null>(null);
+  const [billing, setBilling] = useState<{ billing_scope?: string; subscription?: AccountSubscription; experience?: AccountUsageExperience } | null>(null);
   const [loading,setLoading]=useState(true);
   const [billingLoading,setBillingLoading]=useState(!team);
   const [account, setAccount] = useState<Account | null>(null);
@@ -40,7 +42,6 @@ export default function AccountSettings({ team = false }: { team?: boolean }) {
     return response.data;
   }, []);
   const load = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);setError("");setBillingLoading(!team);
     const current=request("/account",{signal}).then(current=>{
       if(!signal?.aborted){setAccount(current);setName(current.name||"");}
     }).finally(()=>{if(!signal?.aborted)setLoading(false);});
@@ -51,10 +52,11 @@ export default function AccountSettings({ team = false }: { team?: boolean }) {
       !team?request("/account/subscription",{signal}).then(value=>{if(!signal?.aborted)setBilling(value);}).finally(()=>{if(!signal?.aborted)setBillingLoading(false);}):Promise.resolve(),
     ];
     const results=await Promise.allSettled(tasks);
-    if(!signal?.aborted&&results.some(result=>result.status==="rejected"))setError("Some account details could not load. Try again.");
+    if(!signal?.aborted)setError(results.some(result=>result.status==="rejected")?"Some account details could not load. Try again.":"");
   }, [request, teamAdmin, team]);
   useEffect(() => {
     const controller = new AbortController();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Only asynchronous fetch responses update state; setup performs no state writes.
     void load(controller.signal).catch(failure => { if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : "Could not load account."); });
     return () => controller.abort();
   }, [load]);
@@ -91,7 +93,7 @@ export default function AccountSettings({ team = false }: { team?: boolean }) {
         </div>
         <p className="workspace-description">{billingLoading ? "Loading subscription…" : !billing ? "Subscription unavailable. Reload to try again." : billing.billing_scope === "ACCOUNT" ? "Subscription and usage are shared across your account." : "Account subscription migration is required before shared billing is enabled."}</p>
       </section>}
-      {!team && !billingLoading && billing?.subscription && <SubscriptionUsage subscription={billing.subscription} />}
+      {!team && !billingLoading && billing?.subscription && <SubscriptionUsage subscription={billing.subscription} experience={billing.experience} onRefresh={() => void load()} />}
       {team && <section><h2>Account members</h2>{members.map(member => <div className="workspace-row" key={member.email}><div><strong>{member.name || member.email}</strong><p className="workspace-row-subtitle">{member.email}</p></div><span className="workspace-badge">{member.account_role}</span></div>)}</section>}
       {team && admin && <section className="space-y-4"><h2>Invite a new account member</h2><p className="workspace-description">{emailEnabled ? "Send a seven-day invitation by email." : "Share a private invitation link, valid for seven days."} Assign existing members to projects below.</p>
         <label>New member email<input type="email" value={email} disabled={busy} onChange={event => setEmail(event.target.value)} /></label>

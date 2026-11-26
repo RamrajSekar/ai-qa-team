@@ -1,6 +1,8 @@
 # Pricing redesign and commercial rollout plan
 
-Phase 1 merged; Phase 2 implemented for review, 2026-11-26. Paid offers remain planned.
+Phases 1/2 merged; Phases 3/4 implemented behind development gates, 2026-11-26.
+See [usage and guarded billing](PRICING_USAGE_BILLING.md) for current evidence and
+unfulfilled live-launch gates. Paid offers remain planned by default.
 This document changes no live prices, entitlements,
 subscriptions, environment settings or billing. Begin with the pricing page;
 payment collection and automation remain later delivery stages.
@@ -121,7 +123,7 @@ capacity, action, budget and approval controls; a pricing page enables none of i
 
 ## Delivery and decision gates
 
-Sequence separate PRs by phase; Phase 3 is next after Phase 2 review. Check the previous PR's
+Deliver bounded PRs by phase; Phase 3/4 were jointly requested. Check the previous PR's
 merge state and current main before each PR. Run targeted API/UI regressions,
 production build/types and visual desktop/mobile checks appropriate to the change.
 Record actual results and remaining limits; do not substitute mocked billing or
@@ -135,8 +137,9 @@ explicitly experimental pricing-page redesign.
 Current implementation: components/marketing/Pricing.tsx is shared by public
 /pricing and workspace /settings/account/plans. GET /auth/pricing exposes the v2
 account offer catalogue with billing disabled. Canonical models now accept
-free/pro/enterprise/team/business; v2 adoption is explicit and reviewed. Checkout,
-seat purchases, top-up balances and hard monetary budgets are not delivered.
+free/pro/enterprise/team/business; v2 adoption is explicit and reviewed. Guarded
+checkout and internal spend budgets now have a development implementation. Live
+qualification, seat purchases and top-up balances remain unfinished.
 
 See AI_ALLOWANCES_PRICING.md, ACCOUNT_TEAM_BILLING.md, PRICING_COST_REVIEW.md and
 TEST_DESIGN_MVP.md for preserved billing, isolation and release boundaries.
@@ -154,7 +157,7 @@ navigation, four plans, mobile overflow, retry, configured prices/contact and
 unsafe contact rejection. Changed-component lint passed; desktop and mobile
 screenshots were inspected. No production account, payment or provider was used.
 
-Phases 3 onward remain unimplemented. These checks do not qualify paid billing
+Those Phase 1 checks do not qualify paid billing
 or validate the proposed prices against real support/AI costs.
 
 

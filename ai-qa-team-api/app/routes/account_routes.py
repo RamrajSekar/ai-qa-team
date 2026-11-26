@@ -66,7 +66,23 @@ async def account_subscription(response: Response, user=Depends(get_current_user
     from app.services.testcase_allowances import effective_subscription
     subscription = effective_subscription(billing["subscription"])
     subscription.setdefault("usage", {}).update(await scenario_complexity_usage(db, account["_id"]))
-    return {"account_id": account["_id"], "billing_scope": "ACCOUNT", "subscription": subscription}
+    from app.services.account_usage_experience import AccountUsageExperience
+    subscription, experience = await AccountUsageExperience(db).view(billing, user, subscription)
+    return {"account_id": account["_id"], "billing_scope": "ACCOUNT", "subscription": subscription, "experience": experience}
+
+
+@router.post("/usage/notices/{notice_id}/dismiss")
+async def dismiss_usage_notice(notice_id: str, response: Response, user=Depends(get_current_user)):
+    from app.services.account_billing import billing_account
+    from app.services.account_usage_experience import AccountUsageExperience
+    from fastapi import HTTPException
+    await CustomerAccounts(db).require(user)
+    billing = await billing_account(db, user)
+    if not billing:
+        raise HTTPException(409, "Account billing adoption is required.")
+    await AccountUsageExperience(db).dismiss(billing, user, notice_id)
+    response.headers["Cache-Control"] = "private, no-store"
+    return {"dismissed": True}
 
 
 @router.get("/invitations")

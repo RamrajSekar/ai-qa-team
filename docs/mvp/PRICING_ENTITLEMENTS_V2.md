@@ -131,5 +131,7 @@ commitments. Production adoption needs a separately reviewed operational cutover
 | 5 — Extra users and AI packs | Confirmed seat purchases, separate durable Managed/BYOK pack balances, receipt identity, consume included capacity first | Define expiry/refunds and qualify duplicate events, concurrent consumption and rollover without resetting purchased units |
 | 6 — Execution and Enterprise | Measure execution costs and choose separate units; define supported custom capacity/support | Qualified execution/security/reliability and contractual commitments; no implied SSO/SLA features |
 
-Phase 3 is the next bounded PR. Ordinary Test Design paid pricing is complete only
+Phases 3/4 now have a gated development implementation; see
+[usage and guarded billing](PRICING_USAGE_BILLING.md) for current qualification
+and remaining launch gates. Ordinary Test Design paid pricing is complete only
 after Phases 4/5 and launch qualification; Phase 6 is conditional future expansion.

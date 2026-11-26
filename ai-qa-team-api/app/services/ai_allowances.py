@@ -21,17 +21,19 @@ def initialize_allowances(subscription):
 
 
 def public_pricing():
+    from app.services.billing.configuration import public_checkout_enabled
+    billing_enabled = public_checkout_enabled()
     free = PLAN_LIMITS["free"]
     # Display-only offers. Never feed these planned limits into subscriptions.
     offers = {
         "free": {"monthly_usd": 0, "availability": "available", "users_limit": free["team_members_limit"] + 1,
             **{key: free[key] for key in ("projects_limit", "stories_limit", "scenarios_limit", "testcases_limit")},
             **configured_limits("free")},
-        "team": {**settings.pricing.team.model_dump(), "availability": "planned"},
-        "business": {**settings.pricing.business.model_dump(), "availability": "planned"},
+        "team": {**settings.pricing.team.model_dump(), "availability": "available" if billing_enabled else "planned"},
+        "business": {**settings.pricing.business.model_dump(), "availability": "available" if billing_enabled else "planned"},
         "enterprise": {"monthly_usd": None, "availability": "planned"},
     }
-    return {"catalog_version": 2, "stage": "EXPERIMENTAL", "currency": "USD", "billing_enabled": False,
+    return {"catalog_version": 2, "stage": "EXPERIMENTAL", "currency": "USD", "billing_enabled": billing_enabled,
         "offers": offers, "contact_url": str(settings.pricing.contact_url) if settings.pricing.contact_url else None,
         "add_ons": {"availability": "planned", "additional_user_monthly_usd": settings.pricing.additional_user_monthly_usd,
             "managed_pack": {"requests": settings.pricing.ai_pack_requests, "usd": settings.pricing.managed_pack_usd},
